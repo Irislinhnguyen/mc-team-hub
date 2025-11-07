@@ -76,7 +76,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Get auth token from cookie
-    const authToken = request.cookies.get('auth_token')?.value;
+    const authToken = request.cookies.get('__Host-auth_token')?.value;
 
     if (!authToken) {
       return NextResponse.json({ error: 'Unauthorized - No auth token' }, { status: 401 });
@@ -202,7 +202,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Get auth token from cookie
-    const authToken = request.cookies.get('auth_token')?.value;
+    const authToken = request.cookies.get('__Host-auth_token')?.value;
 
     if (!authToken) {
       return NextResponse.json({ error: 'Unauthorized - No auth token' }, { status: 401 });

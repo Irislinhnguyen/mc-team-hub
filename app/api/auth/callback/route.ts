@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
     response.cookies.set('__Host-auth_token', token, {
       httpOnly: true,
       secure: true, // Always enforce HTTPS
-      sameSite: 'strict', // Upgraded from 'lax' to 'strict'
+      sameSite: 'lax', // Changed from 'strict' to 'lax' for better OAuth compatibility
       path: '/',
       maxAge: 8 * 60 * 60, // 8 hours
     })
