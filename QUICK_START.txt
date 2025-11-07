@@ -1,0 +1,179 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║  ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓  ║
+║  ┃     🧪 QUERY STREAM AI - BACKEND TEST QUICK START 🧪              ┃  ║
+║  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+
+📋 5 SALES SCENARIOS READY FOR TESTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1️⃣  "Hôm qua performance gimana?"
+      └─ Daily vs 30-day average revenue comparison
+
+  2️⃣  "Top 20 publishers bulan ini?"
+      └─ Top performers with revenue & team breakdown
+
+  3️⃣  "Có publisher nào churn risk?"
+      └─ At-risk publishers needing follow-up
+
+  4️⃣  "Format apa yang trending?"
+      └─ Ad format growth analysis
+
+  5️⃣  "Team performance compare?"
+      └─ APP_GV vs WEB_GV vs WEB_GTI rankings
+
+
+🚀 QUICK START (3 STEPS)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  STEP 1: Start Development Server
+  ┌─────────────────────────────────────────────────────┐
+  │ $ npm run dev                                       │
+  │                                                     │
+  │ Wait for: "ready on http://localhost:3000"        │
+  └─────────────────────────────────────────────────────┘
+
+  STEP 2: Run Test Suite (in another terminal)
+  ┌─────────────────────────────────────────────────────┐
+  │ $ chmod +x test-scenarios.sh                        │
+  │ $ ./test-scenarios.sh                               │
+  │                                                     │
+  │ Watch for 5 ✅ SUCCESS messages                    │
+  └─────────────────────────────────────────────────────┘
+
+  STEP 3: Check Results
+  ┌─────────────────────────────────────────────────────┐
+  │ All scenarios should show: ✅ SUCCESS               │
+  │ Row counts should make sense (1, 20, 10+, 8, 3)    │
+  │ Response times should be < 5 seconds                │
+  └─────────────────────────────────────────────────────┘
+
+
+📚 DOCUMENTATION FILES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  📄 DUYỆT_VÀ_TEST.md          ← Start here (Tiếng Việt)
+  📄 TEST_SCENARIOS.md          ← Detailed SQL queries
+  📄 SALES_TEST_SUMMARY.md      ← Business context & outputs
+  📄 TESTING_GUIDE.md           ← Complete reference
+  📄 SCENARIOS_VISUAL.txt       ← Visual diagrams
+  📄 QUICK_START.txt            ← This file
+
+
+✅ SUCCESS CHECKLIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ☐ Read DUYỆT_VÀ_TEST.md (understand 5 scenarios)
+  ☐ npm run dev (start server in terminal 1)
+  ☐ chmod +x test-scenarios.sh (make script executable)
+  ☐ ./test-scenarios.sh (run tests in terminal 2)
+  ☐ All 5 scenarios show ✅ SUCCESS
+  ☐ Check row counts:
+    - Scenario 1: 1 row ✅
+    - Scenario 2: 20 rows ✅
+    - Scenario 3: 10+ rows ✅
+    - Scenario 4: 8 rows ✅
+    - Scenario 5: 3 rows (APP_GV, WEB_GV, WEB_GTI) ✅
+  ☐ Screenshot results
+  ☐ Share with team
+
+
+📊 EXPECTED OUTPUT EXAMPLES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Scenario 1 - Daily vs 30d Average:
+  {
+    "yesterday_revenue": 1250000,
+    "avg_30d_revenue": 1100000,
+    "variance_pct": 13.64        ← Revenue up 13.64%! 📈
+  }
+
+  Scenario 2 - Top Publisher:
+  {
+    "pid": "PID-00123",
+    "pubname": "Tech Blog Indonesia",
+    "team": "WEB_GV",
+    "total_revenue": 5250000,
+    "active_days": 28
+  }
+
+  Scenario 3 - Risk Publisher:
+  {
+    "pid": "PID-99999",
+    "risk_level": "🔴 Inactive"  ← Needs attention! ⚠️
+  }
+
+  Scenario 4 - Format Trending:
+  {
+    "product": "WipeAd",
+    "growth_pct": 21.43          ← Hot format! 📈
+  }
+
+  Scenario 5 - Team Ranking:
+  {
+    "team": "APP_GV",
+    "total_revenue": 8500000,
+    "num_publishers": 245
+  }
+
+
+🔧 IF SOMETHING FAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Problem: "Connection refused"
+  → Make sure npm run dev is running in another terminal
+
+  Problem: "BigQuery error"
+  → Check service-account.json exists in project root
+
+  Problem: "No data returned"
+  → Database might have old data, try different date ranges
+
+  Problem: "Syntax error"
+  → Check test-scenarios.sh has proper line endings (dos2unix)
+
+  Problem: "Timeout"
+  → Query might be complex, wait longer or check BigQuery directly
+
+
+🎯 GOAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Verify that all 19 analytics templates work correctly with real BigQuery
+  data. The 5 test scenarios cover the most common sales use cases.
+
+
+📞 TEMPLATES BEING TESTED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✅ team_daily_vs_30d               (Performance)
+  ✅ top_publishers_by_metric        (Customer/Risk)
+  ✅ churn_risk_detector             (Customer/Risk)
+  ✅ adformat_growth_decline         (Format Insights)
+  ✅ team_prediction_breakdown       (Prediction)
+
+  All 5 templates are fully fixed with correct schema:
+  - Using: gcpp-check.GI_publisher.agg_monthly_with_pic_table
+  - Metric mappings: rev (revenue), profit, req (impressions), paid
+  - Team derivation: CASE WHEN pic LIKE...
+  - Build status: ✅ Successful (zero TypeScript errors)
+
+
+🚀 LET'S GO!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Start by reading: DUYỆT_VÀ_TEST.md (in Vietnamese)
+  Or check: TEST_SCENARIOS.md (detailed SQL)
+
+  Then run: npm run dev && ./test-scenarios.sh
+
+  Expected result: All ✅ SUCCESS ✅
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Last Updated: 2025-10-27
+Status: Ready for Testing ✅
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

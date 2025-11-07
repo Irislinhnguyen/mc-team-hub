@@ -1,0 +1,83 @@
+
+> vite_react_shadcn_ts@0.0.0 build
+> next build
+
+   ▲ Next.js 15.5.6
+   - Environments: .env.local, .env.production, .env
+   - Experiments (use with caution):
+     · serverActions
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 16.9s
+   Linting and checking validity of types ...
+
+ ⚠ The Next.js plugin was not detected in your ESLint configuration. See https://nextjs.org/docs/app/api-reference/config/eslint#migrating-existing-config
+
+./app/(protected)/performance-tracker/business-health/page-old.tsx
+20:6  Warning: React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/(protected)/performance-tracker/daily-ops-publisher-summary/page-refactored.tsx
+49:6  Warning: React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/(protected)/performance-tracker/deep-dive-old-archive/page.tsx
+180:6  Warning: React Hook useEffect has missing dependencies: 'fetchData', 'fetchPerspectiveData', 'hasAnalyzed', 'period1Start', and 'period2Start'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/(protected)/performance-tracker/profit-projections/page.tsx
+150:72  Warning: React Hook useMemo has a missing dependency: 'generateColumns'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+151:72  Warning: React Hook useMemo has a missing dependency: 'generateColumns'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+152:72  Warning: React Hook useMemo has a missing dependency: 'generateColumns'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/components/forms/EntitySelector.tsx
+82:6  Warning: React Hook useEffect has a missing dependency: 'getEndpoint'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/components/performance-tracker/ClickableAlertBar.tsx
+106:17  Warning: Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.  react-refresh/only-export-components
+
+./app/components/performance-tracker/CompactFilterPanel.tsx
+109:5  Warning: Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps').
+
+./app/contexts/AuthContext.tsx
+79:17  Warning: Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.  react-refresh/only-export-components
+87:17  Warning: Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.  react-refresh/only-export-components
+
+./app/contexts/CrossFilterContext.tsx
+148:17  Warning: Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.  react-refresh/only-export-components
+
+./lib/hooks/useFilterPresets.ts
+85:6  Warning: React Hook useCallback has a missing dependency: 'filterType'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/components/ui/badge.tsx
+29:17  Warning: Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.  react-refresh/only-export-components
+
+./src/components/ui/button.tsx
+47:18  Warning: Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.  react-refresh/only-export-components
+
+./src/components/ui/form.tsx
+129:10  Warning: Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.  react-refresh/only-export-components
+
+./src/components/ui/navigation-menu.tsx
+111:3  Warning: Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.  react-refresh/only-export-components
+
+./src/components/ui/sidebar.tsx
+637:3  Warning: Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.  react-refresh/only-export-components
+
+./src/components/ui/sonner.tsx
+29:19  Warning: Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.  react-refresh/only-export-components
+
+./src/components/ui/toggle.tsx
+37:18  Warning: Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.  react-refresh/only-export-components
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+Failed to compile.
+
+./app/api/filter-presets/[id]/route.ts:113:25
+Type error: Property 'id' does not exist on type 'never'.
+
+[0m [90m 111 |[39m     }
+ [90m 112 |[39m
+[31m[1m>[22m[39m[90m 113 |[39m     [36mconst[39m userId [33m=[39m user[33m.[39mid[33m;[39m
+ [90m     |[39m                         [31m[1m^[22m[39m
+ [90m 114 |[39m     [36mconst[39m { id[33m:[39m presetId } [33m=[39m [36mawait[39m params[33m;[39m
+ [90m 115 |[39m
+ [90m 116 |[39m     [90m// Check if preset exists and user has permission[39m[0m
+Next.js build worker exited with code: 1 and signal: null

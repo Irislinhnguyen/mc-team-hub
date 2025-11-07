@@ -1,0 +1,156 @@
+'use client'
+
+import React, { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import { X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { colors } from '../../../lib/colors'
+
+interface FilterChip {
+  filterName: string
+  filterLabel: string
+  values: string[]
+  valueLabels: string[]
+}
+
+interface FilterChipsPortalProps {
+  chips: FilterChip[]
+  onRemoveFilter: (filterName: string) => void
+  onClearAll: () => void
+  sidebarWidth?: number
+}
+
+export function FilterChipsPortal({
+  chips,
+  onRemoveFilter,
+  onClearAll,
+  sidebarWidth = 256
+}: FilterChipsPortalProps) {
+  const [isFixed, setIsFixed] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
+  // Ensure we only create portal on client side
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!sentinelRef.current) return
+
+    // Use Intersection Observer to detect when the sentinel scrolls out of view
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // When sentinel is NOT intersecting (scrolled past), make chips fixed
+        setIsFixed(!entry.isIntersecting)
+      },
+      {
+        threshold: 0,
+        rootMargin: '0px',
+      }
+    )
+
+    observer.observe(sentinelRef.current)
+
+    return () => observer.disconnect()
+  }, [])
+
+  if (chips.length === 0) {
+    return null
+  }
+
+  // Render chip items (reusable)
+  const renderChips = () => (
+    <>
+      <span className="text-sm font-medium" style={{ color: colors.neutralDark }}>
+        Applied filters:
+      </span>
+      <div className="flex items-center gap-2 flex-wrap flex-1">
+        {chips.map((chip) => {
+          const displayValue = chip.valueLabels.length <= 2
+            ? chip.valueLabels.join(', ')
+            : `${chip.valueLabels.length} selected`
+
+          return (
+            <div
+              key={chip.filterName}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm"
+              style={{
+                backgroundColor: colors.main,
+                color: '#FFFFFF'
+              }}
+            >
+              <span className="font-medium">{chip.filterLabel}:</span>
+              <span>{displayValue}</span>
+              <button
+                onClick={() => onRemoveFilter(chip.filterName)}
+                className="ml-1 hover:bg-white/20 rounded-full p-0.5 transition-colors"
+                aria-label={`Remove ${chip.filterLabel} filter`}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )
+        })}
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onClearAll}
+        className="text-xs"
+        style={{
+          borderColor: colors.main,
+          color: colors.main,
+          backgroundColor: '#FFFFFF'
+        }}
+      >
+        Clear all filters
+      </Button>
+    </>
+  )
+
+  // Fixed chips content (rendered via portal)
+  const fixedChipsContent = (
+    <div
+      className="flex items-center gap-2 flex-wrap px-4 py-3"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: sidebarWidth,
+        right: 0,
+        zIndex: 50,
+        backgroundColor: '#F0F4FF',
+        borderBottom: `1px solid ${colors.neutralLight}`,
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.08)',
+      }}
+    >
+      {renderChips()}
+    </div>
+  )
+
+  return (
+    <>
+      {/* Sentinel element to detect scroll position */}
+      <div ref={sentinelRef} style={{ height: '1px', marginTop: '-1px' }} />
+
+      {/* Portal: Render chips at body level when fixed */}
+      {isFixed && isMounted && createPortal(fixedChipsContent, document.body)}
+
+      {/* Spacer to prevent content jump when chips become fixed */}
+      {isFixed && <div style={{ height: '57px' }} />}
+
+      {/* Inline chips when not fixed */}
+      {!isFixed && (
+        <div
+          className="flex items-center gap-2 flex-wrap px-4 py-3"
+          style={{
+            backgroundColor: '#F0F4FF',
+            borderBottom: `1px solid ${colors.neutralLight}`,
+          }}
+        >
+          {renderChips()}
+        </div>
+      )}
+    </>
+  )
+}
