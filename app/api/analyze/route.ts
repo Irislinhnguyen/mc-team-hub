@@ -164,6 +164,7 @@ function getPeriodDates(timeframe: string): { start: Date; end: Date } {
       end = today
       break
     case 'this_month':
+      // Use local date values to avoid timezone shift
       start = new Date(today.getFullYear(), today.getMonth(), 1)
       end = today
       break
@@ -275,6 +276,7 @@ function buildDateFilter(timeframe: string, startDate?: string | Date, endDate?:
       break
     }
     case 'this_month':
+      // Use local date values to avoid timezone shift
       startDate_new = new Date(today.getFullYear(), today.getMonth(), 1)
       endDate_new = today
       break
@@ -296,8 +298,16 @@ function buildDateFilter(timeframe: string, startDate?: string | Date, endDate?:
       break
   }
 
-  const startStr = startDate_new.toISOString().split('T')[0]
-  const endStr = endDate_new.toISOString().split('T')[0]
+  // Use timezone-safe date formatting to avoid date shift issues
+  const formatDateToYYYYMMDD = (date: Date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  const startStr = formatDateToYYYYMMDD(startDate_new)
+  const endStr = formatDateToYYYYMMDD(endDate_new)
 
   return `DATE >= '${startStr}' AND DATE <= '${endStr}'`
 }
