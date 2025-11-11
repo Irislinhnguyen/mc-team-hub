@@ -38,24 +38,23 @@ export async function GET(request: NextRequest) {
     const tableName = '`gcpp-check.GI_publisher.agg_monthly_with_pic_table_6_month`'
     const topMoversTable = '`gcpp-check.GI_publisher.top_movers_daily`'
 
-    // Fetch all unique values for each filter dimension with LIMIT
-    // LIMIT 1000 is enough for filter dropdowns
+    // Fetch all unique values for each filter dimension
     const mediaTable = '`gcpp-check.GI_publisher.media_summary_dashboard`'
     const closeWonTable = '`gcpp-check.GI_publisher.close_won_cases`'
 
     const [pics, products, pids, mids, pubnames, medianames, zids, zonenames, revFlags, revenueTiers, months, years, teamConfig] = await Promise.all([
-      executeQueryWithTimeout(`SELECT DISTINCT pic FROM ${tableName} WHERE pic IS NOT NULL ORDER BY pic LIMIT 1000`, 15000),
-      executeQueryWithTimeout(`SELECT DISTINCT product FROM ${tableName} WHERE product IS NOT NULL ORDER BY product LIMIT 1000`, 15000),
-      executeQueryWithTimeout(`SELECT DISTINCT pid FROM ${tableName} WHERE pid IS NOT NULL ORDER BY pid LIMIT 1000`, 15000),
-      executeQueryWithTimeout(`SELECT DISTINCT mid FROM ${tableName} WHERE mid IS NOT NULL ORDER BY mid LIMIT 1000`, 15000),
-      executeQueryWithTimeout(`SELECT DISTINCT pubname FROM ${tableName} WHERE pubname IS NOT NULL ORDER BY pubname LIMIT 1000`, 15000),
-      executeQueryWithTimeout(`SELECT DISTINCT medianame FROM ${tableName} WHERE medianame IS NOT NULL ORDER BY medianame LIMIT 1000`, 15000),
-      executeQueryWithTimeout(`SELECT DISTINCT zid FROM ${tableName} WHERE zid IS NOT NULL ORDER BY zid LIMIT 1000`, 15000),
-      executeQueryWithTimeout(`SELECT DISTINCT zonename FROM ${tableName} WHERE zonename IS NOT NULL ORDER BY zonename LIMIT 1000`, 15000),
-      executeQueryWithTimeout(`SELECT DISTINCT rev_flag FROM ${topMoversTable} WHERE rev_flag IS NOT NULL ORDER BY rev_flag LIMIT 50`, 15000),
-      executeQueryWithTimeout(`SELECT DISTINCT revenue_tier FROM ${mediaTable} WHERE revenue_tier IS NOT NULL ORDER BY revenue_tier LIMIT 10`, 15000),
-      executeQueryWithTimeout(`SELECT DISTINCT month FROM ${closeWonTable} WHERE month IS NOT NULL ORDER BY month ASC LIMIT 12`, 15000),
-      executeQueryWithTimeout(`SELECT DISTINCT year FROM ${closeWonTable} WHERE year IS NOT NULL ORDER BY year DESC LIMIT 10`, 15000),
+      executeQueryWithTimeout(`SELECT DISTINCT pic FROM ${tableName} WHERE pic IS NOT NULL ORDER BY pic`, 15000),
+      executeQueryWithTimeout(`SELECT DISTINCT product FROM ${tableName} WHERE product IS NOT NULL ORDER BY product`, 15000),
+      executeQueryWithTimeout(`SELECT DISTINCT pid FROM ${tableName} WHERE pid IS NOT NULL ORDER BY pid`, 15000),
+      executeQueryWithTimeout(`SELECT DISTINCT mid FROM ${tableName} WHERE mid IS NOT NULL ORDER BY mid`, 15000),
+      executeQueryWithTimeout(`SELECT DISTINCT pubname FROM ${tableName} WHERE pubname IS NOT NULL ORDER BY pubname`, 15000),
+      executeQueryWithTimeout(`SELECT DISTINCT medianame FROM ${tableName} WHERE medianame IS NOT NULL ORDER BY medianame`, 15000),
+      executeQueryWithTimeout(`SELECT DISTINCT zid FROM ${tableName} WHERE zid IS NOT NULL ORDER BY zid`, 15000),
+      executeQueryWithTimeout(`SELECT DISTINCT zonename FROM ${tableName} WHERE zonename IS NOT NULL ORDER BY zonename`, 15000),
+      executeQueryWithTimeout(`SELECT DISTINCT rev_flag FROM ${topMoversTable} WHERE rev_flag IS NOT NULL ORDER BY rev_flag`, 15000),
+      executeQueryWithTimeout(`SELECT DISTINCT revenue_tier FROM ${mediaTable} WHERE revenue_tier IS NOT NULL ORDER BY revenue_tier`, 15000),
+      executeQueryWithTimeout(`SELECT DISTINCT month FROM ${closeWonTable} WHERE month IS NOT NULL ORDER BY month ASC`, 15000),
+      executeQueryWithTimeout(`SELECT DISTINCT year FROM ${closeWonTable} WHERE year IS NOT NULL ORDER BY year DESC`, 15000),
       getTeamConfigurations(),
     ])
 
