@@ -23,9 +23,17 @@ export function useDefaultDateRange(days: number = 30): DateRange {
     const today = new Date()
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
 
+    // Use timezone-safe date formatting to avoid date shift issues
+    const formatDateToYYYYMMDD = (date: Date) => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
     return {
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: today.toISOString().split('T')[0],
+      startDate: formatDateToYYYYMMDD(startDate),
+      endDate: formatDateToYYYYMMDD(today),
     }
   }, [days])
 }
