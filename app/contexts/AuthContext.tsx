@@ -16,6 +16,7 @@ interface AuthContextType {
   error: string | null
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
+  csrfToken: string | null
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -24,6 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [csrfToken, setCsrfToken] = useState<string | null>(null)
 
   const fetchUser = async () => {
     try {
@@ -65,12 +67,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await fetchUser()
   }
 
+  const fetchCsrfToken = async () => {
+    try {
+      const response = await fetch('/api/auth/csrf')
+      if (response.ok) {
+        const data = await response.json()
+        setCsrfToken(data.csrfToken)
+      }
+    } catch (err) {
+      console.error('[AuthContext] Error fetching CSRF token:', err)
+    }
+  }
+
   useEffect(() => {
     fetchUser()
+    fetchCsrfToken()
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, error, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, isLoading, error, logout, refreshUser, csrfToken }}>
       {children}
     </AuthContext.Provider>
   )

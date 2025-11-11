@@ -40,10 +40,10 @@ export function verifyCsrfToken(request: NextRequest): boolean {
  * Middleware wrapper for CSRF protection
  * Only applies to state-changing methods (POST, PUT, DELETE, PATCH)
  */
-export function withCsrfProtection(
-  handler: (request: NextRequest) => Promise<Response>
+export function withCsrfProtection<T = any>(
+  handler: (request: NextRequest, context?: T) => Promise<Response>
 ) {
-  return async (request: NextRequest): Promise<Response> => {
+  return async (request: NextRequest, context?: T): Promise<Response> => {
     const method = request.method
 
     // Only check CSRF for state-changing requests
@@ -62,7 +62,7 @@ export function withCsrfProtection(
       }
     }
 
-    return handler(request)
+    return handler(request, context)
   }
 }
 

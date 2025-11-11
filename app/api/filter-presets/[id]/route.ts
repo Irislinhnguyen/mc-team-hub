@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase/admin';
 import { UpdateFilterPresetInput } from '../../../../lib/types/filterPreset';
+import { withCsrfProtection } from '../../../../lib/middleware/csrf';
 
 /**
  * GET /api/filter-presets/[id]
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
  * PATCH /api/filter-presets/[id]
  * Update an existing filter preset
  */
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function patchHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Get auth token from cookie
     const authToken = request.cookies.get('__Host-auth_token')?.value;
@@ -195,11 +196,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 }
 
+export const PATCH = withCsrfProtection(patchHandler);
+
 /**
  * DELETE /api/filter-presets/[id]
  * Delete a filter preset
  */
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function deleteHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Get auth token from cookie
     const authToken = request.cookies.get('__Host-auth_token')?.value;
@@ -272,3 +275,5 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+export const DELETE = withCsrfProtection(deleteHandler);

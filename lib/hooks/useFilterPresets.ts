@@ -14,6 +14,7 @@ import {
   FilterPresetShare,
   AnalyticsPage,
 } from '../types/filterPreset';
+import { useAuth } from '../../app/contexts/AuthContext';
 
 type CrossFilter = any; // TODO: Define proper CrossFilter type
 
@@ -50,6 +51,7 @@ interface UseFilterPresetsReturn {
  */
 export function useFilterPresets(options: UseFilterPresetsOptions): UseFilterPresetsReturn {
   const { page, enabled = true, skipInitialFetch = false, filterType } = options;
+  const { csrfToken } = useAuth();
 
   const [ownPresets, setOwnPresets] = useState<FilterPreset[]>([]);
   const [sharedPresets, setSharedPresets] = useState<FilterPreset[]>([]);
@@ -70,7 +72,9 @@ export function useFilterPresets(options: UseFilterPresetsOptions): UseFilterPre
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({
+          error: `Request failed with status ${response.status}`
+        }));
         throw new Error(errorData.error || 'Failed to fetch presets');
       }
 
@@ -105,13 +109,18 @@ export function useFilterPresets(options: UseFilterPresetsOptions): UseFilterPre
       try {
         const response = await fetch('/api/filter-presets', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(csrfToken && { 'x-csrf-token': csrfToken })
+          },
           credentials: 'include',
           body: JSON.stringify(input),
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
+          const errorData = await response.json().catch(() => ({
+            error: `Request failed with status ${response.status}`
+          }));
           throw new Error(errorData.error || 'Failed to create preset');
         }
 
@@ -126,7 +135,7 @@ export function useFilterPresets(options: UseFilterPresetsOptions): UseFilterPre
         throw err;
       }
     },
-    []
+    [csrfToken]
   );
 
   // Update an existing preset
@@ -135,17 +144,24 @@ export function useFilterPresets(options: UseFilterPresetsOptions): UseFilterPre
       try {
         const response = await fetch(`/api/filter-presets/${id}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(csrfToken && { 'x-csrf-token': csrfToken })
+          },
           credentials: 'include',
           body: JSON.stringify(input),
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
+          const errorData = await response.json().catch(() => ({
+            error: `Request failed with status ${response.status}`
+          }));
           throw new Error(errorData.error || 'Failed to update preset');
         }
 
-        const updatedPreset: FilterPreset = await response.json();
+        const updatedPreset: FilterPreset = await response.json().catch(() => {
+          throw new Error('Failed to parse server response');
+        });
 
         // Optimistic update
         setOwnPresets((prev) => prev.map((p) => (p.id === id ? updatedPreset : p)));
@@ -157,7 +173,7 @@ export function useFilterPresets(options: UseFilterPresetsOptions): UseFilterPre
         throw err;
       }
     },
-    []
+    [csrfToken]
   );
 
   // Delete a preset
@@ -165,11 +181,16 @@ export function useFilterPresets(options: UseFilterPresetsOptions): UseFilterPre
     try {
       const response = await fetch(`/api/filter-presets/${id}`, {
         method: 'DELETE',
+        headers: {
+          ...(csrfToken && { 'x-csrf-token': csrfToken })
+        },
         credentials: 'include',
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({
+          error: `Request failed with status ${response.status}`
+        }));
         throw new Error(errorData.error || 'Failed to delete preset');
       }
 
@@ -180,7 +201,7 @@ export function useFilterPresets(options: UseFilterPresetsOptions): UseFilterPre
       console.error('Error deleting preset:', err);
       throw err;
     }
-  }, []);
+  }, [csrfToken]);
 
   // Set a preset as default
   const setDefaultPreset = useCallback(
@@ -213,7 +234,10 @@ export function useFilterPresets(options: UseFilterPresetsOptions): UseFilterPre
       try {
         const response = await fetch(`/api/filter-presets/${presetId}/share`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(csrfToken && { 'x-csrf-token': csrfToken })
+          },
           credentials: 'include',
           body: JSON.stringify({
             shared_with_user_email: userEmail,
@@ -222,7 +246,9 @@ export function useFilterPresets(options: UseFilterPresetsOptions): UseFilterPre
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
+          const errorData = await response.json().catch(() => ({
+            error: `Request failed with status ${response.status}`
+          }));
           throw new Error(errorData.error || 'Failed to share preset');
         }
 
@@ -235,7 +261,7 @@ export function useFilterPresets(options: UseFilterPresetsOptions): UseFilterPre
         throw err;
       }
     },
-    []
+    [csrfToken]
   );
 
   // Remove a share
@@ -243,11 +269,16 @@ export function useFilterPresets(options: UseFilterPresetsOptions): UseFilterPre
     try {
       const response = await fetch(`/api/filter-presets/${presetId}/share?user_id=${userId}`, {
         method: 'DELETE',
+        headers: {
+          ...(csrfToken && { 'x-csrf-token': csrfToken })
+        },
         credentials: 'include',
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({
+          error: `Request failed with status ${response.status}`
+        }));
         throw new Error(errorData.error || 'Failed to remove share');
       }
 
@@ -257,7 +288,7 @@ export function useFilterPresets(options: UseFilterPresetsOptions): UseFilterPre
       console.error('Error removing share:', err);
       throw err;
     }
-  }, [fetchPresets]);
+  }, [fetchPresets, csrfToken]);
 
   // Get all shares for a preset
   const getShares = useCallback(async (presetId: string): Promise<FilterPresetShare[]> => {
@@ -267,11 +298,15 @@ export function useFilterPresets(options: UseFilterPresetsOptions): UseFilterPre
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({
+          error: `Request failed with status ${response.status}`
+        }));
         throw new Error(errorData.error || 'Failed to fetch shares');
       }
 
-      const shares: FilterPresetShare[] = await response.json();
+      const shares: FilterPresetShare[] = await response.json().catch(() => {
+        throw new Error('Failed to parse server response');
+      });
       return shares;
     } catch (err) {
       console.error('Error fetching shares:', err);
