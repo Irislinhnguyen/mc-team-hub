@@ -163,14 +163,30 @@ export function formatChartTooltip(
 
 /**
  * Format a number for display in chart axes
- * Uses metric type detection for appropriate formatting
+ * Uses compact format for large numbers to save space
  */
 export function formatChartAxis(
   value: any,
   metricKey?: string
 ): string {
+  // Handle non-numeric values
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+
+  const numValue = typeof value === 'number' ? value : parseFloat(value);
+  if (isNaN(numValue)) {
+    return String(value);
+  }
+
+  // For large numbers (≥10,000), use compact format to save space
+  if (Math.abs(numValue) >= 10_000) {
+    return formatCompactNumber(numValue, 1);
+  }
+
+  // For smaller numbers, use regular formatting
   const metricType = detectMetricType(metricKey);
-  return formatMetricValue(value, metricType, metricKey);
+  return formatMetricValue(numValue, metricType, metricKey);
 }
 
 /**
@@ -319,4 +335,69 @@ export function safeNumber(value: any, defaultValue: number = 0): number {
     return defaultValue;
   }
   return Number(value);
+}
+
+/**
+ * Format a Date object to YYYY-MM-DD in local timezone
+ * This function avoids timezone shift issues that occur when using toISOString()
+ *
+ * Example: new Date(2025, 10, 1) -> "2025-11-01" (not "2025-10-31" like toISOString would)
+ *
+ * @param date - Date object to format
+ * @returns Formatted date string in YYYY-MM-DD format
+ */
+export function formatDateToYYYYMMDD(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Format date to YYYY-MM-DD format
+ * Example: "2025-01-15T00:00:00Z" -> "2025-01-15"
+ * Example: new Date(2025, 0, 15) -> "2025-01-15"
+ *
+ * @param value - Date string, Date object, or timestamp
+ * @returns Formatted date string in YYYY-MM-DD format, or empty string if invalid
+ */
+export function formatDate(value: any): string {
+  if (!value) return '';
+
+  try {
+    // If it's already in YYYY-MM-DD format, return as-is
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return value;
+    }
+
+    // If it's a string that starts with YYYY-MM-DD (like ISO format), extract the date part
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+      return value.substring(0, 10);
+    }
+
+    // Parse as Date object
+    const date = new Date(value);
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return String(value); // Return original value if can't parse
+    }
+
+    // Format as YYYY-MM-DD using timezone-safe method
+    return formatDateToYYYYMMDD(date);
+  } catch (error) {
+    // If any error occurs, return the original value as string
+    return String(value);
+  }
+}
+
+/**
+ * Format partner name to Title Case
+ * Example: "NETLINK" -> "Netlink", "GENIEE" -> "Geniee", "OPTAD360" -> "Optad360"
+ */
+export function formatPartnerName(partnerName: string | null | undefined): string {
+  if (!partnerName) return '';
+
+  // Convert to Title Case: first letter uppercase, rest lowercase
+  return partnerName.charAt(0).toUpperCase() + partnerName.slice(1).toLowerCase();
 }
