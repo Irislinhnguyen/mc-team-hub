@@ -20,6 +20,20 @@ export interface GCPPFilters {
 }
 
 /**
+ * Helper: Extract value from filter (handles both string and { value: string } formats)
+ */
+function normalizeFilterValue(value: any): string | string[] {
+  if (value === null || value === undefined) return ''
+
+  // If it's an object with a 'value' property (from DateSelector)
+  if (typeof value === 'object' && !Array.isArray(value) && value.value !== undefined) {
+    return value.value
+  }
+
+  return value
+}
+
+/**
  * Build WHERE clause from filters
  * @param excludeFields - Optional array of field names to exclude from WHERE clause
  */
@@ -27,13 +41,18 @@ export function buildGCPPWhereClause(filters: GCPPFilters, tableName?: string, e
   const conditions: string[] = []
   const prefix = tableName ? `${tableName}.` : ''
 
+  // Normalize date values (extract .value if present)
+  const date = normalizeFilterValue(filters.date) as string
+  const startDate = normalizeFilterValue(filters.startDate) as string
+  const endDate = normalizeFilterValue(filters.endDate) as string
+
   // Date handling - single date or date range
-  if (filters.date) {
+  if (date) {
     // Single date mode
-    conditions.push(`${prefix}date = '${filters.date}'`)
-  } else if (filters.startDate && filters.endDate) {
+    conditions.push(`${prefix}date = '${date}'`)
+  } else if (startDate && endDate) {
     // Date range mode
-    conditions.push(`${prefix}date BETWEEN '${filters.startDate}' AND '${filters.endDate}'`)
+    conditions.push(`${prefix}date BETWEEN '${startDate}' AND '${endDate}'`)
   }
 
   // Team filter - translate to app_name conditions
