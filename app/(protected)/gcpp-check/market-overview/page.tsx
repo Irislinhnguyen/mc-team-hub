@@ -20,6 +20,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import ChartSkeleton from '../../../components/performance-tracker/skeletons/ChartSkeleton'
 import { DataTableSkeleton } from '../../../components/performance-tracker/skeletons/DataTableSkeleton'
 import { formatPartnerName, formatStringValue } from '../../../../lib/utils/formatters'
+import { normalizeFilterValue } from '../../../../lib/utils/filterHelpers'
 import {
   Select,
   SelectContent,
@@ -183,12 +184,13 @@ function MarketOverviewPageContent() {
 
     // First pass: collect all data
     data.marketShareByMarketPartner.forEach((row: any) => {
-      const formattedPartner = formatPartnerName(row.partner)
-      if (!groupedByMarket[row.market]) {
-        groupedByMarket[row.market] = { market: row.market }
+      const formattedPartner = formatPartnerName(normalizeFilterValue(row.partner))
+      const market = normalizeFilterValue(row.market)
+      if (!groupedByMarket[market]) {
+        groupedByMarket[market] = { market }
       }
       // Use percentage value as-is (already in percentage format)
-      groupedByMarket[row.market][formattedPartner] = row.market_share_percent
+      groupedByMarket[market][formattedPartner] = row.market_share_percent
       partners.add(formattedPartner)
     })
 
@@ -223,9 +225,9 @@ function MarketOverviewPageContent() {
     const partners = new Set<string>()
 
     data.impressionsTimeSeries.forEach((row: any) => {
-      const formattedPartner = formatPartnerName(row.partner)
+      const formattedPartner = formatPartnerName(normalizeFilterValue(row.partner))
       // Normalize date - could be string or {value: "2025-11-10"}
-      const dateKey = typeof row.date === 'object' && row.date?.value ? row.date.value : row.date
+      const dateKey = normalizeFilterValue(row.date)
       if (!groupedByDate[dateKey]) {
         groupedByDate[dateKey] = { date: dateKey, rawDate: dateKey }
       }
@@ -253,11 +255,11 @@ function MarketOverviewPageContent() {
 
     // Filter data for selected partner only
     const partnerData = data.marketDistribution.filter(
-      (row: any) => row.partner?.toUpperCase() === selectedPartnerForPie
+      (row: any) => normalizeFilterValue(row.partner)?.toUpperCase() === selectedPartnerForPie
     )
 
     const chartData = partnerData.map((row: any) => ({
-      market: row.market,
+      market: normalizeFilterValue(row.market),
       value: row.percent_of_total, // Use percent as the value for pie chart
       impressions: row.impressions, // Keep for tooltip
       percent: row.percent_of_total
