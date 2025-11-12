@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { DateRangePicker } from '../forms/DateRangePicker'
 import { MultiSelectFilter } from './MultiSelectFilter'
 import { FilterChipsPortal } from './FilterChipsPortal'
 import { colors } from '../../../lib/colors'
+import { normalizeFilterValue } from '../../../lib/utils/filterHelpers'
 
 interface FilterConfig {
   name: string
@@ -53,25 +54,37 @@ export function FilterPanel({
     defaultDateRange?.endDate ? new Date(defaultDateRange.endDate) : initialEndDate
   )
 
+  // ✅ FIX: Track previous initialFilters to prevent infinite loop
+  const previousInitialFiltersRef = useRef<string>('')
+
   // ✨ NEW: Apply initial filters when preset is loaded
   useEffect(() => {
     if (initialFilters && Object.keys(initialFilters).length > 0) {
-      console.log('[FilterPanel] Applying initial filters from preset:', initialFilters)
+      // Deep equality check using JSON serialization
+      const currentFiltersStr = JSON.stringify(initialFilters)
 
-      // Extract date filters
-      if (initialFilters.startDate) {
-        setStartDate(new Date(initialFilters.startDate))
+      // Only apply if filters actually changed
+      if (currentFiltersStr !== previousInitialFiltersRef.current) {
+        console.log('[FilterPanel] Applying initial filters from preset:', initialFilters)
+        previousInitialFiltersRef.current = currentFiltersStr
+
+        // Extract date filters
+        if (initialFilters.startDate) {
+          setStartDate(new Date(initialFilters.startDate))
+        }
+        if (initialFilters.endDate) {
+          setEndDate(new Date(initialFilters.endDate))
+        }
+
+        // Extract non-date filters
+        const nonDateFilters = { ...initialFilters }
+        delete nonDateFilters.startDate
+        delete nonDateFilters.endDate
+
+        setFilterValues(nonDateFilters)
+      } else {
+        console.log('[FilterPanel] ⏭️  Initial filters unchanged, skipping')
       }
-      if (initialFilters.endDate) {
-        setEndDate(new Date(initialFilters.endDate))
-      }
-
-      // Extract non-date filters
-      const nonDateFilters = { ...initialFilters }
-      delete nonDateFilters.startDate
-      delete nonDateFilters.endDate
-
-      setFilterValues(nonDateFilters)
     }
   }, [initialFilters])
 
@@ -146,7 +159,7 @@ export function FilterPanel({
           filterName,
           filterLabel: filterConfig.label,
           values: value,
-          valueLabels: selectedOptions.map(opt => opt.label)
+          valueLabels: selectedOptions.map(opt => normalizeFilterValue(opt.label))
         })
       }
     }
