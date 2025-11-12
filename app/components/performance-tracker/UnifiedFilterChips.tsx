@@ -7,6 +7,21 @@ import { useCrossFilter } from '../../contexts/CrossFilterContext'
 import { Button } from '@/components/ui/button'
 import { useSidebar } from '@/components/ui/sidebar'
 
+/**
+ * Helper: Extract string value from filter value (handles both string and { value: string } formats)
+ * Prevents React Error #31: "Objects are not valid as a React child"
+ */
+function normalizeFilterValue(value: any): string {
+  if (value === null || value === undefined) return ''
+
+  // If it's an object with a 'value' property, extract it
+  if (typeof value === 'object' && !Array.isArray(value) && value.value !== undefined) {
+    return String(value.value)
+  }
+
+  return String(value)
+}
+
 interface FilterChip {
   filterName: string
   filterLabel: string
@@ -104,7 +119,7 @@ export function UnifiedFilterChips({
       }
       const chip = grouped.get(filter.field)!
       chip.values.push(filter.value)
-      chip.valueLabels.push(filter.value)
+      chip.valueLabels.push(normalizeFilterValue(filter.value))
     }
 
     // Add pending cross-filters (shown immediately for UX feedback)
@@ -122,7 +137,7 @@ export function UnifiedFilterChips({
       // Only add if not already in values
       if (!chip.values.includes(filter.value)) {
         chip.values.push(filter.value)
-        chip.valueLabels.push(filter.value)
+        chip.valueLabels.push(normalizeFilterValue(filter.value))
       }
     }
 
