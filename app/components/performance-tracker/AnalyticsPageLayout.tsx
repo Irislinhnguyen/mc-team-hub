@@ -79,6 +79,9 @@ export function AnalyticsPageLayout({
   // Use useMemo to prevent recreating children on every render (prevents infinite loop)
   const enhancedChildren = useMemo(() => {
     return Children.map(children, (child) => {
+      // Skip null/undefined children from conditional renders
+      if (!child) return child
+
       if (isValidElement(child) && child.type &&
           (child.type as any).displayName === 'MetadataFilterPanel') {
         return cloneElement(child as any, {
