@@ -7,13 +7,6 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '../lib/config/queryClient'
 import { AuthProvider } from './contexts/AuthContext'
 import './globals.css'
-import dynamic from 'next/dynamic'
-
-// Only load devtools in development
-const ReactQueryDevtools = dynamic(
-  () => import('@tanstack/react-query-devtools').then((mod) => mod.ReactQueryDevtools),
-  { ssr: false }
-)
 
 export default function RootLayout({
   children,
@@ -39,7 +32,6 @@ export default function RootLayout({
               <SonnerToaster />
             </TooltipProvider>
           </AuthProvider>
-          {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
         </QueryClientProvider>
       </body>
     </html>
