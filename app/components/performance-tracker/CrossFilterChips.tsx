@@ -6,6 +6,7 @@ import { X } from 'lucide-react'
 import { useCrossFilter } from '../../contexts/CrossFilterContext'
 import { Button } from '@/components/ui/button'
 import { useSidebar } from '@/components/ui/sidebar'
+import { normalizeFilterValue } from '../../../lib/utils/filterHelpers'
 
 interface CrossFilterChip {
   filterName: string
@@ -81,7 +82,7 @@ export function CrossFilterChips({ sidebarWidth = 256 }: { sidebarWidth?: number
       }
       const chip = grouped.get(filter.field)!
       chip.values.push(filter.value)
-      chip.valueLabels.push(filter.value)
+      chip.valueLabels.push(normalizeFilterValue(filter.value))
     }
 
     return Array.from(grouped.values())
