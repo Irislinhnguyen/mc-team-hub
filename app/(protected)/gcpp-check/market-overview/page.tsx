@@ -224,10 +224,12 @@ function MarketOverviewPageContent() {
 
     data.impressionsTimeSeries.forEach((row: any) => {
       const formattedPartner = formatPartnerName(row.partner)
-      if (!groupedByDate[row.date]) {
-        groupedByDate[row.date] = { date: row.date, rawDate: row.date }
+      // Normalize date - could be string or {value: "2025-11-10"}
+      const dateKey = typeof row.date === 'object' && row.date?.value ? row.date.value : row.date
+      if (!groupedByDate[dateKey]) {
+        groupedByDate[dateKey] = { date: dateKey, rawDate: dateKey }
       }
-      groupedByDate[row.date][formattedPartner] = row.impressions
+      groupedByDate[dateKey][formattedPartner] = row.impressions
       partners.add(formattedPartner)
     })
 
