@@ -10,8 +10,7 @@ import { DateSelector } from '../../../components/gcpp-check/DateSelector'
 import { MetadataFilterPanel } from '../../../components/performance-tracker/MetadataFilterPanel'
 import { useGCPPFilters } from '../../../../lib/hooks'
 import { DataTableSkeleton } from '../../../components/performance-tracker/skeletons/DataTableSkeleton'
-import { formatDate } from '../../../../lib/utils/formatters'
-import { normalizeFilterValue } from '../../../../lib/utils/filterHelpers'
+import { formatStringValue, formatDateValue } from '../../../../lib/utils/formatters'
 import { useGCPPMarketBreakdown } from '../../../../lib/hooks/queries/useGCPPMarketBreakdown'
 import { useCrossFilter } from '../../../contexts/CrossFilterContext'
 import { useClientSideFilterMulti } from '../../../../lib/hooks/useClientSideFilter'
@@ -63,27 +62,19 @@ function MarketBreakdownPageContent() {
 
   // Column configurations
   const top100ByMarketColumns = [
-    {
-      key: 'date',
-      label: 'Date',
-      format: (value: any) => {
-        if (!value) return ''
-        const normalized = normalizeFilterValue(value)
-        return formatDate(normalized)
-      }
-    },
-    { key: 'market', label: 'Market' },
-    { key: 'domain_app_id', label: 'Domain/App ID' },
-    { key: 'app_name', label: 'App Name' },
+    { key: 'date', label: 'Date', format: formatDateValue },
+    { key: 'market', label: 'Market', format: formatStringValue },
+    { key: 'domain_app_id', label: 'Domain/App ID', format: formatStringValue },
+    { key: 'app_name', label: 'App Name', format: formatStringValue },
     { key: 'filtered_impressions', label: 'Impressions' },
-    { key: 'category', label: 'Publisher Category' },
-    { key: 'partner', label: 'Partner' },
-    { key: 'all_partners', label: 'ALL partners' }
+    { key: 'category', label: 'Publisher Category', format: formatStringValue },
+    { key: 'partner', label: 'Partner', format: formatStringValue },
+    { key: 'all_partners', label: 'ALL partners', format: formatStringValue }
   ]
 
   const pubCountByPartnerMarketColumns = [
-    { key: 'partner', label: 'Partner' },
-    { key: 'market', label: 'Market' },
+    { key: 'partner', label: 'Partner', format: formatStringValue },
+    { key: 'market', label: 'Market', format: formatStringValue },
     { key: '<=200K', label: '<=200K' },
     { key: '>200K', label: '>200K' },
     { key: '>5M', label: '>5M' },
@@ -91,11 +82,11 @@ function MarketBreakdownPageContent() {
   ]
 
   const pubCountBreakdownColumns = [
-    { key: 'category', label: 'Publisher Category' },
-    { key: 'partner', label: 'Partner' },
-    { key: 'domain_app_id', label: 'Domain/App ID' },
-    { key: 'app_name', label: 'App Name' },
-    { key: 'market', label: 'Market' },
+    { key: 'category', label: 'Publisher Category', format: formatStringValue },
+    { key: 'partner', label: 'Partner', format: formatStringValue },
+    { key: 'domain_app_id', label: 'Domain/App ID', format: formatStringValue },
+    { key: 'app_name', label: 'App Name', format: formatStringValue },
+    { key: 'market', label: 'Market', format: formatStringValue },
     { key: 'total_impressions', label: 'Impressions' }
   ]
 

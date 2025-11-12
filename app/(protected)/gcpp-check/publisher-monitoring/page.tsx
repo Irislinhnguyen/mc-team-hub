@@ -14,6 +14,7 @@ import { DataTableSkeleton } from '../../../components/performance-tracker/skele
 import { useGCPPPublisherMonitoring } from '../../../../lib/hooks/queries/useGCPPPublisherMonitoring'
 import { useCrossFilter } from '../../../contexts/CrossFilterContext'
 import { useClientSideFilterMulti } from '../../../../lib/hooks/useClientSideFilter'
+import { formatStringValue, formatDateValue } from '../../../../lib/utils/formatters'
 
 function PublisherMonitoringPageContent() {
   const contentRef = useRef<HTMLDivElement>(null)
@@ -62,37 +63,37 @@ function PublisherMonitoringPageContent() {
 
   // Column configurations
   const newPubsByPartnerColumns = [
-    { key: 'partner', label: 'Partner' },
-    { key: 'domain_app_id', label: 'Domain/App ID' },
-    { key: 'app_name', label: 'App Name' },
-    { key: 'pub_size_category', label: 'Category' },
+    { key: 'partner', label: 'Partner', format: formatStringValue },
+    { key: 'domain_app_id', label: 'Domain/App ID', format: formatStringValue },
+    { key: 'app_name', label: 'App Name', format: formatStringValue },
+    { key: 'pub_size_category', label: 'Category', format: formatStringValue },
     { key: 'filtered_impressions', label: 'Impressions' },
-    { key: 'team', label: 'Team' }
+    { key: 'team', label: 'Team', format: formatStringValue }
   ]
 
   const sharedPubsMonitoringColumns = [
-    { key: 'domain_app_id', label: 'Domain/App ID' },
-    { key: 'app_name', label: 'App Name' },
-    { key: 'latest_date', label: 'Latest Date' },
-    { key: 'competitor_partner', label: 'Competitor' },
-    { key: 'scenario', label: 'Scenario' },
-    { key: 'action_guidance', label: 'Action Guidance' },
+    { key: 'domain_app_id', label: 'Domain/App ID', format: formatStringValue },
+    { key: 'app_name', label: 'App Name', format: formatStringValue },
+    { key: 'latest_date', label: 'Latest Date', format: formatDateValue },
+    { key: 'competitor_partner', label: 'Competitor', format: formatStringValue },
+    { key: 'scenario', label: 'Scenario', format: formatStringValue },
+    { key: 'action_guidance', label: 'Action Guidance', format: formatStringValue },
     { key: 'geniee_growth_pct', label: 'Geniee Growth %' },
     { key: 'competitor_growth_pct', label: 'Competitor Growth %' }
   ]
 
   const sharedPubsDetailsColumns = [
-    { key: 'domain_app_id', label: 'Domain/App ID' },
-    { key: 'app_name', label: 'App Name' },
-    { key: 'latest_date', label: 'Latest Date' },
+    { key: 'domain_app_id', label: 'Domain/App ID', format: formatStringValue },
+    { key: 'app_name', label: 'App Name', format: formatStringValue },
+    { key: 'latest_date', label: 'Latest Date', format: formatDateValue },
     { key: 'geniee_impressions_latest', label: 'Geniee Impr (Latest)' },
     { key: 'geniee_impressions_previous', label: 'Geniee Impr (Prev)' },
     { key: 'competitor_impressions_latest', label: 'Comp Impr (Latest)' },
     { key: 'competitor_impressions_previous', label: 'Comp Impr (Prev)' },
-    { key: 'competitor_partner', label: 'Competitor' },
+    { key: 'competitor_partner', label: 'Competitor', format: formatStringValue },
     { key: 'geniee_growth_pct', label: 'Geniee Growth %' },
     { key: 'competitor_growth_pct', label: 'Competitor Growth %' },
-    { key: 'scenario', label: 'Scenario' }
+    { key: 'scenario', label: 'Scenario', format: formatStringValue }
   ]
 
 

@@ -19,7 +19,7 @@ import { useGCPPMarketOverview } from '../../../../lib/hooks/queries/useGCPPMark
 import { useQueryClient } from '@tanstack/react-query'
 import ChartSkeleton from '../../../components/performance-tracker/skeletons/ChartSkeleton'
 import { DataTableSkeleton } from '../../../components/performance-tracker/skeletons/DataTableSkeleton'
-import { formatPartnerName } from '../../../../lib/utils/formatters'
+import { formatPartnerName, formatStringValue } from '../../../../lib/utils/formatters'
 import {
   Select,
   SelectContent,
@@ -59,7 +59,7 @@ function MarketOverviewPageContent() {
   // Column configurations
   const marketShareDetailColumns = [
     { key: 'partner', label: 'Partner', format: formatPartnerName },
-    { key: 'market', label: 'Market' },
+    { key: 'market', label: 'Market', format: formatStringValue },
     { key: 'market_share_percent', label: 'Market Share %' },
     { key: 'total_impressions', label: 'Total Impressions' }
   ]

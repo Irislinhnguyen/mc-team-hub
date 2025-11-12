@@ -17,6 +17,7 @@ import { DataTableSkeleton } from '../../../components/performance-tracker/skele
 import { useGCPPPartnerBreakdown } from '../../../../lib/hooks/queries/useGCPPPartnerBreakdown'
 import { useCrossFilter } from '../../../contexts/CrossFilterContext'
 import { useClientSideFilterMulti } from '../../../../lib/hooks/useClientSideFilter'
+import { formatStringValue, formatDateValue } from '../../../../lib/utils/formatters'
 
 function PartnerBreakdownPageContent() {
   const contentRef = useRef<HTMLDivElement>(null)
@@ -70,19 +71,19 @@ function PartnerBreakdownPageContent() {
 
   // Column configurations
   const pubCountOver200KColumns = [
-    { key: 'date', label: 'Date' },
-    { key: 'partner', label: 'Partner' },
-    { key: 'team', label: 'Team' },
-    { key: 'category', label: 'Category' },
+    { key: 'date', label: 'Date', format: formatDateValue },
+    { key: 'partner', label: 'Partner', format: formatStringValue },
+    { key: 'team', label: 'Team', format: formatStringValue },
+    { key: 'category', label: 'Category', format: formatStringValue },
     { key: 'pub_count', label: 'Pub Count' }
   ]
 
   const pubCountDetailColumns = [
-    { key: 'date', label: 'Date' },
-    { key: 'partner', label: 'Partner' },
-    { key: 'domain_app_id', label: 'Domain/App ID' },
-    { key: 'app_name', label: 'App Name' },
-    { key: 'category', label: 'Category' },
+    { key: 'date', label: 'Date', format: formatDateValue },
+    { key: 'partner', label: 'Partner', format: formatStringValue },
+    { key: 'domain_app_id', label: 'Domain/App ID', format: formatStringValue },
+    { key: 'app_name', label: 'App Name', format: formatStringValue },
+    { key: 'category', label: 'Category', format: formatStringValue },
     { key: 'total_impressions', label: 'Total Impressions' }
   ]
 

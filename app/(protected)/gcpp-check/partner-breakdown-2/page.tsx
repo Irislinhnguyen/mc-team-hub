@@ -11,6 +11,7 @@ import { MetadataFilterPanel } from '../../../components/performance-tracker/Met
 import { useGCPPFilters } from '../../../../lib/hooks'
 import { DataTableSkeleton } from '../../../components/performance-tracker/skeletons/DataTableSkeleton'
 import { useGCPPPartnerBreakdown2 } from '../../../../lib/hooks/queries/useGCPPPartnerBreakdown2'
+import { formatStringValue, formatDateValue } from '../../../../lib/utils/formatters'
 import { normalizeFilterValue } from '../../../../lib/utils/filterHelpers'
 import { useCrossFilter } from '../../../contexts/CrossFilterContext'
 import { useClientSideFilterMulti } from '../../../../lib/hooks/useClientSideFilter'
@@ -73,16 +74,16 @@ function PartnerBreakdown2PageContent() {
   // Column configurations
   const top100ByPartnerColumns = [
     { key: 'rank', label: 'Rank' },
-    { key: 'partner', label: 'Partner' },
-    { key: 'domain_app_id', label: 'Domain/App ID' },
-    { key: 'app_name', label: 'App Name' },
+    { key: 'partner', label: 'Partner', format: formatStringValue },
+    { key: 'domain_app_id', label: 'Domain/App ID', format: formatStringValue },
+    { key: 'app_name', label: 'App Name', format: formatStringValue },
     { key: 'filtered_impressions', label: 'Impressions' },
-    { key: 'date', label: 'Date' }
+    { key: 'date', label: 'Date', format: formatDateValue }
   ]
 
   const topPubsByPartnerMarketColumns = [
-    { key: 'domain_app_id', label: 'Domain/App ID' },
-    { key: 'app_name', label: 'App Name' },
+    { key: 'domain_app_id', label: 'Domain/App ID', format: formatStringValue },
+    { key: 'app_name', label: 'App Name', format: formatStringValue },
     { key: 'prev_impressions', label: 'Prev Impressions' },
     {
       key: 'performance',
@@ -93,16 +94,16 @@ function PartnerBreakdown2PageContent() {
         return <PerformanceIndicator performance={normalized} />
       }
     },
-    { key: 'market', label: 'Market' },
+    { key: 'market', label: 'Market', format: formatStringValue },
     { key: 'filtered_impressions', label: 'Current Impressions' },
-    { key: 'partner', label: 'Partner' },
-    { key: 'team', label: 'Team' }
+    { key: 'partner', label: 'Partner', format: formatStringValue },
+    { key: 'team', label: 'Team', format: formatStringValue }
   ]
 
   const genieeWalletColumns = [
-    { key: 'date', label: 'Date' },
-    { key: 'domain_app_id', label: 'Domain/App ID' },
-    { key: 'app_name', label: 'App Name' },
+    { key: 'date', label: 'Date', format: formatDateValue },
+    { key: 'domain_app_id', label: 'Domain/App ID', format: formatStringValue },
+    { key: 'app_name', label: 'App Name', format: formatStringValue },
     { key: 'geniee_impressions', label: 'Geniee Impressions' },
     { key: 'total_impressions', label: 'Total Impressions' },
     { key: 'impressions_percentage', label: 'Wallet Share %' }

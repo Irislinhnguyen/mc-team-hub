@@ -406,3 +406,37 @@ export function formatPartnerName(partnerName: string | null | undefined): strin
   // Convert to Title Case: first letter uppercase, rest lowercase
   return partnerName.charAt(0).toUpperCase() + partnerName.slice(1).toLowerCase();
 }
+
+/**
+ * Format string value - handles nested objects like { value: "..." }
+ * Used for GCPP check pages where BigQuery can return nested objects
+ *
+ * @param value - String value or object with .value property
+ * @returns Normalized string value, or empty string if null/undefined
+ */
+export function formatStringValue(value: any): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  // Normalize value if it's an object (e.g., {value: "..."})
+  const normalizedValue = normalizeFilterValue(value);
+
+  return String(normalizedValue);
+}
+
+/**
+ * Format date value - handles nested objects like { value: "2025-11-10" }
+ * Used for GCPP check pages where BigQuery can return nested date objects
+ *
+ * @param value - Date value or object with .value property
+ * @returns Formatted date string in YYYY-MM-DD format
+ */
+export function formatDateValue(value: any): string {
+  if (!value) return '';
+
+  // Normalize value if it's an object (e.g., {value: "2025-11-10"})
+  const normalizedValue = normalizeFilterValue(value);
+
+  return formatDate(normalizedValue);
+}
