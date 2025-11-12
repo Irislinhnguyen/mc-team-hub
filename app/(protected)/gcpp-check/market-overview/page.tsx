@@ -210,10 +210,6 @@ function MarketOverviewPageContent() {
       name: partner,
     }))
 
-    console.log('[Market Overview] Stacked Bar Chart Data:', chartData)
-    console.log('[Market Overview] Stacked Bar Categories:', categories)
-    console.log('[Market Overview] Sample Data Item:', chartData[0])
-
     return { data: chartData, categories }
   }
 
