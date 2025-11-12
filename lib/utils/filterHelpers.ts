@@ -66,3 +66,33 @@ export function shouldFetchFullData(
   // Fetch all data once cross-filters are present
   return isClientFilterMode && hasCrossFilters;
 }
+
+/**
+ * Extract string value from filter value (handles both string and { value: string } formats)
+ * Prevents React Error #31: "Objects are not valid as a React child"
+ *
+ * @param value - Filter value that could be a string, object, or other type
+ * @returns String representation safe for rendering in JSX
+ *
+ * @example
+ * normalizeFilterValue('JP') // => 'JP'
+ * normalizeFilterValue({value: 'JP'}) // => 'JP'
+ * normalizeFilterValue(null) // => ''
+ * normalizeFilterValue(['A', 'B']) // => 'A,B'
+ */
+export function normalizeFilterValue(value: any): string {
+  if (value === null || value === undefined) return ''
+
+  // If it's an array, join the values
+  if (Array.isArray(value)) {
+    return value.map(v => normalizeFilterValue(v)).join(', ')
+  }
+
+  // If it's an object with a 'value' property, extract it
+  if (typeof value === 'object' && value.value !== undefined) {
+    return String(value.value)
+  }
+
+  // For all other types, convert to string
+  return String(value)
+}

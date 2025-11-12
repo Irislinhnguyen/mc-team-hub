@@ -6,21 +6,7 @@ import { X } from 'lucide-react'
 import { useCrossFilter } from '../../contexts/CrossFilterContext'
 import { Button } from '@/components/ui/button'
 import { useSidebar } from '@/components/ui/sidebar'
-
-/**
- * Helper: Extract string value from filter value (handles both string and { value: string } formats)
- * Prevents React Error #31: "Objects are not valid as a React child"
- */
-function normalizeFilterValue(value: any): string {
-  if (value === null || value === undefined) return ''
-
-  // If it's an object with a 'value' property, extract it
-  if (typeof value === 'object' && !Array.isArray(value) && value.value !== undefined) {
-    return String(value.value)
-  }
-
-  return String(value)
-}
+import { normalizeFilterValue } from '../../../lib/utils/filterHelpers'
 
 interface FilterChip {
   filterName: string

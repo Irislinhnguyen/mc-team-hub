@@ -11,14 +11,15 @@ import { composedStyles, typography } from '../../../lib/design-tokens'
 import { colors } from '../../../lib/colors'
 import { withExport } from './withExport'
 import { useCrossFilter } from '../../contexts/CrossFilterContext'
-import { formatTableCell } from '../../../lib/utils/formatters'
+import { formatTableCell, formatDate } from '../../../lib/utils/formatters'
 import { hideRepeatedValues, hideRepeatedValuesInGroups, getOriginalValue } from '../../../lib/utils/tableHelpers'
+import { normalizeFilterValue } from '../../../lib/utils/filterHelpers'
 
 interface Column {
   key: string
   label: string
   width?: string
-  format?: (value: any) => string
+  format?: (value: any) => string | React.ReactNode
   filterable?: boolean // Only show filter dropdown for entity columns
 }
 
@@ -86,6 +87,15 @@ function DataTableBase({
     const rawValue = originalValue?.value || originalValue
     const filterLabel = `${label}: ${rawValue}`
 
+    console.log('[DEBUG] Cell clicked:', {
+      columnKey,
+      value,
+      originalValue,
+      rawValue,
+      label,
+      filterLabel
+    })
+
     // Check if Ctrl (Windows/Linux) or Cmd (Mac) key is pressed for multi-select
     const append = event.ctrlKey || event.metaKey
     const useBatchMode = append // Use batch mode when appending (Ctrl+click)
@@ -98,11 +108,22 @@ function DataTableBase({
   }
 
   // Format cell values with metric-aware formatting
-  const formatCellValue = (value: any, formatter?: (value: any) => string, columnKey?: string) => {
+  const formatCellValue = (value: any, formatter?: (value: any) => string | React.ReactNode, columnKey?: string) => {
     // Handle hidden values - return empty string
     if (value?._hidden) {
       return ''
     }
+
+    // If custom formatter is provided, use it
+    if (formatter) {
+      return formatter(value)
+    }
+
+    // Auto-detect and format dates (columns named 'date' or containing date values)
+    if (columnKey === 'date' || columnKey?.toLowerCase().includes('date')) {
+      return formatDate(value)
+    }
+
     return formatTableCell(value, columnKey, formatter)
   }
 
@@ -237,7 +258,7 @@ function DataTableBase({
   const headerHeight = 60
   const paginationHeight = 50
   const minVisibleRows = 3
-  const maxVisibleRows = 8
+  const maxVisibleRows = 7 // Reduced from 8 to 7 to fit pagination
 
   const visibleRows = Math.min(
     Math.max(minVisibleRows, paginatedData.length),
@@ -249,34 +270,45 @@ function DataTableBase({
   return (
     <Card
       style={{
-        backgroundColor: '#ffffff',
-        border: 'none', // Borderless design
-        borderRadius: '6px',
-        boxShadow: 'none', // No shadow
+        backgroundColor: '#FFFFFF',
+        border: `1px solid ${colors.neutralLight}`,
+        borderRadius: '4px',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
         minWidth: 0,
         width: '100%',
         maxWidth: '100%',
         boxSizing: 'border-box',
         overflow: 'hidden',
+        minHeight: '480px',
       }}
     >
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4 flex-wrap">
           <h3
-            className={composedStyles.sectionTitle}
+            className={`${composedStyles.sectionTitle} whitespace-nowrap`}
             style={{
               fontSize: typography.sizes.sectionTitle,
-              color: colors.text.primary
+              color: colors.main
             }}
           >
             {title}
           </h3>
+          <Input
+            placeholder="Search..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
+              setCurrentPage(0) // Reset to first page when searching
+            }}
+            className="w-[150px] h-8"
+            style={{ fontSize: '13px', padding: '4px 8px' }}
+          />
           {activeFilterCount > 0 && (
             <Button
               variant="ghost"
               size="sm"
               onClick={clearAllFilters}
-              className="h-8 text-xs gap-1"
+              className="h-8 text-xs gap-1 ml-auto"
               style={{ color: colors.status.danger }}
             >
               <X size={14} />
@@ -290,7 +322,7 @@ function DataTableBase({
           {/* Single table with horizontal and vertical scroll - Dynamic height */}
           <div className="overflow-x-auto overflow-y-auto" style={{ height: `${dynamicTableHeight}px`, minWidth: 0, width: '100%' }}>
             <table className="w-full border-collapse">
-              <thead className="sticky top-0" style={{ zIndex: 20, backgroundColor: '#fafafa' }}>
+              <thead className="sticky top-0 shadow-sm" style={{ zIndex: 20, backgroundColor: colors.main }}>
                 <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                   {columns.map((col) => {
                     const hasFilter = columnFilters[col.key] && columnFilters[col.key].length > 0
@@ -299,13 +331,14 @@ function DataTableBase({
                     return (
                       <th
                         key={col.key}
-                        className="px-2 py-2 text-left font-semibold text-slate-600 leading-tight"
+                        className="px-2 py-2 text-left font-semibold leading-tight"
                         style={{
                           minWidth: col.width,
                           fontSize: typography.sizes.filterHeader,
+                          color: colors.text.inverse,
                         }}
                       >
-                        <div className="flex items-center gap-1 justify-between">
+                        <div className="flex items-center gap-1 justify-between" style={{ color: colors.text.inverse }}>
                           <span className="whitespace-nowrap">{col.label}</span>
                           {col.filterable && (
                             <Popover>
@@ -313,9 +346,9 @@ function DataTableBase({
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-6 w-6 p-0 hover:bg-gray-200"
+                                  className="h-6 w-6 p-0 hover:bg-white/20"
                                   style={{
-                                    color: hasFilter ? colors.data.primary : colors.text.secondary
+                                    color: colors.text.inverse
                                   }}
                                 >
                                   <Filter size={14} />
@@ -352,7 +385,7 @@ function DataTableBase({
                                             htmlFor={`${col.key}-${value}`}
                                             className="text-sm cursor-pointer flex-1"
                                           >
-                                            {value}
+                                            {normalizeFilterValue(value)}
                                           </label>
                                         </div>
                                       )
@@ -373,16 +406,15 @@ function DataTableBase({
                 {paginatedData.map((row, idx) => (
                   <tr
                     key={idx}
-                    className="transition-colors"
+                    className="border-b border-slate-200 transition-colors"
                     style={{
-                      borderBottom: '1px solid #f1f5f9', // Very light horizontal border only
-                      backgroundColor: '#ffffff'
+                      backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#fafafa'
+                      e.currentTarget.style.backgroundColor = '#f0f0f0'
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#ffffff'
+                      e.currentTarget.style.backgroundColor = idx % 2 === 0 ? '#ffffff' : '#f8fafc'
                     }}
                   >
                     {columns.map((col) => {
@@ -466,25 +498,107 @@ function DataTableBase({
 
         {/* Pagination */}
         <div className="flex items-center justify-between mt-4">
-          <div style={{ fontSize: '14px', color: colors.neutralDark }}>
-            {currentPage * pageSize + 1} - {Math.min((currentPage + 1) * pageSize, filteredData.length)} / {filteredData.length}
+          <div style={{ fontSize: '13px', color: colors.neutralDark }}>
+            Showing {currentPage * pageSize + 1}-{Math.min((currentPage + 1) * pageSize, filteredData.length)} of {filteredData.length}
           </div>
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-1 items-center">
             <Button
               variant="ghost"
               size="sm"
               onClick={handlePrevious}
               disabled={currentPage === 0}
-              className="h-8 w-8 p-0 border-none hover:bg-transparent"
+              className="h-7 w-7 p-0 text-sm"
+              style={{ color: currentPage === 0 ? colors.neutralLight : colors.neutralDark }}
             >
               &lt;
             </Button>
+
+            {/* Page Numbers */}
+            {(() => {
+              const maxPagesToShow = 3
+              let startPage = Math.max(0, currentPage - Math.floor(maxPagesToShow / 2))
+              let endPage = Math.min(totalPages - 1, startPage + maxPagesToShow - 1)
+
+              // Adjust start if we're near the end
+              if (endPage - startPage < maxPagesToShow - 1) {
+                startPage = Math.max(0, endPage - maxPagesToShow + 1)
+              }
+
+              const pages = []
+
+              // First page
+              if (startPage > 0) {
+                pages.push(
+                  <Button
+                    key={0}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCurrentPage(0)}
+                    className="h-7 w-7 p-0 text-xs"
+                    style={{
+                      backgroundColor: 0 === currentPage ? colors.main : 'transparent',
+                      color: 0 === currentPage ? colors.text.inverse : colors.neutralDark
+                    }}
+                  >
+                    1
+                  </Button>
+                )
+                if (startPage > 1) {
+                  pages.push(<span key="ellipsis1" className="px-0.5 text-xs">...</span>)
+                }
+              }
+
+              // Middle pages
+              for (let i = startPage; i <= endPage; i++) {
+                pages.push(
+                  <Button
+                    key={i}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCurrentPage(i)}
+                    className="h-7 w-7 p-0 text-xs"
+                    style={{
+                      backgroundColor: i === currentPage ? colors.main : 'transparent',
+                      color: i === currentPage ? colors.text.inverse : colors.neutralDark
+                    }}
+                  >
+                    {i + 1}
+                  </Button>
+                )
+              }
+
+              // Last page
+              if (endPage < totalPages - 1) {
+                if (endPage < totalPages - 2) {
+                  pages.push(<span key="ellipsis2" className="px-0.5 text-xs">...</span>)
+                }
+                pages.push(
+                  <Button
+                    key={totalPages - 1}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCurrentPage(totalPages - 1)}
+                    className="h-7 w-7 p-0 text-xs"
+                    style={{
+                      backgroundColor: totalPages - 1 === currentPage ? colors.main : 'transparent',
+                      color: totalPages - 1 === currentPage ? colors.text.inverse : colors.neutralDark
+                    }}
+                  >
+                    {totalPages}
+                  </Button>
+                )
+              }
+
+              return pages
+            })()}
+
             <Button
               variant="ghost"
               size="sm"
               onClick={handleNext}
               disabled={currentPage >= totalPages - 1}
-              className="h-8 w-8 p-0 border-none hover:bg-transparent"
+              className="h-7 w-7 p-0 text-sm"
+              style={{ color: currentPage >= totalPages - 1 ? colors.neutralLight : colors.neutralDark }}
             >
               &gt;
             </Button>

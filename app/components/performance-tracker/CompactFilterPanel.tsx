@@ -12,6 +12,7 @@ import { useAnalyticsMetadata } from '../../../lib/hooks/useAnalyticsMetadata'
 import { MultiSelectFilter } from './MultiSelectFilter'
 import { FilterManagementModal } from './FilterManagementModal'
 import { formatDate } from '../../../lib/utils/formatters'
+import { normalizeFilterValue } from '../../../lib/utils/filterHelpers'
 import type { SimplifiedFilter } from '../../../lib/types/performanceTracker'
 import type { AnalyticsPage } from '../../../lib/types/filterPreset'
 
@@ -516,7 +517,7 @@ export function CompactFilterPanel({
                 {simplifiedFilter.clauses.map((clause: any, index: number) => {
                   const valueDisplay = Array.isArray(clause.value)
                     ? `${clause.value.length} item${clause.value.length !== 1 ? 's' : ''}`
-                    : String(clause.value)
+                    : normalizeFilterValue(clause.value)
 
                   return (
                     <Badge
