@@ -2,6 +2,8 @@
  * Centralized number formatting utilities for charts, tables, and metrics
  */
 
+import { normalizeFilterValue } from './filterHelpers'
+
 export type MetricType = 'revenue' | 'profit' | 'ecpm' | 'count' | 'id' | 'auto';
 
 /**
@@ -116,12 +118,15 @@ export function formatMetricValue(
     return '';
   }
 
-  // Convert to number if needed
-  const numValue = typeof value === 'number' ? value : parseFloat(value);
+  // Normalize value if it's an object (e.g., {value: "..."})
+  const normalizedValue = normalizeFilterValue(value);
 
-  // If not a valid number, return as-is
+  // Convert to number if needed
+  const numValue = typeof normalizedValue === 'number' ? normalizedValue : parseFloat(normalizedValue);
+
+  // If not a valid number, return normalized string
   if (isNaN(numValue)) {
-    return String(value);
+    return normalizedValue;
   }
 
   // Auto-detect metric type if needed

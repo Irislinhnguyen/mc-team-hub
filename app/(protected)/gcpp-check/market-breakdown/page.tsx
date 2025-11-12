@@ -11,6 +11,7 @@ import { MetadataFilterPanel } from '../../../components/performance-tracker/Met
 import { useGCPPFilters } from '../../../../lib/hooks'
 import { DataTableSkeleton } from '../../../components/performance-tracker/skeletons/DataTableSkeleton'
 import { formatDate } from '../../../../lib/utils/formatters'
+import { normalizeFilterValue } from '../../../../lib/utils/filterHelpers'
 import { useGCPPMarketBreakdown } from '../../../../lib/hooks/queries/useGCPPMarketBreakdown'
 import { useCrossFilter } from '../../../contexts/CrossFilterContext'
 import { useClientSideFilterMulti } from '../../../../lib/hooks/useClientSideFilter'
@@ -67,7 +68,8 @@ function MarketBreakdownPageContent() {
       label: 'Date',
       format: (value: any) => {
         if (!value) return ''
-        return formatDate(value.value || value)
+        const normalized = normalizeFilterValue(value)
+        return formatDate(normalized)
       }
     },
     { key: 'market', label: 'Market' },

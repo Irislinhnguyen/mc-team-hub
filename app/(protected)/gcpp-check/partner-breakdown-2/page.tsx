@@ -11,6 +11,7 @@ import { MetadataFilterPanel } from '../../../components/performance-tracker/Met
 import { useGCPPFilters } from '../../../../lib/hooks'
 import { DataTableSkeleton } from '../../../components/performance-tracker/skeletons/DataTableSkeleton'
 import { useGCPPPartnerBreakdown2 } from '../../../../lib/hooks/queries/useGCPPPartnerBreakdown2'
+import { normalizeFilterValue } from '../../../../lib/utils/filterHelpers'
 import { useCrossFilter } from '../../../contexts/CrossFilterContext'
 import { useClientSideFilterMulti } from '../../../../lib/hooks/useClientSideFilter'
 
@@ -86,7 +87,11 @@ function PartnerBreakdown2PageContent() {
     {
       key: 'performance',
       label: 'Performance',
-      format: (value: any) => value ? <PerformanceIndicator performance={value} /> : null
+      format: (value: any) => {
+        if (!value) return null
+        const normalized = normalizeFilterValue(value)
+        return <PerformanceIndicator performance={normalized} />
+      }
     },
     { key: 'market', label: 'Market' },
     { key: 'filtered_impressions', label: 'Current Impressions' },
