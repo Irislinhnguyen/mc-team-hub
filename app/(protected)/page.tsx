@@ -1,22 +1,24 @@
 'use client'
 
+import { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { LineChart, Shield, GitBranch, LogOut, BookOpen, Trophy, Newspaper, Heart } from 'lucide-react'
 import { ProductCard } from '../components/home/ProductCard'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '../contexts/AuthContext'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function HomePage() {
   const router = useRouter()
-  const { user, logout } = useAuth()
+  const { user, isLoading, logout } = useAuth()
 
   const handleLogout = async () => {
     await logout()
   }
 
-  // Get time-based greeting
-  const getGreeting = () => {
+  // Get time-based greeting - memoized to prevent random changes on re-render
+  const greeting = useMemo(() => {
     const hour = new Date().getHours()
     const userName = user?.name || 'there'
 
@@ -72,7 +74,7 @@ export default function HomePage() {
     // Pick a random greeting from the appropriate array
     const randomIndex = Math.floor(Math.random() * greetingArray.length)
     return greetingArray[randomIndex]
-  }
+  }, [user?.name]) // Only recalculate when user name changes
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
@@ -83,12 +85,20 @@ export default function HomePage() {
             <div>
               <h1 className="text-3xl font-bold text-[#1565C0]">MC Team Hub</h1>
               <p className="text-gray-600 mt-1">
-                Comprehensive data analytics and monitoring tools
+                Your central hub for analytics, compliance monitoring, and team collaboration
               </p>
             </div>
 
             {/* User Profile */}
-            {user && (
+            {isLoading ? (
+              <div className="flex items-center gap-4">
+                <div className="text-right space-y-2">
+                  <Skeleton className="h-5 w-32 ml-auto" />
+                  <Skeleton className="h-4 w-40 ml-auto" />
+                </div>
+                <Skeleton className="h-9 w-24" />
+              </div>
+            ) : user ? (
               <div className="flex items-center gap-4">
                 <div className="text-right">
                   <div className="flex items-center gap-2 justify-end">
@@ -111,7 +121,7 @@ export default function HomePage() {
                   Logout
                 </Button>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </header>
@@ -120,12 +130,21 @@ export default function HomePage() {
       <main className="container mx-auto px-8 py-16">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-3">
-              {getGreeting()}
-            </h2>
-            <p className="text-gray-600">
-              Choose from our suite of data tools to get started
-            </p>
+            {isLoading ? (
+              <>
+                <Skeleton className="h-8 w-96 mx-auto mb-3" />
+                <Skeleton className="h-5 w-80 mx-auto" />
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl font-semibold text-gray-800 mb-3">
+                  {greeting}
+                </h2>
+                <p className="text-gray-600">
+                  Access all your tools and resources in one place
+                </p>
+              </>
+            )}
           </div>
 
           {/* Product Grid */}
@@ -134,8 +153,8 @@ export default function HomePage() {
               title="GCPP Check"
               description="Monitor and validate GCPP compliance across all publishers and products"
               icon={<Shield className="h-full w-full" />}
-              status="developing"
-              onClick={null}
+              status="active"
+              onClick={() => router.push('/gcpp-check/market-overview')}
             />
 
             <ProductCard
