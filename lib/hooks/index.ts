@@ -10,5 +10,6 @@
 export { useAnalyticsMetadata } from './useAnalyticsMetadata'
 export { useLazyTable } from './useLazyTable'
 export { useDefaultDateRange } from './useDefaultDateRange'
+export { useGCPPFilters } from './useGCPPFilters'
 
 export type { MetadataOptions } from './useAnalyticsMetadata'
