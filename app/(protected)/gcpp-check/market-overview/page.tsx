@@ -190,7 +190,7 @@ function MarketOverviewPageContent() {
         groupedByMarket[market] = { market }
       }
       // Use percentage value as-is (already in percentage format)
-      groupedByMarket[market][formattedPartner] = row.market_share_percent
+      groupedByMarket[market][formattedPartner] = parseFloat(normalizeFilterValue(row.market_share_percent)) || 0
       partners.add(formattedPartner)
     })
 
@@ -231,7 +231,7 @@ function MarketOverviewPageContent() {
       if (!groupedByDate[dateKey]) {
         groupedByDate[dateKey] = { date: dateKey, rawDate: dateKey }
       }
-      groupedByDate[dateKey][formattedPartner] = row.impressions
+      groupedByDate[dateKey][formattedPartner] = parseFloat(normalizeFilterValue(row.impressions)) || 0
       partners.add(formattedPartner)
     })
 
@@ -260,9 +260,9 @@ function MarketOverviewPageContent() {
 
     const chartData = partnerData.map((row: any) => ({
       market: normalizeFilterValue(row.market),
-      value: row.percent_of_total, // Use percent as the value for pie chart
-      impressions: row.impressions, // Keep for tooltip
-      percent: row.percent_of_total
+      value: parseFloat(normalizeFilterValue(row.percent_of_total)) || 0, // Use percent as the value for pie chart
+      impressions: parseFloat(normalizeFilterValue(row.impressions)) || 0, // Keep for tooltip
+      percent: parseFloat(normalizeFilterValue(row.percent_of_total)) || 0
     }))
 
     // Detect market filters (includes both metadata filters and cross-filters)
@@ -405,9 +405,14 @@ function MarketOverviewPageContent() {
                     cy="48%"
                     labelLine={true}
                     label={(entry: any) => {
-                      const percent = entry.payload?.percent !== undefined
+                      // Ensure percent is a number, not an object
+                      const rawPercent = entry.payload?.percent !== undefined
                         ? entry.payload.percent
-                        : entry.percent * 100
+                        : entry.percent
+                      const numPercent = typeof rawPercent === 'number' ? rawPercent : parseFloat(rawPercent)
+                      const percent = entry.payload?.percent !== undefined
+                        ? numPercent
+                        : numPercent * 100
                       if (percent < 5) return null
                       return `${percent.toFixed(1)}%`
                     }}
