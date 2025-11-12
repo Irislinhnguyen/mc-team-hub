@@ -279,7 +279,9 @@ function MarketOverviewPageContent() {
   const pieChartResult = preparePieChartData()
   const pieChartData = pieChartResult.data
   const highlightMarkets = pieChartResult.highlightMarkets
-  const partnerColorMap = getPartnerColorMap(stackedBarData.categories.map(c => c.name))
+  const partnerColorMap = getPartnerColorMap(
+    stackedBarData.categories.filter(c => c).map(c => c.name)
+  )
 
   return (
     <AnalyticsPageLayout
