@@ -205,9 +205,13 @@ function DeepDiveV2PageContent() {
 
   const handlePresetChange = (presetId: string) => {
     setActivePreset(presetId)
-    const dates = calculatePresetDates(presetId)
-    setPeriod1(dates.period1)
-    setPeriod2(dates.period2)
+    // Only recalculate dates if a valid preset is selected
+    // If preset is cleared (empty string), keep current dates
+    if (presetId) {
+      const dates = calculatePresetDates(presetId)
+      setPeriod1(dates.period1)
+      setPeriod2(dates.period2)
+    }
   }
 
   // ✨ NEW: Create comprehensive filter state for preset manager

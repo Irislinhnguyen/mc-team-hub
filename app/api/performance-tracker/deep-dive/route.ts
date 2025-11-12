@@ -589,6 +589,60 @@ export async function POST(request: NextRequest): Promise<NextResponse<DeepDiveR
     delete additionalFilters.startDate
     delete additionalFilters.endDate
 
+    // ⭐ NEW: If team filter is provided, convert it to PIC filter
+    // because BigQuery table doesn't have 'team' column, only 'pic' column
+    if (additionalFilters.team) {
+      console.log(`[${perspective} Perspective] Team filter detected:`, additionalFilters.team)
+
+      // Import team matcher utility
+      const { getTeamsWithPics } = await import('../../../../lib/utils/teamMatcher')
+      const teamsWithPics = await getTeamsWithPics()
+
+      // Convert team filter to array if it's a single value
+      const teamFilters = Array.isArray(additionalFilters.team)
+        ? additionalFilters.team
+        : [additionalFilters.team]
+
+      // Find all PICs that belong to the filtered teams
+      const picsForTeams: string[] = []
+      for (const teamId of teamFilters) {
+        const teamData = teamsWithPics.find(({ team }) => team.team_id === teamId)
+        if (teamData) {
+          picsForTeams.push(...teamData.pics)
+        }
+      }
+
+      console.log(`[${perspective} Perspective] Converted team filter to ${picsForTeams.length} PICs:`, picsForTeams)
+
+      // Replace team filter with pic filter
+      delete additionalFilters.team
+      if (picsForTeams.length > 0) {
+        additionalFilters.pic = picsForTeams
+      } else {
+        console.warn(`[${perspective} Perspective] No PICs found for teams:`, teamFilters)
+        // Return empty result if no PICs found for the team
+        return NextResponse.json({
+          status: 'ok',
+          data: [],
+          summary: {
+            total_items: 0,
+            total_revenue_p1: 0,
+            total_revenue_p2: 0,
+            revenue_change_pct: 0,
+            total_requests_p1: 0,
+            total_requests_p2: 0,
+            requests_change_pct: 0,
+            total_ecpm_p1: 0,
+            total_ecpm_p2: 0,
+            ecpm_change_pct: 0,
+            tier_counts: { A: 0, B: 0, C: 0, NEW: 0, LOST: 0 },
+            tier_revenue: { A: 0, B: 0, C: 0, NEW: 0, LOST: 0 }
+          },
+          context: { perspective, period1, period2, parentId, tierFilter }
+        })
+      }
+    }
+
     console.log(`[${perspective} Perspective] Filters before buildWhereClause:`, additionalFilters)
     console.log(`[${perspective} Perspective] Simplified filter:`, simplifiedFilter)
 
@@ -616,11 +670,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<DeepDiveR
 
     console.log(`[${perspective} Perspective] Final query length:`, query.length, 'chars')
     console.log(`[${perspective} Perspective] Query preview:`, query.substring(0, 500) + '...')
+    console.log(`[${perspective} Perspective] FULL QUERY:`, query)
 
     // Execute query
     const results = await BigQueryService.executeQuery(query)
 
     console.log(`[${perspective} Perspective] Results count:`, results.length)
+    console.log(`[${perspective} Perspective] First 3 results:`, results.slice(0, 3))
 
     // Enhance results with transition warnings and tier context
     const enhancedResults = enhanceItems(results)

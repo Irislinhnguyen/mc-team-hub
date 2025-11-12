@@ -11,6 +11,7 @@ import { colors } from '../../../lib/colors'
 import { useAnalyticsMetadata } from '../../../lib/hooks/useAnalyticsMetadata'
 import { MultiSelectFilter } from './MultiSelectFilter'
 import { FilterManagementModal } from './FilterManagementModal'
+import { formatDate } from '../../../lib/utils/formatters'
 import type { SimplifiedFilter } from '../../../lib/types/performanceTracker'
 import type { AnalyticsPage } from '../../../lib/types/filterPreset'
 
@@ -138,7 +139,7 @@ export function CompactFilterPanel({
 
   const formatDateShort = (date: string) => {
     if (!date) return 'Select'
-    return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return formatDate(date)
   }
 
   const getDaysDiff = (start: string, end: string) => {
@@ -503,6 +504,53 @@ export function CompactFilterPanel({
                     </button>
                   </Badge>
                 ))}
+              </div>
+            )}
+
+            {/* Show active clauses even without filter names */}
+            {simplifiedFilter.clauses.length > 0 && (!loadedFilterNames || loadedFilterNames.length === 0) && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold" style={{ color: colors.text.secondary }}>
+                  Active Filters:
+                </span>
+                {simplifiedFilter.clauses.map((clause: any, index: number) => {
+                  const valueDisplay = Array.isArray(clause.value)
+                    ? `${clause.value.length} item${clause.value.length !== 1 ? 's' : ''}`
+                    : String(clause.value)
+
+                  return (
+                    <Badge
+                      key={clause.id || index}
+                      variant="outline"
+                      className="gap-1 pr-1"
+                      style={{
+                        borderColor: simplifiedFilter.includeExclude === 'EXCLUDE' ? colors.status.error : colors.interactive.primary,
+                        color: simplifiedFilter.includeExclude === 'EXCLUDE' ? colors.status.error : colors.interactive.primary,
+                        backgroundColor: simplifiedFilter.includeExclude === 'EXCLUDE' ? colors.status.errorBg : colors.status.infoBg
+                      }}
+                    >
+                      <span className="font-semibold">{simplifiedFilter.includeExclude}</span> {clause.field}: {valueDisplay}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (onSimplifiedFilterChange) {
+                            onSimplifiedFilterChange({
+                              includeExclude: 'INCLUDE',
+                              clauses: [],
+                              clauseLogic: 'AND'
+                            })
+                          }
+                        }}
+                        className="ml-1 hover:bg-gray-200 rounded-full p-0.5"
+                        title="Clear all filters"
+                      >
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </Badge>
+                  )
+                })}
               </div>
             )}
 

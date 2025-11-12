@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react'
+import { useState, useRef, useMemo, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { MetricCard } from '../../../components/performance-tracker/MetricCard'
 import { TimeSeriesChart } from '../../../components/performance-tracker/TimeSeriesChart'
@@ -9,14 +9,17 @@ import { DataTable } from '../../../components/performance-tracker/DataTable'
 import { LazyDataTable } from '../../../components/performance-tracker/LazyDataTable'
 import MetricCardSkeleton from '../../../components/performance-tracker/skeletons/MetricCardSkeleton'
 import ChartSkeleton from '../../../components/performance-tracker/skeletons/ChartSkeleton'
-import TableSkeleton from '../../../components/performance-tracker/skeletons/TableSkeleton'
+import { DataTableSkeleton } from '../../../components/performance-tracker/skeletons/DataTableSkeleton'
+import { LazyDataTableSkeleton } from '../../../components/performance-tracker/skeletons/LazyDataTableSkeleton'
 import { colors } from '../../../../lib/colors'
 import { useCrossFilter } from '../../../contexts/CrossFilterContext'
+import { useBusinessHealth } from '../../../../lib/hooks/queries/useBusinessHealth'
 import { ToggleGroup, ToggleGroupItem } from '../../../../src/components/ui/toggle-group'
 import { AnalyticsPageLayout } from '../../../components/performance-tracker/AnalyticsPageLayout'
 import { MetadataFilterPanel } from '../../../components/performance-tracker/MetadataFilterPanel'
 import { useDefaultDateRange } from '../../../../lib/hooks/useDefaultDateRange'
-import { safeToFixed, safeNumber } from '../../../../lib/utils/formatters'
+import { safeToFixed, safeNumber, formatDate } from '../../../../lib/utils/formatters'
+import { useClientSideFilterMulti } from '../../../../lib/hooks/useClientSideFilter'
 
 /**
  * REFACTORED VERSION - Business Health Dashboard
@@ -38,307 +41,126 @@ function BusinessHealthPageContent() {
   const defaultDateRange = useDefaultDateRange(30) // Last 30 days
   const searchParams = useSearchParams()
   const presetIdFromUrl = searchParams.get('preset')
-  const [data, setData] = useState<any>(null)
-  const [loading, setLoading] = useState(false)
   const [currentFilters, setCurrentFilters] = useState<Record<string, any>>(defaultDateRange)
+
+  const { crossFilters } = useCrossFilter()
+  const [selectedMetric, setSelectedMetric] = useState<'revenue' | 'profit' | 'requests' | 'paid' | 'ecpm' | 'fill_rate'>('revenue')
 
   // Stabilize setCurrentFilters to prevent infinite re-render loops in child components
   const stableSetCurrentFilters = useCallback((filters: Record<string, any>) => {
     setCurrentFilters(filters)
   }, [])
 
-  const { crossFilters } = useCrossFilter()
-  const prevCrossFilterFieldsRef = useRef<string[]>([])
-  const [selectedMetric, setSelectedMetric] = useState<'revenue' | 'profit' | 'requests' | 'paid' | 'ecpm' | 'fill_rate'>('revenue')
+  // ✨ Use React Query hook for data fetching with automatic caching
+  const { data: rawData, isLoading: loading, error } = useBusinessHealth(currentFilters)
 
-  // Lazy loading state for large tables
-  const [zoneMonitoringData, setZoneMonitoringData] = useState<any[]>([])
-  const [zoneMonitoringTotal, setZoneMonitoringTotal] = useState(0)
-  const [zoneMonitoringLoading, setZoneMonitoringLoading] = useState(false)
-  const [zoneMonitoringOffset, setZoneMonitoringOffset] = useState(0)
+  // Apply client-side filtering for cross-filters (instant, no API call)
+  const { filteredData: filteredZoneMonitoring } = useClientSideFilterMulti(
+    rawData?.zoneMonitoring,
+    crossFilters
+  )
+  const { filteredData: filteredZoneMonitoringTimeSeries } = useClientSideFilterMulti(
+    rawData?.zoneMonitoringTimeSeries,
+    crossFilters
+  )
+  const { filteredData: filteredListOfPid } = useClientSideFilterMulti(
+    rawData?.listOfPid,
+    crossFilters
+  )
+  const { filteredData: filteredListOfPidByDate } = useClientSideFilterMulti(
+    rawData?.listOfPidByDate,
+    crossFilters
+  )
+  const { filteredData: filteredListOfMid } = useClientSideFilterMulti(
+    rawData?.listOfMid,
+    crossFilters
+  )
+  const { filteredData: filteredListOfMidByDate } = useClientSideFilterMulti(
+    rawData?.listOfMidByDate,
+    crossFilters
+  )
 
-  const [listOfPidData, setListOfPidData] = useState<any[]>([])
-  const [listOfPidTotal, setListOfPidTotal] = useState(0)
-  const [listOfPidLoading, setListOfPidLoading] = useState(false)
-  const [listOfPidOffset, setListOfPidOffset] = useState(0)
-
-  const [listOfPidByDateData, setListOfPidByDateData] = useState<any[]>([])
-  const [listOfPidByDateTotal, setListOfPidByDateTotal] = useState(0)
-  const [listOfPidByDateLoading, setListOfPidByDateLoading] = useState(false)
-  const [listOfPidByDateOffset, setListOfPidByDateOffset] = useState(0)
-
-  const [listOfMidData, setListOfMidData] = useState<any[]>([])
-  const [listOfMidTotal, setListOfMidTotal] = useState(0)
-  const [listOfMidLoading, setListOfMidLoading] = useState(false)
-  const [listOfMidOffset, setListOfMidOffset] = useState(0)
-
-  const [listOfMidByDateData, setListOfMidByDateData] = useState<any[]>([])
-  const [listOfMidByDateTotal, setListOfMidByDateTotal] = useState(0)
-  const [listOfMidByDateLoading, setListOfMidByDateLoading] = useState(false)
-  const [listOfMidByDateOffset, setListOfMidByDateOffset] = useState(0)
-
-  // Apply cross-filters to current filters whenever they change
-  useEffect(() => {
-    setCurrentFilters(prev => {
-      // Remove old cross-filter keys
-      const cleaned = { ...prev }
-      prevCrossFilterFieldsRef.current.forEach(field => {
-        delete cleaned[field]
-      })
-
-      // Apply new cross-filters - group by field to support multiple values
-      const newCrossFilterValues = crossFilters.reduce((acc, filter) => {
-        if (acc[filter.field]) {
-          // Field already exists - convert to array or append to existing array
-          if (Array.isArray(acc[filter.field])) {
-            acc[filter.field].push(filter.value)
-          } else {
-            acc[filter.field] = [acc[filter.field], filter.value]
-          }
-        } else {
-          // First value for this field
-          acc[filter.field] = filter.value
-        }
-        return acc
-      }, {} as Record<string, any>)
-
-      // Update ref with current fields
-      prevCrossFilterFieldsRef.current = crossFilters.map(f => f.field)
-
-      // Merge cleaned filters with new cross-filters
-      return { ...cleaned, ...newCrossFilterValues }
-    })
-  }, [crossFilters])
-
-  // Phase 1: Fetch metrics and charts (fast queries)
-  const fetchData = async () => {
-    setLoading(true)
-    try {
-      const response = await fetch('/api/performance-tracker/business-health-filtered', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(currentFilters),
-      })
-
-      if (!response.ok) throw new Error('Failed to fetch data')
-      const result = await response.json()
-      setData(result.data)
-
-      // Phase 2: Start loading large tables after main data loads
-      setTimeout(() => {
-        loadZoneMonitoringBatch(0)
-        loadListOfPidBatch(0)
-        loadListOfPidByDateBatch(0)
-        loadListOfMidBatch(0)
-        loadListOfMidByDateBatch(0)
-      }, 100)
-    } catch (error) {
-      console.error('Error:', error)
-    } finally {
-      setLoading(false)
+  // Combine filtered data
+  const data = useMemo(() => {
+    if (!rawData) return undefined
+    return {
+      metrics: rawData.metrics,
+      timeSeries: rawData.timeSeries,
+      productTrend: rawData.productTrend,
+      topPublishers: rawData.topPublishers,
+      topMedia: rawData.topMedia,
+      topZones: rawData.topZones,
+      topEcpm: rawData.topEcpm,
+      zoneMonitoring: filteredZoneMonitoring,
+      zoneMonitoringTimeSeries: filteredZoneMonitoringTimeSeries,
+      listOfPid: filteredListOfPid,
+      listOfPidByDate: filteredListOfPidByDate,
+      listOfMid: filteredListOfMid,
+      listOfMidByDate: filteredListOfMidByDate,
     }
-  }
+  }, [
+    filteredZoneMonitoring,
+    filteredZoneMonitoringTimeSeries,
+    filteredListOfPid,
+    filteredListOfPidByDate,
+    filteredListOfMid,
+    filteredListOfMidByDate,
+    rawData
+  ])
 
-  // Lazy loading functions for zone monitoring
-  const loadZoneMonitoringBatch = useCallback(async (offset: number) => {
-    setZoneMonitoringLoading(true)
-    try {
-      const response = await fetch('/api/performance-tracker/business-health-paginated', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filters: currentFilters,
-          queryType: 'zoneMonitoringTimeSeries',
-          offset,
-          limit: 500
-        }),
-      })
+  // Column configurations for skeletons
+  const listOfPidColumns = [
+    { key: 'pid', label: 'pid', width: '15%' },
+    { key: 'pubname', label: 'pubname', width: '45%' },
+    { key: 'rev', label: 'rev', width: '20%' },
+    { key: 'profit', label: 'profit', width: '20%' },
+  ]
 
-      if (!response.ok) throw new Error('Failed to fetch zone monitoring data')
-      const result = await response.json()
+  const listOfPidByDateColumns = [
+    { key: 'date', label: 'date', width: '18%', format: (v: any) => formatDate(v.value || v) },
+    { key: 'pid', label: 'pid', width: '12%' },
+    { key: 'pubname', label: 'pubname', width: '40%' },
+    { key: 'rev', label: 'rev', width: '15%' },
+    { key: 'profit', label: 'profit', width: '15%' },
+  ]
 
-      if (result.status === 'success') {
-        setZoneMonitoringData(prev => offset === 0 ? result.data.rows : [...prev, ...result.data.rows])
-        setZoneMonitoringTotal(result.data.totalCount)
-        setZoneMonitoringOffset(offset + result.data.rows.length)
-      }
-    } catch (error) {
-      console.error('Error loading zone monitoring:', error)
-    } finally {
-      setZoneMonitoringLoading(false)
-    }
-  }, [currentFilters])
+  const listOfMidColumns = [
+    { key: 'mid', label: 'mid', width: '15%' },
+    { key: 'medianame', label: 'medianame', width: '45%' },
+    { key: 'rev', label: 'rev', width: '20%' },
+    { key: 'profit', label: 'profit', width: '20%' },
+  ]
 
-  const loadMoreZoneMonitoring = useCallback(async () => {
-    if (zoneMonitoringOffset < zoneMonitoringTotal) {
-      await loadZoneMonitoringBatch(zoneMonitoringOffset)
-    }
-  }, [zoneMonitoringOffset, zoneMonitoringTotal, loadZoneMonitoringBatch])
+  const listOfMidByDateColumns = [
+    { key: 'date', label: 'date', width: '18%', format: (v: any) => formatDate(v.value || v) },
+    { key: 'mid', label: 'mid', width: '12%' },
+    { key: 'medianame', label: 'medianame', width: '40%' },
+    { key: 'rev', label: 'rev', width: '15%' },
+    { key: 'profit', label: 'profit', width: '15%' },
+  ]
 
-  // Lazy loading functions for list of PID
-  const loadListOfPidBatch = useCallback(async (offset: number) => {
-    setListOfPidLoading(true)
-    try {
-      const response = await fetch('/api/performance-tracker/business-health-paginated', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filters: currentFilters,
-          queryType: 'listOfPid',
-          offset,
-          limit: 500
-        }),
-      })
+  const zoneMonitoringColumns = [
+    { key: 'zid', label: 'zid' },
+    { key: 'zonename', label: 'zonename' },
+    { key: 'product', label: 'product' },
+    { key: 'req', label: 'req', format: (v: any) => parseInt(v).toLocaleString() },
+    { key: 'fill_rate', label: 'fill rate', format: (v: any) => `${Math.round(v * 100)}%` },
+    { key: 'request_CPM', label: 'request_CPM' },
+    { key: 'rev', label: 'rev' },
+    { key: 'profit', label: 'profit' },
+  ]
 
-      if (!response.ok) throw new Error('Failed to fetch list of PID data')
-      const result = await response.json()
-
-      if (result.status === 'success') {
-        setListOfPidData(prev => offset === 0 ? result.data.rows : [...prev, ...result.data.rows])
-        setListOfPidTotal(result.data.totalCount)
-        setListOfPidOffset(offset + result.data.rows.length)
-      }
-    } catch (error) {
-      console.error('Error loading list of PID:', error)
-    } finally {
-      setListOfPidLoading(false)
-    }
-  }, [currentFilters])
-
-  const loadMoreListOfPid = useCallback(async () => {
-    if (listOfPidOffset < listOfPidTotal) {
-      await loadListOfPidBatch(listOfPidOffset)
-    }
-  }, [listOfPidOffset, listOfPidTotal, loadListOfPidBatch])
-
-  // Lazy loading functions for list of PID by date
-  const loadListOfPidByDateBatch = useCallback(async (offset: number) => {
-    setListOfPidByDateLoading(true)
-    try {
-      const response = await fetch('/api/performance-tracker/business-health-paginated', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filters: currentFilters,
-          queryType: 'listOfPidByDate',
-          offset,
-          limit: 500
-        }),
-      })
-
-      if (!response.ok) throw new Error('Failed to fetch list of PID by date data')
-      const result = await response.json()
-
-      if (result.status === 'success') {
-        setListOfPidByDateData(prev => offset === 0 ? result.data.rows : [...prev, ...result.data.rows])
-        setListOfPidByDateTotal(result.data.totalCount)
-        setListOfPidByDateOffset(offset + result.data.rows.length)
-      }
-    } catch (error) {
-      console.error('Error loading list of PID by date:', error)
-    } finally {
-      setListOfPidByDateLoading(false)
-    }
-  }, [currentFilters])
-
-  const loadMoreListOfPidByDate = useCallback(async () => {
-    if (listOfPidByDateOffset < listOfPidByDateTotal) {
-      await loadListOfPidByDateBatch(listOfPidByDateOffset)
-    }
-  }, [listOfPidByDateOffset, listOfPidByDateTotal, loadListOfPidByDateBatch])
-
-  // Lazy loading functions for list of MID
-  const loadListOfMidBatch = useCallback(async (offset: number) => {
-    setListOfMidLoading(true)
-    try {
-      const response = await fetch('/api/performance-tracker/business-health-paginated', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filters: currentFilters,
-          queryType: 'listOfMid',
-          offset,
-          limit: 500
-        }),
-      })
-
-      if (!response.ok) throw new Error('Failed to fetch list of MID data')
-      const result = await response.json()
-
-      if (result.status === 'success') {
-        setListOfMidData(prev => offset === 0 ? result.data.rows : [...prev, ...result.data.rows])
-        setListOfMidTotal(result.data.totalCount)
-        setListOfMidOffset(offset + result.data.rows.length)
-      }
-    } catch (error) {
-      console.error('Error loading list of MID:', error)
-    } finally {
-      setListOfMidLoading(false)
-    }
-  }, [currentFilters])
-
-  const loadMoreListOfMid = useCallback(async () => {
-    if (listOfMidOffset < listOfMidTotal) {
-      await loadListOfMidBatch(listOfMidOffset)
-    }
-  }, [listOfMidOffset, listOfMidTotal, loadListOfMidBatch])
-
-  // Lazy loading functions for list of MID by date
-  const loadListOfMidByDateBatch = useCallback(async (offset: number) => {
-    setListOfMidByDateLoading(true)
-    try {
-      const response = await fetch('/api/performance-tracker/business-health-paginated', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filters: currentFilters,
-          queryType: 'listOfMidByDate',
-          offset,
-          limit: 500
-        }),
-      })
-
-      if (!response.ok) throw new Error('Failed to fetch list of MID by date data')
-      const result = await response.json()
-
-      if (result.status === 'success') {
-        setListOfMidByDateData(prev => offset === 0 ? result.data.rows : [...prev, ...result.data.rows])
-        setListOfMidByDateTotal(result.data.totalCount)
-        setListOfMidByDateOffset(offset + result.data.rows.length)
-      }
-    } catch (error) {
-      console.error('Error loading list of MID by date:', error)
-    } finally {
-      setListOfMidByDateLoading(false)
-    }
-  }, [currentFilters])
-
-  const loadMoreListOfMidByDate = useCallback(async () => {
-    if (listOfMidByDateOffset < listOfMidByDateTotal) {
-      await loadListOfMidByDateBatch(listOfMidByDateOffset)
-    }
-  }, [listOfMidByDateOffset, listOfMidByDateTotal, loadListOfMidByDateBatch])
-
-  // Fetch data when filters change
-  useEffect(() => {
-    // Prevent fetch while already loading to avoid race conditions
-    if (loading) return
-
-    // Reset lazy loading state
-    setZoneMonitoringData([])
-    setZoneMonitoringOffset(0)
-    setListOfPidData([])
-    setListOfPidOffset(0)
-    setListOfPidByDateData([])
-    setListOfPidByDateOffset(0)
-    setListOfMidData([])
-    setListOfMidOffset(0)
-    setListOfMidByDateData([])
-    setListOfMidByDateOffset(0)
-
-    fetchData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentFilters])
+  const zoneMonitoringByDateColumns = [
+    { key: 'date', label: 'date', width: '18%', format: (v: any) => formatDate(v.value || v) },
+    { key: 'zid', label: 'zid', width: '7%' },
+    { key: 'zonename', label: 'zonename', width: '16%' },
+    { key: 'product', label: 'product', width: '11%' },
+    { key: 'req', label: 'req', width: '10%', format: (v: any) => parseInt(v).toLocaleString() },
+    { key: 'fill_rate', label: 'fill rate', width: '9%', format: (v: any) => `${Math.round(v * 100)}%` },
+    { key: 'request_CPM', label: 'request_CPM', width: '11%' },
+    { key: 'rev', label: 'rev', width: '9%' },
+    { key: 'profit', label: 'profit', width: '9%' },
+  ]
 
   const metrics = data?.metrics || {}
 
@@ -397,7 +219,8 @@ function BusinessHealthPageContent() {
 
   // Format zone monitoring time series - use lazy-loaded data (MEMOIZED)
   const zoneMonitoringTimeSeries = useMemo(() => {
-    return zoneMonitoringData.map((d: any) => {
+    if (!filteredZoneMonitoringTimeSeries) return []
+    return filteredZoneMonitoringTimeSeries.map((d: any) => {
       const rawDate = d.date.value || d.date
       return {
         date: new Date(rawDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -412,7 +235,7 @@ function BusinessHealthPageContent() {
         profit: parseFloat(d.profit) || 0,
       }
     })
-  }, [zoneMonitoringData])
+  }, [filteredZoneMonitoringTimeSeries])
 
   return (
     <AnalyticsPageLayout title="Business Health Dashboard" showExport={true} contentRef={contentRef}>
@@ -477,92 +300,62 @@ function BusinessHealthPageContent() {
         {/* List of PID Tables - 2 columns layout */}
         {loading && !data ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6">
-            <TableSkeleton rows={10} />
-            <TableSkeleton rows={10} />
+            <LazyDataTableSkeleton columns={listOfPidColumns} rows={10} />
+            <LazyDataTableSkeleton columns={listOfPidByDateColumns} rows={10} />
           </div>
-        ) : (
+        ) : data?.listOfPid || data?.listOfPidByDate ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6 [&>*]:min-w-0">
-            {/* List of PID Table with Lazy Loading */}
-            <LazyDataTable
-              title="List of PID"
-              columns={[
-                { key: 'pid', label: 'pid', width: '15%' },
-                { key: 'pubname', label: 'pubname', width: '45%' },
-                { key: 'rev', label: 'rev', width: '20%' },
-                { key: 'profit', label: 'profit', width: '20%' },
-              ]}
-              data={listOfPidData}
-              crossFilterColumns={['pid', 'pubname']}
-              onLoadMore={loadMoreListOfPid}
-              hasMore={listOfPidOffset < listOfPidTotal}
-              isLoading={listOfPidLoading}
-              totalCount={listOfPidTotal}
-            />
+            {/* List of PID Table - Client-side filtered */}
+            {data.listOfPid && (
+              <LazyDataTable
+                title="List of PID"
+                columns={listOfPidColumns}
+                data={data.listOfPid}
+                crossFilterColumns={['pid', 'pubname']}
+              />
+            )}
 
-            {/* List of PID by Date Table with Lazy Loading */}
-            <LazyDataTable
-              title="List of PID by date"
-              columns={[
-                { key: 'date', label: 'date', width: '18%', format: (v) => new Date(v.value || v).toLocaleDateString() },
-                { key: 'pid', label: 'pid', width: '12%' },
-                { key: 'pubname', label: 'pubname', width: '40%' },
-                { key: 'rev', label: 'rev', width: '15%' },
-                { key: 'profit', label: 'profit', width: '15%' },
-              ]}
-              data={listOfPidByDateData}
-              crossFilterColumns={['date', 'pid', 'pubname']}
-              onLoadMore={loadMoreListOfPidByDate}
-              hasMore={listOfPidByDateOffset < listOfPidByDateTotal}
-              isLoading={listOfPidByDateLoading}
-              totalCount={listOfPidByDateTotal}
-            />
+            {/* List of PID by Date Table - Client-side filtered */}
+            {data.listOfPidByDate && (
+              <LazyDataTable
+                title="List of PID by date"
+                columns={listOfPidByDateColumns}
+                data={data.listOfPidByDate}
+                crossFilterColumns={['date', 'pid', 'pubname']}
+              />
+            )}
           </div>
-        )}
+        ) : null}
 
         {/* List of MID Tables - 2 columns layout */}
         {loading && !data ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6">
-            <TableSkeleton rows={10} />
-            <TableSkeleton rows={10} />
+            <LazyDataTableSkeleton columns={listOfMidColumns} rows={10} />
+            <LazyDataTableSkeleton columns={listOfMidByDateColumns} rows={10} />
           </div>
-        ) : (
+        ) : data?.listOfMid || data?.listOfMidByDate ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6 [&>*]:min-w-0">
-            {/* List of MID Table with Lazy Loading */}
-            <LazyDataTable
-              title="List of MID"
-              columns={[
-                { key: 'mid', label: 'mid', width: '15%' },
-                { key: 'medianame', label: 'medianame', width: '45%' },
-                { key: 'rev', label: 'rev', width: '20%' },
-                { key: 'profit', label: 'profit', width: '20%' },
-              ]}
-              data={listOfMidData}
-              crossFilterColumns={['mid', 'medianame']}
-              onLoadMore={loadMoreListOfMid}
-              hasMore={listOfMidOffset < listOfMidTotal}
-              isLoading={listOfMidLoading}
-              totalCount={listOfMidTotal}
-            />
+            {/* List of MID Table - Client-side filtered */}
+            {data.listOfMid && (
+              <LazyDataTable
+                title="List of MID"
+                columns={listOfMidColumns}
+                data={data.listOfMid}
+                crossFilterColumns={['mid', 'medianame']}
+              />
+            )}
 
-            {/* List of MID by Date Table with Lazy Loading */}
-            <LazyDataTable
-              title="List of MID by date"
-              columns={[
-                { key: 'date', label: 'date', width: '18%', format: (v) => new Date(v.value || v).toLocaleDateString() },
-                { key: 'mid', label: 'mid', width: '12%' },
-                { key: 'medianame', label: 'medianame', width: '40%' },
-                { key: 'rev', label: 'rev', width: '15%' },
-                { key: 'profit', label: 'profit', width: '15%' },
-              ]}
-              data={listOfMidByDateData}
-              crossFilterColumns={['date', 'mid', 'medianame']}
-              onLoadMore={loadMoreListOfMidByDate}
-              hasMore={listOfMidByDateOffset < listOfMidByDateTotal}
-              isLoading={listOfMidByDateLoading}
-              totalCount={listOfMidByDateTotal}
-            />
+            {/* List of MID by Date Table - Client-side filtered */}
+            {data.listOfMidByDate && (
+              <LazyDataTable
+                title="List of MID by date"
+                columns={listOfMidByDateColumns}
+                data={data.listOfMidByDate}
+                crossFilterColumns={['date', 'mid', 'medianame']}
+              />
+            )}
           </div>
-        )}
+        ) : null}
 
         {/* Top Rankings - 2x2 Grid */}
         {loading && !data ? (
@@ -625,50 +418,27 @@ function BusinessHealthPageContent() {
 
         {/* Zone Monitoring Table */}
         {loading && !data ? (
-          <TableSkeleton rows={10} />
+          <DataTableSkeleton columns={zoneMonitoringColumns} rows={10} />
         ) : data?.zoneMonitoring && data.zoneMonitoring.length > 0 ? (
           <DataTable
             title="Zone monitoring"
-            columns={[
-              { key: 'zid', label: 'zid' },
-              { key: 'zonename', label: 'zonename' },
-              { key: 'product', label: 'product' },
-              { key: 'req', label: 'req', format: (v) => parseInt(v).toLocaleString() },
-              { key: 'fill_rate', label: 'fill rate', format: (v) => `${Math.round(v * 100)}%` },
-              { key: 'request_CPM', label: 'request_CPM' },
-              { key: 'rev', label: 'rev' },
-              { key: 'profit', label: 'profit' },
-            ]}
+            columns={zoneMonitoringColumns}
             data={data.zoneMonitoring}
             crossFilterColumns={['zid', 'zonename', 'product']}
           />
         ) : null}
 
-        {/* Zone Monitoring by Date Table with Lazy Loading */}
+        {/* Zone Monitoring by Date Table - Client-side filtered */}
         {loading && !data ? (
-          <TableSkeleton rows={10} />
-        ) : (
+          <LazyDataTableSkeleton columns={zoneMonitoringByDateColumns} rows={10} />
+        ) : data?.zoneMonitoringTimeSeries ? (
           <LazyDataTable
             title="Zone monitoring by date"
-            columns={[
-              { key: 'date', label: 'date', width: '18%', format: (v) => new Date(v.value || v).toLocaleDateString() },
-              { key: 'zid', label: 'zid', width: '7%' },
-              { key: 'zonename', label: 'zonename', width: '16%' },
-              { key: 'product', label: 'product', width: '11%' },
-              { key: 'req', label: 'req', width: '10%', format: (v) => parseInt(v).toLocaleString() },
-              { key: 'fill_rate', label: 'fill rate', width: '9%', format: (v) => `${Math.round(v * 100)}%` },
-              { key: 'request_CPM', label: 'request_CPM', width: '11%' },
-              { key: 'rev', label: 'rev', width: '9%' },
-              { key: 'profit', label: 'profit', width: '9%' },
-            ]}
-            data={zoneMonitoringTimeSeries}
+            columns={zoneMonitoringByDateColumns}
+            data={data.zoneMonitoringTimeSeries}
             crossFilterColumns={['date', 'zid', 'zonename', 'product']}
-            onLoadMore={loadMoreZoneMonitoring}
-            hasMore={zoneMonitoringOffset < zoneMonitoringTotal}
-            isLoading={zoneMonitoringLoading}
-            totalCount={zoneMonitoringTotal}
           />
-        )}
+        ) : null}
 
         {/* Product-Level Trend */}
         {loading && !data ? (

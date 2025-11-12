@@ -92,18 +92,22 @@ export default function UnifiedDeepDiveView({
     setLoading(true)
     setError(null)
 
+    const requestBody = {
+      perspective,
+      period1,
+      period2,
+      filters,
+      simplifiedFilter,
+      parentId
+    }
+
+    console.log('[UnifiedDeepDiveView] 🚀 Sending request to deep-dive API:', requestBody)
+
     try {
       const response = await fetch('/api/performance-tracker/deep-dive', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          perspective,
-          period1,
-          period2,
-          filters,
-          simplifiedFilter,
-          parentId
-        })
+        body: JSON.stringify(requestBody)
       })
 
       if (!response.ok) {
@@ -111,6 +115,12 @@ export default function UnifiedDeepDiveView({
       }
 
       const result = await response.json()
+
+      console.log('[UnifiedDeepDiveView] ✅ Received response from API:')
+      console.log('  Total items:', result.summary?.total_items)
+      console.log('  Total revenue P2:', result.summary?.total_revenue_p2)
+      console.log('  Total requests P2:', result.summary?.total_requests_p2)
+      console.log('  First 3 items:', result.data?.slice(0, 3))
 
       if (result.status !== 'ok') {
         throw new Error(result.error || 'Unknown error')
