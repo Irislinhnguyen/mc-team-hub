@@ -3,6 +3,9 @@
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as SonnerToaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { queryClient } from '../lib/config/queryClient'
 import { AuthProvider } from './contexts/AuthContext'
 import './globals.css'
 
@@ -22,13 +25,16 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <AuthProvider>
-          <TooltipProvider>
-            {children}
-            <Toaster />
-            <SonnerToaster />
-          </TooltipProvider>
-        </AuthProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <TooltipProvider>
+              {children}
+              <Toaster />
+              <SonnerToaster />
+            </TooltipProvider>
+          </AuthProvider>
+          <ReactQueryDevtools initialIsOpen={false} />
+        </QueryClientProvider>
       </body>
     </html>
   )
