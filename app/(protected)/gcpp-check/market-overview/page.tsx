@@ -365,6 +365,7 @@ function MarketOverviewPageContent() {
             lines={timeSeriesData.lines}
             height={400}
             enableCrossFilter={true}
+            crossFilterField="partner"
             dateKey="date"
           />
         ) : null}
