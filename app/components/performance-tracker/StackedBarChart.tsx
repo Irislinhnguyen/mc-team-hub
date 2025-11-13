@@ -151,7 +151,7 @@ function StackedBarChartBase({
     categories: categories
   })
 
-  console.log('[StackedBarChart] Categories dataKeys:', categories.map(c => c.dataKey))
+  console.log('[StackedBarChart] Categories dataKeys:', categories.filter(c => c).map(c => c.dataKey))
 
   // Custom axis style - 12px font from design tokens
   const axisStyle = {
