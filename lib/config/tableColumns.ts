@@ -1,4 +1,5 @@
 import type { ColumnConfig } from '../types/performanceTracker'
+import { formatDate } from '../utils/formatters'
 
 /**
  * Standard column definitions for analytics tables
@@ -16,7 +17,7 @@ export const STANDARD_COLUMNS: Record<string, ColumnConfig> = {
     key: 'date',
     label: 'date',
     width: '18%',
-    format: (v) => new Date(v.value || v).toLocaleDateString()
+    format: (v) => formatDate(v.value || v)
   },
 
   // ID columns

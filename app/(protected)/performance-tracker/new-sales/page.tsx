@@ -1,19 +1,20 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { MetadataFilterPanel } from '../../../components/performance-tracker/MetadataFilterPanel'
 import ChartSkeleton from '../../../components/performance-tracker/skeletons/ChartSkeleton'
-import TableSkeleton from '../../../components/performance-tracker/skeletons/TableSkeleton'
+import { DataTableSkeleton } from '../../../components/performance-tracker/skeletons/DataTableSkeleton'
 import { DataTable } from '../../../components/performance-tracker/DataTable'
 import { TimeSeriesChart } from '../../../components/performance-tracker/TimeSeriesChart'
 import { DatePresetButtons, DatePreset } from '../../../components/performance-tracker/DatePresetButtons'
 import { useCrossFilter } from '../../../contexts/CrossFilterContext'
 import { colors } from '../../../../lib/colors'
 import { AnalyticsPageLayout } from '../../../components/performance-tracker/AnalyticsPageLayout'
-import { fetchAnalyticsData } from '../../../../lib/api/analytics'
-import { safeToFixed, safeNumber } from '../../../../lib/utils/formatters'
+import { useNewSales } from '../../../../lib/hooks/queries/useNewSales'
+import { safeToFixed, safeNumber, formatDate } from '../../../../lib/utils/formatters'
 import type { FilterField } from '../../../../lib/types/analytics'
+import { useClientSideFilterMulti } from '../../../../lib/hooks/useClientSideFilter'
 
 /**
  * REFACTORED VERSION - New Sales Page
@@ -21,9 +22,10 @@ import type { FilterField } from '../../../../lib/types/analytics'
  * Changes from original:
  * - Uses AnalyticsPageLayout for consistent structure
  * - Uses MetadataFilterPanel (eliminates ~80 lines of metadata handling)
- * - Uses fetchAnalyticsData API helper
+ * - Uses React Query for caching (useNewSales hook)
  * - Added export functionality (contentRef)
  * - Proper loading skeletons
+ * - Filter persistence via localStorage
  * - Cleaner, more maintainable code
  *
  * Cross-filter logic: KEPT AS-IS (not refactored per plan)
@@ -48,7 +50,6 @@ interface NewSalesData {
 export default function NewSalesPage() {
   const contentRef = useRef<HTMLDivElement>(null)
   const [activeTab, setActiveTab] = useState('summary')
-  const [loading, setLoading] = useState(false)
   const [summaryFilters, setSummaryFilters] = useState<Record<string, any>>({})
 
   // Set initial date range for Details tab (last 30 days)
@@ -60,10 +61,55 @@ export default function NewSalesPage() {
 
   const [summaryPreset, setSummaryPreset] = useState<DatePreset>('all-time')
   const [detailsPreset, setDetailsPreset] = useState<DatePreset>('last-30-days')
-  const [data, setData] = useState<NewSalesData | null>(null)
-  const [filterVersion, setFilterVersion] = useState(0)
   const { crossFilters, clearAllCrossFilters } = useCrossFilter()
-  const prevCrossFilterFieldsRef = useRef<string[]>([])
+
+  // Compute current filters based on active tab (memoized)
+  const currentFilters = useMemo(() => {
+    return activeTab === 'summary' ? summaryFilters : detailsFilters
+  }, [activeTab, summaryFilters, detailsFilters])
+
+  // Use React Query hook for data fetching and caching
+  const { data: rawData, isLoading: loading, error } = useNewSales(currentFilters)
+
+  // Apply client-side filtering for cross-filters (instant, no API call)
+  const { filteredData: filteredAllNewSales } = useClientSideFilterMulti(
+    rawData?.allNewSales,
+    crossFilters
+  )
+  const { filteredData: filteredSummaryTimeSeries } = useClientSideFilterMulti(
+    rawData?.summaryTimeSeries,
+    crossFilters
+  )
+  const { filteredData: filteredSummaryRevenue } = useClientSideFilterMulti(
+    rawData?.summaryRevenue,
+    crossFilters
+  )
+  const { filteredData: filteredSummaryProfit } = useClientSideFilterMulti(
+    rawData?.summaryProfit,
+    crossFilters
+  )
+  const { filteredData: filteredSalesCsBreakdown } = useClientSideFilterMulti(
+    rawData?.salesCsBreakdown,
+    crossFilters
+  )
+  const { filteredData: filteredSalesCsBreakdownGrouped } = useClientSideFilterMulti(
+    rawData?.salesCsBreakdownGrouped,
+    crossFilters
+  )
+
+  // Combine filtered data
+  const data = useMemo(() => {
+    if (!rawData) return undefined
+    return {
+      allNewSales: filteredAllNewSales,
+      summaryTimeSeries: filteredSummaryTimeSeries,
+      summaryRevenue: filteredSummaryRevenue,
+      summaryProfit: filteredSummaryProfit,
+      salesCsBreakdown: filteredSalesCsBreakdown,
+      salesCsBreakdownGrouped: filteredSalesCsBreakdownGrouped,
+      salesCsBreakdownTotals: rawData.salesCsBreakdownTotals,
+    }
+  }, [filteredAllNewSales, filteredSummaryTimeSeries, filteredSummaryRevenue, filteredSummaryProfit, filteredSalesCsBreakdown, filteredSalesCsBreakdownGrouped, rawData])
 
   // Clear all filters when switching tabs
   useEffect(() => {
@@ -88,52 +134,6 @@ export default function NewSalesPage() {
       setDetailsPreset('last-30-days')
     }
   }, [activeTab, clearAllCrossFilters])
-
-
-  // Apply cross-filters to active tab's filters
-  useEffect(() => {
-    // CRITICAL: Save old fields BEFORE updating ref
-    const oldFields = [...prevCrossFilterFieldsRef.current]
-
-    const updateFilters = (prev: Record<string, any>) => {
-      // Remove old cross-filter fields using SAVED old fields
-      const cleaned = { ...prev }
-      oldFields.forEach(field => {
-        delete cleaned[field]
-      })
-
-      // Group cross-filters by field to support multiple values
-      const crossFilterValues = crossFilters.reduce((acc, filter) => {
-        if (acc[filter.field]) {
-          // Field already exists - convert to array or append to existing array
-          if (Array.isArray(acc[filter.field])) {
-            acc[filter.field].push(filter.value)
-          } else {
-            acc[filter.field] = [acc[filter.field], filter.value]
-          }
-        } else {
-          // First value for this field
-          acc[filter.field] = filter.value
-        }
-        return acc
-      }, {} as Record<string, any>)
-
-      const result = { ...cleaned, ...crossFilterValues }
-      return result
-    }
-
-    // Update ref with current cross-filter fields AFTER saving old fields
-    prevCrossFilterFieldsRef.current = crossFilters.map(f => f.field)
-
-    if (activeTab === 'summary') {
-      setSummaryFilters(prev => updateFilters(prev))
-    } else if (activeTab === 'details') {
-      setDetailsFilters(prev => updateFilters(prev))
-    }
-
-    // Force refetch by incrementing version counter
-    setFilterVersion(v => v + 1)
-  }, [crossFilters, activeTab])
 
   // Handle preset changes and update filters accordingly
   const handlePresetChange = (preset: DatePreset, isDetailsTab: boolean = false) => {
@@ -190,28 +190,6 @@ export default function NewSalesPage() {
       })
     }
   }
-
-  // Compute current filters based on active tab (memoized to prevent unnecessary re-renders)
-  const currentFilters = useMemo(() => {
-    return activeTab === 'summary' ? summaryFilters : detailsFilters
-  }, [activeTab, summaryFilters, detailsFilters])
-
-  // Fetch data when active tab's filters change or tab switches
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true)
-      try {
-        const result = await fetchAnalyticsData('/api/performance-tracker/new-sales', currentFilters)
-        setData(result)
-      } catch (error) {
-        console.error('❌ [ERROR] Error fetching new sales data:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadData()
-  }, [currentFilters, activeTab, filterVersion])
 
   // Transform summary data for chart
   const transformTimeSeriesData = () => {
@@ -339,8 +317,8 @@ export default function NewSalesPage() {
     { key: 'pic', label: 'pic' },
     { key: 'pid', label: 'pid' },
     { key: 'pubname', label: 'pubname' },
-    { key: 'start_date', label: 'start_date', format: (v: any) => v?.value || v },
-    { key: 'end_date', label: 'end_date', format: (v: any) => v?.value || v },
+    { key: 'start_date', label: 'start_date', format: (v: any) => formatDate(v?.value || v) },
+    { key: 'end_date', label: 'end_date', format: (v: any) => formatDate(v?.value || v) },
     { key: 'rev_this_month', label: 'rev_this_month', format: (v: number) => v?.toFixed(2) || '0.00' },
     { key: 'profit_this_month', label: 'profit_this_month', format: (v: number) => v?.toFixed(2) || '0.00' },
     { key: 'rev_last_month', label: 'rev_last_month', format: (v: number) => v?.toFixed(2) || '0.00' },
@@ -350,8 +328,8 @@ export default function NewSalesPage() {
   const salesCsBreakdownColumns = [
     { key: 'pid', label: 'pid' },
     { key: 'pubname', label: 'pubname' },
-    { key: 'start_date', label: 'start_date', format: (v: any) => v?.value || v },
-    { key: 'end_date', label: 'end_date', format: (v: any) => v?.value || v },
+    { key: 'start_date', label: 'start_date', format: (v: any) => formatDate(v?.value || v) },
+    { key: 'end_date', label: 'end_date', format: (v: any) => formatDate(v?.value || v) },
     { key: 'month', label: 'month' },
     { key: 'year', label: 'year' },
     { key: 'sales_rev', label: 'sales_rev', format: (v: number) => v?.toFixed(2) || '0.00' },
@@ -425,8 +403,8 @@ export default function NewSalesPage() {
               {loading ? (
                 <>
                   <ChartSkeleton />
-                  <TableSkeleton />
-                  <TableSkeleton />
+                  <DataTableSkeleton columns={revenuePivotColumns} rows={5} />
+                  <DataTableSkeleton columns={profitPivotColumns} rows={5} />
                 </>
               ) : data ? (
                 <>
@@ -476,7 +454,7 @@ export default function NewSalesPage() {
 
           {/* All New Sales Over Time Table */}
           {loading ? (
-            <TableSkeleton />
+            <DataTableSkeleton columns={allNewSalesColumns} rows={10} />
           ) : (
             <DataTable
               key="all-new-sales"
@@ -491,7 +469,7 @@ export default function NewSalesPage() {
 
           {/* Sales-CS Breakdown Grouped */}
           {loading ? (
-            <TableSkeleton />
+            <DataTableSkeleton columns={salesCsBreakdownGroupedColumns} rows={10} />
           ) : (
             <DataTable
               key="sales-cs-breakdown"

@@ -208,15 +208,16 @@ function LazyDataTableBase({
           style={{ minWidth: 0, width: '100%', minHeight: '320px' }}
         >
           <table className="w-full border-collapse">
-            <thead className="sticky top-0 bg-slate-50 shadow-sm z-10">
+            <thead className="sticky top-0 shadow-sm z-10" style={{ backgroundColor: colors.main }}>
               <tr className="border-b border-slate-200">
                 {columns.map((col) => (
                   <th
                     key={col.key}
-                    className="px-2 py-2 text-left font-semibold text-slate-600 leading-tight whitespace-nowrap"
+                    className="px-2 py-2 text-left font-semibold leading-tight whitespace-nowrap"
                     style={{
                       minWidth: col.width,
                       fontSize: typography.sizes.filterHeader,
+                      color: colors.text.inverse,
                     }}
                   >
                     {col.label}
@@ -228,9 +229,16 @@ function LazyDataTableBase({
               {paginatedData.map((row, idx) => (
                 <tr
                   key={idx}
-                  className={`border-b border-slate-200 hover:bg-blue-50/30 transition-colors ${
-                    idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
-                  }`}
+                  className="border-b border-slate-200 transition-colors"
+                  style={{
+                    backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#fafafa'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = idx % 2 === 0 ? '#ffffff' : '#f8fafc'
+                  }}
                 >
                   {columns.map((col) => {
                     const isClickable = isEnabled && (crossFilterColumns.length === 0 || crossFilterColumns.includes(col.key))
@@ -242,8 +250,8 @@ function LazyDataTableBase({
                       <td
                         key={col.key}
                         className={`px-2 py-2 ${composedStyles.tableData} leading-tight ${
-                          isClickable ? 'cursor-pointer hover:bg-blue-50 hover:text-blue-700' : ''
-                        } ${isSelected ? 'bg-blue-100 font-semibold' : ''} ${
+                          isClickable ? 'cursor-pointer' : ''
+                        } ${isSelected ? 'font-semibold' : ''} ${
                           hasCrossFilters && !isSelected ? 'opacity-50' : ''
                         }`}
                         style={{
@@ -251,9 +259,20 @@ function LazyDataTableBase({
                           maxWidth: '300px',
                           wordWrap: 'break-word',
                           overflowWrap: 'break-word',
-                          whiteSpace: 'normal'
+                          whiteSpace: 'normal',
+                          backgroundColor: isSelected ? colors.status.infoBg : 'transparent'
                         }}
                         onClick={(e) => isClickable && handleCellClick(col.key, row[col.key], col.label, e)}
+                        onMouseEnter={(e) => {
+                          if (isClickable) {
+                            e.currentTarget.style.backgroundColor = isSelected ? colors.status.infoBg : colors.surface.muted
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (isClickable) {
+                            e.currentTarget.style.backgroundColor = isSelected ? colors.status.infoBg : 'transparent'
+                          }
+                        }}
                       >
                         {formatCellValue(row[col.key], col.format, col.key)}
                       </td>

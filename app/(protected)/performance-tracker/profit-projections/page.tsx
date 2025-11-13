@@ -1,15 +1,16 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { DataTable } from '../../../components/performance-tracker/DataTable'
-import TableSkeleton from '../../../components/performance-tracker/skeletons/TableSkeleton'
+import { DataTableSkeleton } from '../../../components/performance-tracker/skeletons/DataTableSkeleton'
 import { ToggleGroup, ToggleGroupItem } from '../../../../src/components/ui/toggle-group'
 import { useCrossFilter } from '../../../contexts/CrossFilterContext'
 import { colors } from '../../../../lib/colors'
 import { formatMetricValue } from '../../../../lib/utils/formatters'
 import { AnalyticsPageLayout } from '../../../components/performance-tracker/AnalyticsPageLayout'
 import { MetadataFilterPanel } from '../../../components/performance-tracker/MetadataFilterPanel'
-import { fetchAnalyticsData } from '../../../../lib/api/analytics'
+import { useProfitProjections } from '../../../../lib/hooks/queries/useProfitProjections'
+import { useClientSideFilterMulti } from '../../../../lib/hooks/useClientSideFilter'
 
 /**
  * REFACTORED VERSION - Profit Projections Page
@@ -17,9 +18,10 @@ import { fetchAnalyticsData } from '../../../../lib/api/analytics'
  * Changes from original:
  * - Uses AnalyticsPageLayout for consistent structure
  * - Uses MetadataFilterPanel (eliminates ~80 lines of metadata handling)
- * - Uses fetchAnalyticsData API helper
+ * - Uses React Query for caching (useProfitProjections hook)
  * - Added export functionality (contentRef)
  * - Proper loading skeletons
+ * - Filter persistence via localStorage
  * - Cleaner, more maintainable code
  *
  * Cross-filter logic: KEPT AS-IS (not refactored per plan)
@@ -36,66 +38,45 @@ interface ProjectionsData {
 
 export default function ProfitProjectionsPage() {
   const contentRef = useRef<HTMLDivElement>(null)
-  const [loading, setLoading] = useState(true)
   const [currentFilters, setCurrentFilters] = useState<Record<string, any>>({})
-  const [data, setData] = useState<ProjectionsData | null>(null)
-  const [dataError, setDataError] = useState<string | null>(null)
   const [metricType, setMetricType] = useState<'profit' | 'revenue'>('profit')
   const { crossFilters } = useCrossFilter()
-  const prevCrossFilterFieldsRef = useRef<string[]>([])
 
-  // Apply cross-filters to current filters whenever they change
-  useEffect(() => {
-    setCurrentFilters(prev => {
-      // Remove old cross-filter fields
-      const cleaned = { ...prev }
-      prevCrossFilterFieldsRef.current.forEach(field => {
-        delete cleaned[field]
-      })
+  // Stabilize setCurrentFilters to prevent infinite loops
+  const stableSetCurrentFilters = useCallback((filters: Record<string, any>) => {
+    setCurrentFilters(filters)
+  }, [])
 
-      // Group cross-filters by field to support multiple values
-      const crossFilterValues = crossFilters.reduce((acc, filter) => {
-        if (acc[filter.field]) {
-          // Field already exists - convert to array or append to existing array
-          if (Array.isArray(acc[filter.field])) {
-            acc[filter.field].push(filter.value)
-          } else {
-            acc[filter.field] = [acc[filter.field], filter.value]
-          }
-        } else {
-          // First value for this field
-          acc[filter.field] = filter.value
-        }
-        return acc
-      }, {} as Record<string, any>)
+  // Use React Query hook for data fetching and caching
+  const { data: rawData, isLoading: loading, error } = useProfitProjections(currentFilters)
+  const dataError = error ? error.message : null
 
-      // Update ref with current cross-filter fields
-      prevCrossFilterFieldsRef.current = crossFilters.map(f => f.field)
+  // Apply client-side filtering for cross-filters (instant, no API call)
+  const { filteredData: filteredPidPredictions } = useClientSideFilterMulti(
+    rawData?.pidPredictions,
+    crossFilters
+  )
+  const { filteredData: filteredMidPredictions } = useClientSideFilterMulti(
+    rawData?.midPredictions,
+    crossFilters
+  )
+  const { filteredData: filteredZidPredictions } = useClientSideFilterMulti(
+    rawData?.zidPredictions,
+    crossFilters
+  )
 
-      return { ...cleaned, ...crossFilterValues }
-    })
-  }, [crossFilters])
-
-  // Fetch data when filters change
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true)
-      setDataError(null)
-      try {
-        const result = await fetchAnalyticsData('/api/performance-tracker/projections', currentFilters)
-        setData(result)
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Failed to load data'
-        console.error('Error fetching projections data:', errorMessage)
-        setDataError(errorMessage)
-        setData(null)
-      } finally {
-        setLoading(false)
-      }
+  // Combine filtered data
+  const data = useMemo(() => {
+    if (!rawData) return undefined
+    return {
+      pidPredictions: filteredPidPredictions,
+      midPredictions: filteredMidPredictions,
+      zidPredictions: filteredZidPredictions,
+      pidGrandTotal: rawData.pidGrandTotal,
+      midGrandTotal: rawData.midGrandTotal,
+      zidGrandTotal: rawData.zidGrandTotal,
     }
-
-    loadData()
-  }, [currentFilters])
+  }, [filteredPidPredictions, filteredMidPredictions, filteredZidPredictions, rawData])
 
   // Column configurations
   const formatWowProfit = (value: any) => {
@@ -178,7 +159,7 @@ export default function ProfitProjectionsPage() {
       <MetadataFilterPanel
         page="profit-projections"
         filterFields={['team', 'pic', 'product', 'pid', 'mid', 'pubname', 'medianame', 'zid', 'zonename']}
-        onFilterChange={setCurrentFilters}
+        onFilterChange={stableSetCurrentFilters}
         isLoading={loading}
       />
 
@@ -204,9 +185,9 @@ export default function ProfitProjectionsPage() {
           </div>
         ) : loading ? (
           <>
-            <TableSkeleton />
-            <TableSkeleton />
-            <TableSkeleton />
+            <DataTableSkeleton columns={pidColumns} rows={10} showGrandTotal={true} />
+            <DataTableSkeleton columns={midColumns} rows={10} showGrandTotal={true} />
+            <DataTableSkeleton columns={zidColumns} rows={10} showGrandTotal={true} />
           </>
         ) : data ? (
           <>

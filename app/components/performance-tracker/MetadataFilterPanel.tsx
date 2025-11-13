@@ -6,6 +6,7 @@ import { FilterPresetManager } from './FilterPresetManager'
 import { MetadataErrorUI } from './MetadataErrorUI'
 import FilterPanelSkeleton from './skeletons/FilterPanelSkeleton'
 import { useAnalyticsMetadata } from '../../../lib/hooks/useAnalyticsMetadata'
+import { usePersistedFilters } from '../../../lib/hooks/usePersistedFilters'
 import { buildFilterConfig } from '../../../lib/config/filterConfigs'
 import { useCrossFilter } from '../../contexts/CrossFilterContext'
 import type { FilterField } from '../../../lib/types/performanceTracker'
@@ -44,6 +45,7 @@ interface MetadataFilterPanelProps {
   compact?: boolean
   defaultDateRange?: { startDate: string; endDate: string }
   presetIdFromUrl?: string  // ✨ NEW: Preset ID from URL parameter
+  metadataEndpoint?: string  // Optional custom metadata endpoint
 }
 
 export function MetadataFilterPanel({
@@ -56,27 +58,31 @@ export function MetadataFilterPanel({
   allowMultiSelect,
   compact,
   defaultDateRange,
-  presetIdFromUrl
+  presetIdFromUrl,
+  metadataEndpoint
 }: MetadataFilterPanelProps) {
-  const { metadata, loading: metadataLoading, error: metadataError, refetch } = useAnalyticsMetadata()
+  const { metadata, loading: metadataLoading, error: metadataError, refetch } = useAnalyticsMetadata(metadataEndpoint)
 
   // ✨ NEW: Cross-filter integration for filter presets
   const { exportCrossFilters, importCrossFilters } = useCrossFilter()
 
+  // ✨ NEW: Use persisted filters hook to remember last filters per tab
+  const [persistedFilters, setPersistedFilters] = usePersistedFilters(page, {})
+
   // ✨ NEW: Track current filter state internally for preset manager
-  const [internalFilters, setInternalFilters] = useState<Record<string, any>>({})
+  const [internalFilters, setInternalFilters] = useState<Record<string, any>>(persistedFilters)
 
-  // Track previous filter state to prevent unnecessary callbacks
-  const prevFiltersRef = useRef<string>('')
-
-  // ✨ NEW: Sync internal filters with parent (with deep equality check)
+  // ✨ NEW: Persist filters to localStorage whenever they change
   useEffect(() => {
-    const filtersStr = JSON.stringify(internalFilters)
-    // Only trigger callback if filters actually changed
-    if (filtersStr === prevFiltersRef.current) {
-      return
-    }
-    prevFiltersRef.current = filtersStr
+    console.log('[MetadataFilterPanel] 📝 Internal filters changed:', internalFilters)
+    setPersistedFilters(internalFilters)
+  }, [internalFilters, setPersistedFilters])
+
+  // ✨ NEW: Sync internal filters with parent
+  useEffect(() => {
+    // Always propagate filter changes to parent
+    // Let React Query handle deduplication via queryKey comparison
+    console.log('[MetadataFilterPanel] 📤 Propagating filters to parent:', internalFilters)
     onFilterChange(internalFilters)
     // Intentionally omit onFilterChange from deps - we use stable callback from parent
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -107,14 +113,14 @@ export function MetadataFilterPanel({
 
   return (
     <div className="space-y-4">
-      {/* ✨ Filter Preset Manager - Renders immediately (no blocking) */}
-      <FilterPresetManager
+      {/* 🚧 TEMPORARILY DISABLED FilterPresetManager for debugging */}
+      {/* <FilterPresetManager
         page={page}
         currentFilters={internalFilters}
         currentCrossFilters={exportCrossFilters()}
         onLoadPreset={handleLoadPreset}
         presetIdFromUrl={presetIdFromUrl}
-      />
+      /> */}
 
       {/* Original Filter Panel - Shows skeleton while metadata loads */}
       {metadataLoading ? (

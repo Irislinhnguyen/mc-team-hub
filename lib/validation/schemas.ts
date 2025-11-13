@@ -180,3 +180,145 @@ export function safeValidateRequest<T>(schema: z.ZodSchema<T>, data: unknown): {
     error: messages
   }
 }
+
+// ============================================================================
+// Sales Lists Schemas
+// ============================================================================
+
+/**
+ * Item type enum
+ */
+export const salesListItemTypeSchema = z.enum(['domain_app_id', 'domain', 'pid', 'mid', 'publisher', 'custom'])
+
+/**
+ * Item source enum
+ */
+export const salesListItemSourceSchema = z.enum(['gcpp_check', 'manual', 'csv_import'])
+
+/**
+ * Activity type enum
+ */
+export const activityTypeSchema = z.enum(['contact', 'response', 'note'])
+
+/**
+ * Contact outcome enum
+ */
+export const contactOutcomeSchema = z.enum(['contacted', 'retarget', 'follow_up'])
+
+/**
+ * Response outcome enum
+ */
+export const responseOutcomeSchema = z.enum(['positive', 'negative', 'neutral'])
+
+/**
+ * Closed status enum
+ */
+export const closedStatusSchema = z.enum(['closed_won', 'closed_lost'])
+
+/**
+ * Share permission enum
+ */
+export const sharePermissionSchema = z.enum(['view', 'edit'])
+
+/**
+ * Create sales list request
+ */
+export const createSalesListSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100, 'Name must be at most 100 characters'),
+  description: z.string().optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format, expected hex color').optional()
+})
+
+/**
+ * Update sales list request
+ */
+export const updateSalesListSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100, 'Name must be at most 100 characters').optional(),
+  description: z.string().nullable().optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format, expected hex color').optional()
+})
+
+/**
+ * Add list item request
+ */
+export const addListItemSchema = z.object({
+  item_type: salesListItemTypeSchema,
+  item_value: z.string().min(1, 'Item value is required'),
+  item_label: z.string().optional(),
+  source: salesListItemSourceSchema.optional(),
+  metadata: z.record(z.any()).optional()
+})
+
+/**
+ * Add multiple list items request
+ */
+export const addListItemsSchema = z.object({
+  items: z.array(addListItemSchema).min(1, 'At least one item is required')
+})
+
+/**
+ * Log activity request
+ */
+export const logActivitySchema = z.object({
+  list_item_id: z.string().uuid('Invalid list item ID'),
+  activity_type: activityTypeSchema,
+  contact_time: z.string().datetime().optional(),
+  response_time: z.string().datetime().optional(),
+  contact_outcome: contactOutcomeSchema.optional(),
+  response_outcome: responseOutcomeSchema.optional(),
+  closed_status: closedStatusSchema.optional(),
+  deal_value: z.number().positive().optional(),
+  notes: z.string().optional(),
+  metadata: z.record(z.any()).optional()
+})
+
+/**
+ * Update activity request
+ */
+export const updateActivitySchema = z.object({
+  contact_time: z.string().datetime().optional(),
+  response_time: z.string().datetime().nullable().optional(),
+  contact_outcome: contactOutcomeSchema.nullable().optional(),
+  response_outcome: responseOutcomeSchema.nullable().optional(),
+  closed_status: closedStatusSchema.nullable().optional(),
+  deal_value: z.number().positive().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  metadata: z.record(z.any()).optional()
+})
+
+/**
+ * Share list request
+ */
+export const shareListSchema = z.object({
+  shared_with_user_id: z.string().uuid('Invalid user ID'),
+  permission: sharePermissionSchema
+})
+
+/**
+ * Update share permission request
+ */
+export const updateShareSchema = z.object({
+  permission: sharePermissionSchema
+})
+
+/**
+ * CSV import row schema
+ */
+export const csvImportRowSchema = z.object({
+  item_type: z.string(),
+  item_value: z.string().min(1),
+  item_label: z.string().optional(),
+  team: z.string().optional(),
+  partner: z.string().optional(),
+  product: z.string().optional(),
+  notes: z.string().optional()
+})
+
+/**
+ * Analytics query parameters
+ */
+export const analyticsQuerySchema = z.object({
+  start_date: isoDateSchema.optional(),
+  end_date: isoDateSchema.optional(),
+  pic_user_id: z.string().uuid().optional()
+})

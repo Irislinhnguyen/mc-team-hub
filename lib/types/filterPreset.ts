@@ -132,7 +132,13 @@ export type AnalyticsPage =
   | 'sales-tracking'
   | 'publisher-health'
   | 'team-setup'
-  | 'new-sales';
+  | 'new-sales'
+  // GCPP Check pages
+  | 'gcpp-market-overview'
+  | 'gcpp-market-breakdown'
+  | 'gcpp-partner-breakdown'
+  | 'gcpp-partner-breakdown-2'
+  | 'gcpp-publisher-monitoring';
 
 /**
  * Helper to check if a page identifier is valid
@@ -164,6 +170,11 @@ export function getPageDisplayName(page: AnalyticsPage): string {
     'publisher-health': 'Publisher Health',
     'team-setup': 'Team Setup',
     'new-sales': 'New Sales',
+    'gcpp-market-overview': 'GCPP Market Overview',
+    'gcpp-market-breakdown': 'GCPP Market Breakdown',
+    'gcpp-partner-breakdown': 'GCPP Partner Breakdown',
+    'gcpp-partner-breakdown-2': 'GCPP Partner Breakdown 2',
+    'gcpp-publisher-monitoring': 'GCPP Publisher Monitoring',
   };
   return names[page] || page;
 }

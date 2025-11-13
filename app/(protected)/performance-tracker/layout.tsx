@@ -1,22 +1,16 @@
 'use client'
 
-import { useEffect } from 'react'
-import { usePathname } from 'next/navigation'
 import { AnalyticsSidebar } from '../../components/performance-tracker/AnalyticsSidebar'
 import { FloatingToggle } from '../../components/performance-tracker/FloatingToggle'
-import { CrossFilterProvider, useCrossFilter } from '../../contexts/CrossFilterContext'
+import { CrossFilterProvider } from '../../contexts/CrossFilterContext'
 import { SidebarProvider, SidebarInset, useSidebar } from '@/components/ui/sidebar'
 
 function AnalyticsContent({ children }: { children: React.ReactNode }) {
   const { open } = useSidebar()
-  const { clearAllCrossFilters } = useCrossFilter()
-  const pathname = usePathname()
 
-  // Clear cross-filters and normal filters when navigating between analytics pages
-  useEffect(() => {
-    clearAllCrossFilters()
-    window.dispatchEvent(new Event('clearAllAppliedFilters'))
-  }, [pathname, clearAllCrossFilters])
+  // ✨ REMOVED: Filter clearing on navigation
+  // Now using React Query caching + persisted filters per tab
+  // Each tab remembers its own filters via localStorage
 
   return (
     <SidebarInset>

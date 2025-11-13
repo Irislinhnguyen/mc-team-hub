@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart3, TrendingUp, Calendar, Settings, FileText, Plus, SearchCheck, Home, LogOut, Shield } from 'lucide-react'
+import { BarChart3, TrendingUp, Calendar, Settings, FileText, Plus, SearchCheck, Home, LogOut, ListChecks, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '../../../app/contexts/AuthContext'
@@ -57,7 +57,13 @@ const ANALYTICS_PAGES: PageItem[] = [
     label: 'Team Setup',
     icon: <Settings size={18} />,
   },
+  {
+    href: '/sales-lists',
+    label: 'Sales Lists',
+    icon: <ListChecks size={18} />,
+  },
 ]
+
 
 export function AnalyticsSidebar() {
   const pathname = usePathname()

@@ -1,11 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run build:*)",
       "WebSearch",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [
+      "Bash(npm run build:*)"
+    ]
   }
 }

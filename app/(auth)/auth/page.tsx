@@ -68,7 +68,7 @@ export default function AuthPage() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl">Performance Tracker AI</CardTitle>
+        <CardTitle className="text-2xl">MC Team Hub</CardTitle>
         <CardDescription>
           Sign in to continue
         </CardDescription>

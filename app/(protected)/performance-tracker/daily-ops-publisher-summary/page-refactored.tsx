@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { MetadataFilterPanel } from '../../../components/performance-tracker/MetadataFilterPanel'
 import { DataTable } from '../../../components/performance-tracker/DataTable'
-import TableSkeleton from '../../../components/performance-tracker/skeletons/TableSkeleton'
+import { DataTableSkeleton } from '../../../components/performance-tracker/skeletons/DataTableSkeleton'
 import { colors } from '../../../../lib/colors'
 import { useCrossFilter } from '../../../contexts/CrossFilterContext'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -12,6 +12,7 @@ import { fetchAnalyticsData } from '../../../../lib/api/analytics'
 import { FilterPanel } from '../../../components/performance-tracker/FilterPanel'
 import { safeToFixed, safeNumber } from '../../../../lib/utils/formatters'
 import type { FilterField } from '../../../../lib/types/analytics'
+import type { ColumnConfig } from '../../../../lib/types/performanceTracker'
 
 /**
  * REFACTORED VERSION - Daily Ops Publisher Summary Page
@@ -196,6 +197,123 @@ export default function DailyOpsPublisherSummaryPage() {
     }
   }, [activeTab])
 
+  // Tab 1: Publisher & Media Summary - Column Definitions
+  const publisherSummaryColumns: ColumnConfig[] = [
+    { key: 'category', label: 'Category' },
+    { key: 'revenue_tier', label: 'Revenue Tier' },
+    { key: 'pid', label: 'Count' },
+  ]
+
+  const publisherDetailColumns: ColumnConfig[] = [
+    { key: 'pubname', label: 'Publisher Name' },
+    { key: 'revenue_tier', label: 'Revenue Tier' },
+    { key: 'category', label: 'Category' },
+    {
+      key: 'projected_revenue',
+      label: 'Projected Revenue',
+      format: (v) => `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    },
+    {
+      key: 'last_month_revenue',
+      label: 'Last Month Revenue',
+      format: (v) => `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    },
+  ]
+
+  const mediaSummaryColumns: ColumnConfig[] = [
+    { key: 'category', label: 'Category' },
+    { key: 'revenue_tier', label: 'Revenue Tier' },
+    { key: 'mid', label: 'Count' },
+  ]
+
+  const mediaDetailColumns: ColumnConfig[] = [
+    { key: 'medianame', label: 'Media Name' },
+    { key: 'pubname', label: 'Publisher Name' },
+    { key: 'revenue_tier', label: 'Revenue Tier' },
+    { key: 'category', label: 'Category' },
+    {
+      key: 'projected_revenue',
+      label: 'Projected Revenue',
+      format: (v) => `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    },
+    {
+      key: 'last_month_revenue',
+      label: 'Last Month Revenue',
+      format: (v) => `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    },
+  ]
+
+  // Tab 2: Zone Operations - Column Definitions
+  const newZonesColumns: ColumnConfig[] = [
+    { key: 'zid', label: 'Zone ID' },
+    { key: 'zonename', label: 'Zone Name' },
+    { key: 'product', label: 'Product' },
+    {
+      key: 'req_yesterday',
+      label: 'Requests Yesterday',
+      format: (v) => Number(v).toLocaleString()
+    },
+    {
+      key: 'rev_yesterday',
+      label: 'Revenue Yesterday',
+      format: (v) => `$${Number(v).toFixed(2)}`
+    },
+  ]
+
+  const highTrafficZonesColumns: ColumnConfig[] = [
+    { key: 'zid', label: 'Zone ID' },
+    { key: 'zonename', label: 'Zone Name' },
+    {
+      key: 'req',
+      label: 'Requests',
+      format: (v) => Number(v).toLocaleString()
+    },
+    {
+      key: 'rev',
+      label: 'Revenue',
+      format: (v) => `$${Number(v).toFixed(2)}`
+    },
+    {
+      key: 'request_CPM',
+      label: 'Request CPM',
+      format: (v) => v ? `$${Number(v).toFixed(2)}` : 'N/A'
+    },
+  ]
+
+  // Tab 3: Sales Tracking - Column Definitions
+  const closeWonCasesColumns: ColumnConfig[] = [
+    { key: 'month', label: 'Month' },
+    { key: 'year', label: 'Year' },
+    { key: 'pic', label: 'PIC' },
+    { key: 'mid', label: 'Media ID' },
+    { key: 'media_name', label: 'Media Name' },
+    {
+      key: 'day_start',
+      label: 'Start Date',
+      format: (v) => new Date(v).toLocaleDateString()
+    },
+    {
+      key: 'close_won_day',
+      label: 'Close Won Date',
+      format: (v) => new Date(v).toLocaleDateString()
+    },
+    {
+      key: 'total_req',
+      label: 'Total Requests',
+      format: (v) => Number(v).toLocaleString()
+    },
+    {
+      key: 'total_profit',
+      label: 'Total Profit',
+      format: (v) => `$${Number(v).toFixed(2)}`
+    },
+    {
+      key: 'total_revenue',
+      label: 'Total Revenue',
+      format: (v) => `$${Number(v).toFixed(2)}`
+    },
+  ]
+
   return (
     <AnalyticsPageLayout title="Daily Ops - Publisher Summary" showExport={true} contentRef={contentRef}>
       {/* Single MetadataFilterPanel outside Tabs for proper callback injection */}
@@ -226,21 +344,17 @@ export default function DailyOpsPublisherSummaryPage() {
 
             {loading ? (
               <>
-                <TableSkeleton />
-                <TableSkeleton />
-                <TableSkeleton />
-                <TableSkeleton />
+                <DataTableSkeleton columns={publisherSummaryColumns} />
+                <DataTableSkeleton columns={publisherDetailColumns} />
+                <DataTableSkeleton columns={mediaSummaryColumns} />
+                <DataTableSkeleton columns={mediaDetailColumns} />
               </>
             ) : data ? (
               <>
                 {/* Publisher Summary */}
                 <DataTable
                   title="Churn and Active Publishers"
-                  columns={[
-                    { key: 'category', label: 'Category' },
-                    { key: 'revenue_tier', label: 'Revenue Tier' },
-                    { key: 'pid', label: 'Count' },
-                  ]}
+                  columns={publisherSummaryColumns}
                   data={data.publisherSummary || []}
                   crossFilterColumns={['category', 'revenue_tier']}
                 />
@@ -248,21 +362,7 @@ export default function DailyOpsPublisherSummaryPage() {
                 {/* Publisher Detail */}
                 <DataTable
                   title="Churn and Active Publishers - Detail"
-                  columns={[
-                    { key: 'pubname', label: 'Publisher Name' },
-                    { key: 'revenue_tier', label: 'Revenue Tier' },
-                    { key: 'category', label: 'Category' },
-                    {
-                      key: 'projected_revenue',
-                      label: 'Projected Revenue',
-                      format: (v) => `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                    },
-                    {
-                      key: 'last_month_revenue',
-                      label: 'Last Month Revenue',
-                      format: (v) => `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                    },
-                  ]}
+                  columns={publisherDetailColumns}
                   data={data.publisherDetail || []}
                   crossFilterColumns={['pubname', 'category', 'revenue_tier']}
                 />
@@ -270,11 +370,7 @@ export default function DailyOpsPublisherSummaryPage() {
                 {/* Media Summary */}
                 <DataTable
                   title="Churn and Active Media"
-                  columns={[
-                    { key: 'category', label: 'Category' },
-                    { key: 'revenue_tier', label: 'Revenue Tier' },
-                    { key: 'mid', label: 'Count' },
-                  ]}
+                  columns={mediaSummaryColumns}
                   data={data.mediaSummary || []}
                   crossFilterColumns={['category', 'revenue_tier']}
                 />
@@ -282,22 +378,7 @@ export default function DailyOpsPublisherSummaryPage() {
                 {/* Media Detail */}
                 <DataTable
                   title="Churn and Active Media - Detail"
-                  columns={[
-                    { key: 'medianame', label: 'Media Name' },
-                    { key: 'pubname', label: 'Publisher Name' },
-                    { key: 'revenue_tier', label: 'Revenue Tier' },
-                    { key: 'category', label: 'Category' },
-                    {
-                      key: 'projected_revenue',
-                      label: 'Projected Revenue',
-                      format: (v) => `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                    },
-                    {
-                      key: 'last_month_revenue',
-                      label: 'Last Month Revenue',
-                      format: (v) => `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                    },
-                  ]}
+                  columns={mediaDetailColumns}
                   data={data.mediaDetail || []}
                   crossFilterColumns={['medianame', 'pubname', 'category', 'revenue_tier']}
                 />
@@ -309,29 +390,15 @@ export default function DailyOpsPublisherSummaryPage() {
           <TabsContent value="zones" className="space-y-6">
             {loading ? (
               <>
-                <TableSkeleton />
-                <TableSkeleton />
+                <DataTableSkeleton columns={newZonesColumns} />
+                <DataTableSkeleton columns={highTrafficZonesColumns} />
               </>
             ) : data ? (
               <div className="grid grid-cols-1 gap-6">
                 {/* New Zones Active */}
                 <DataTable
                   title="New Zones Active"
-                  columns={[
-                    { key: 'zid', label: 'Zone ID' },
-                    { key: 'zonename', label: 'Zone Name' },
-                    { key: 'product', label: 'Product' },
-                    {
-                      key: 'req_yesterday',
-                      label: 'Requests Yesterday',
-                      format: (v) => Number(v).toLocaleString()
-                    },
-                    {
-                      key: 'rev_yesterday',
-                      label: 'Revenue Yesterday',
-                      format: (v) => `$${Number(v).toFixed(2)}`
-                    },
-                  ]}
+                  columns={newZonesColumns}
                   data={data.newZones || []}
                   crossFilterColumns={['zid', 'zonename', 'product']}
                 />
@@ -339,25 +406,7 @@ export default function DailyOpsPublisherSummaryPage() {
                 {/* High Traffic Zones */}
                 <DataTable
                   title="50k Ad Request Zones (Yesterday, >50k requests)"
-                  columns={[
-                    { key: 'zid', label: 'Zone ID' },
-                    { key: 'zonename', label: 'Zone Name' },
-                    {
-                      key: 'req',
-                      label: 'Requests',
-                      format: (v) => Number(v).toLocaleString()
-                    },
-                    {
-                      key: 'rev',
-                      label: 'Revenue',
-                      format: (v) => `$${Number(v).toFixed(2)}`
-                    },
-                    {
-                      key: 'request_CPM',
-                      label: 'Request CPM',
-                      format: (v) => v ? `$${Number(v).toFixed(2)}` : 'N/A'
-                    },
-                  ]}
+                  columns={highTrafficZonesColumns}
                   data={data.highTrafficZones || []}
                   crossFilterColumns={['zid', 'zonename']}
                 />
@@ -375,42 +424,11 @@ export default function DailyOpsPublisherSummaryPage() {
             />
 
             {loading ? (
-              <TableSkeleton />
+              <DataTableSkeleton columns={closeWonCasesColumns} />
             ) : data ? (
               <DataTable
                 title="Close Won Cases"
-                columns={[
-                  { key: 'month', label: 'Month' },
-                  { key: 'year', label: 'Year' },
-                  { key: 'pic', label: 'PIC' },
-                  { key: 'mid', label: 'Media ID' },
-                  { key: 'media_name', label: 'Media Name' },
-                  {
-                    key: 'day_start',
-                    label: 'Start Date',
-                    format: (v) => new Date(v).toLocaleDateString()
-                  },
-                  {
-                    key: 'close_won_day',
-                    label: 'Close Won Date',
-                    format: (v) => new Date(v).toLocaleDateString()
-                  },
-                  {
-                    key: 'total_req',
-                    label: 'Total Requests',
-                    format: (v) => Number(v).toLocaleString()
-                  },
-                  {
-                    key: 'total_profit',
-                    label: 'Total Profit',
-                    format: (v) => `$${Number(v).toFixed(2)}`
-                  },
-                  {
-                    key: 'total_revenue',
-                    label: 'Total Revenue',
-                    format: (v) => `$${Number(v).toFixed(2)}`
-                  },
-                ]}
+                columns={closeWonCasesColumns}
                 data={data.closeWonCases || []}
                 crossFilterColumns={['pic', 'mid', 'media_name']}
               />

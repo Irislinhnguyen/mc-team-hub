@@ -9,6 +9,8 @@ export interface CrossFilter {
   id?: string
 }
 
+export type FetchStrategy = 'server' | 'client'
+
 interface CrossFilterContextType {
   crossFilters: CrossFilter[]
   addCrossFilter: (filter: CrossFilter, append?: boolean, batch?: boolean) => void
@@ -21,6 +23,9 @@ interface CrossFilterContextType {
   flushPendingFilters: () => void
   exportCrossFilters: () => CrossFilter[]
   importCrossFilters: (filters: CrossFilter[]) => void
+  fetchStrategy: FetchStrategy
+  setFetchStrategy: (strategy: FetchStrategy) => void
+  isClientFilterMode: boolean
 }
 
 const CrossFilterContext = createContext<CrossFilterContextType | undefined>(undefined)
@@ -29,6 +34,7 @@ export function CrossFilterProvider({ children }: { children: React.ReactNode })
   const [crossFilters, setCrossFilters] = useState<CrossFilter[]>([])
   const [pendingFilters, setPendingFilters] = useState<CrossFilter[]>([])
   const [autoEnable, setAutoEnable] = useState(true) // Auto-enable by default
+  const [fetchStrategy, setFetchStrategy] = useState<FetchStrategy>('server')
 
   // Restore autoEnable state from localStorage on mount
   useEffect(() => {
@@ -42,6 +48,15 @@ export function CrossFilterProvider({ children }: { children: React.ReactNode })
       }
     }
   }, [])
+
+  // Auto-detect fetch strategy based on cross-filter presence
+  useEffect(() => {
+    if (crossFilters.length > 0) {
+      setFetchStrategy('client')
+    } else {
+      setFetchStrategy('server')
+    }
+  }, [crossFilters.length])
 
   const addCrossFilter = useCallback((filter: CrossFilter, append: boolean = false, batch: boolean = false) => {
     const newFilter = {
@@ -123,6 +138,7 @@ export function CrossFilterProvider({ children }: { children: React.ReactNode })
   }, [])
 
   const hasCrossFilters = crossFilters.length > 0
+  const isClientFilterMode = fetchStrategy === 'client'
 
   return (
     <CrossFilterContext.Provider
@@ -138,6 +154,9 @@ export function CrossFilterProvider({ children }: { children: React.ReactNode })
         flushPendingFilters,
         exportCrossFilters,
         importCrossFilters,
+        fetchStrategy,
+        setFetchStrategy,
+        isClientFilterMode,
       }}
     >
       {children}

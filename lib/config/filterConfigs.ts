@@ -120,10 +120,66 @@ export function buildFilterConfig(
       type: 'select',
       options: metadata?.years || [],
     },
+    // GCPP Check specific fields
+    partner: {
+      name: 'partner',
+      label: 'Partner',
+      type: 'select',
+      options: metadata?.partners || [],
+    },
+    market: {
+      name: 'market',
+      label: 'Market',
+      type: 'select',
+      options: metadata?.markets || [],
+    },
+    publisher: {
+      name: 'publisher',
+      label: 'Publisher',
+      type: 'select',
+      options: metadata?.publishers || [],
+    },
+    domain_app_id: {
+      name: 'domain_app_id',
+      label: 'Domain/App ID',
+      type: 'select',
+      options: metadata?.domain_app_ids || [],
+    },
+    app_name: {
+      name: 'app_name',
+      label: 'App Name',
+      type: 'select',
+      options: metadata?.app_names || [],
+    },
+    pub_size_category: {
+      name: 'pub_size_category',
+      label: 'Publisher Size',
+      type: 'select',
+      options: metadata?.pub_size_categories || [],
+    },
+    category: {
+      name: 'category',
+      label: 'Publisher Category',
+      type: 'select',
+      options: metadata?.categories || [],
+    },
+    scenario: {
+      name: 'scenario',
+      label: 'Scenario',
+      type: 'select',
+      options: metadata?.scenarios || [],
+    },
+    performance: {
+      name: 'performance',
+      label: 'Performance',
+      type: 'select',
+      options: metadata?.performances || [],
+    },
   }
 
   // Return only the requested fields in order with count
-  const filters = fields.map(field => configs[field])
+  // Filter out any undefined values (in case a field is requested but not configured)
+  const filters = fields.map(field => configs[field]).filter(Boolean)
   return {
     filters,
     count: filters.length

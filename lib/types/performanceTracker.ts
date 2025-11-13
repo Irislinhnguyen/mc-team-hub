@@ -46,6 +46,16 @@ export type FilterField =
   | 'revenue_tier'
   | 'month'
   | 'year'
+  // GCPP Check specific fields
+  | 'partner'
+  | 'market'
+  | 'publisher'
+  | 'domain_app_id'
+  | 'app_name'
+  | 'pub_size_category'
+  | 'category'
+  | 'scenario'
+  | 'performance'
 
 /**
  * API response structure for analytics data
@@ -190,7 +200,17 @@ export const FIELD_OPERATORS: Record<FilterField, FilterOperator[]> = {
   // Date fields
   daterange: ['between', 'greater_than', 'less_than', 'greater_than_or_equal', 'less_than_or_equal', 'is_null', 'is_not_null'],
   month: ['equals', 'in', 'greater_than', 'less_than'],
-  year: ['equals', 'in', 'greater_than', 'less_than']
+  year: ['equals', 'in', 'greater_than', 'less_than'],
+
+  // GCPP Check fields
+  partner: ['equals', 'in', 'contains', 'is_null', 'is_not_null'],
+  market: ['equals', 'in', 'is_null', 'is_not_null'],
+  publisher: ['equals', 'in', 'contains', 'starts_with', 'regex_match', 'is_null', 'is_not_null'],
+  domain_app_id: ['equals', 'in', 'contains', 'is_null', 'is_not_null'],
+  app_name: ['equals', 'in', 'contains', 'starts_with', 'regex_match', 'is_null', 'is_not_null'],
+  pub_size_category: ['equals', 'in', 'is_null', 'is_not_null'],
+  scenario: ['equals', 'in', 'is_null', 'is_not_null'],
+  performance: ['equals', 'in', 'is_null', 'is_not_null']
 }
 
 /**
@@ -216,7 +236,17 @@ export const FIELD_DATA_TYPES: Record<FilterField, FilterDataType> = {
   rev_flag: 'string',
 
   // Date
-  daterange: 'date'
+  daterange: 'date',
+
+  // GCPP Check fields
+  partner: 'string',
+  market: 'string',
+  publisher: 'string',
+  domain_app_id: 'string',
+  app_name: 'string',
+  pub_size_category: 'string',
+  scenario: 'string',
+  performance: 'string'
 }
 
 /**

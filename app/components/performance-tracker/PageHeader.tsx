@@ -9,6 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { RefreshButton } from '../shared/RefreshButton'
 import { colors } from '../../../lib/colors'
 import { exportElementToPDF, getExportFilename } from '../../../lib/utils/export'
 import { useCrossFilter } from '../../contexts/CrossFilterContext'
@@ -36,9 +37,10 @@ export function PageHeader({ title, contentRef, showCrossFilterToggle = true }: 
 
   return (
     <div
-      className="bg-white border-b border-gray-200"
+      className="bg-white border-b border-gray-200 sticky top-0"
       style={{
-        padding: '16px 24px'
+        padding: '16px 24px',
+        zIndex: 60
       }}
     >
       <div className="flex items-center justify-between">
@@ -110,6 +112,9 @@ export function PageHeader({ title, contentRef, showCrossFilterToggle = true }: 
               </TooltipProvider>
             </div>
           )}
+
+          {/* Refresh data button */}
+          <RefreshButton variant="outline" size="sm" />
 
           {/* Page-level export button */}
           <Button

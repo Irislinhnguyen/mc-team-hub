@@ -70,11 +70,44 @@ class BigQueryService {
       const [rows] = await client.query(jobConfig)
 
       console.log(`[BigQuery] Query executed successfully. Returned ${rows.length} rows`)
-      return rows
+
+      // Unwrap BigQuery special types (DATE, DATETIME, TIMESTAMP)
+      const unwrappedRows = rows.map(row => this.unwrapBigQueryTypes(row))
+
+      return unwrappedRows
     } catch (error) {
       console.error('[BigQuery] Query execution failed:', error)
       throw new Error(`BigQuery execution failed: ${error instanceof Error ? error.message : String(error)}`)
     }
+  }
+
+  /**
+   * Unwrap BigQuery special types (DATE, DATETIME, TIMESTAMP)
+   * These are returned as objects with a 'value' property
+   */
+  private static unwrapBigQueryTypes(obj: any): any {
+    if (obj === null || obj === undefined) return obj
+
+    // Check if this is a BigQuery special type (has only 'value' property)
+    if (typeof obj === 'object' && 'value' in obj && Object.keys(obj).length === 1) {
+      return obj.value
+    }
+
+    // Handle arrays
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.unwrapBigQueryTypes(item))
+    }
+
+    // Handle nested objects
+    if (typeof obj === 'object') {
+      const unwrapped: any = {}
+      for (const [key, value] of Object.entries(obj)) {
+        unwrapped[key] = this.unwrapBigQueryTypes(value)
+      }
+      return unwrapped
+    }
+
+    return obj
   }
 
   /**

@@ -3,14 +3,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { MetadataFilterPanel } from '../../../components/performance-tracker/MetadataFilterPanel'
 import { LazyDataTable } from '../../../components/performance-tracker/LazyDataTable'
-import TableSkeleton from '../../../components/performance-tracker/skeletons/TableSkeleton'
+import { LazyDataTableSkeleton } from '../../../components/performance-tracker/skeletons/LazyDataTableSkeleton'
 import { colors } from '../../../../lib/colors'
 import { useCrossFilter } from '../../../contexts/CrossFilterContext'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AnalyticsPageLayout } from '../../../components/performance-tracker/AnalyticsPageLayout'
 import { fetchAnalyticsData } from '../../../../lib/api/analytics'
 import { FilterPanel } from '../../../components/performance-tracker/FilterPanel'
-import { safeToFixed, safeNumber } from '../../../../lib/utils/formatters'
+import { safeToFixed, safeNumber, formatDate } from '../../../../lib/utils/formatters'
 import type { FilterField } from '../../../../lib/types/analytics'
 
 /**
@@ -42,6 +42,61 @@ export default function DailyOpsPublisherSummaryPage() {
 
   const { crossFilters, clearAllCrossFilters } = useCrossFilter()
   const prevCrossFilterFieldsRef = useRef<string[]>([])
+
+  // Column configurations
+  const publisherSummaryColumns = [
+    { key: 'category', label: 'Category' },
+    { key: 'revenue_tier', label: 'Revenue Tier' },
+    { key: 'pid', label: 'Count' },
+  ]
+
+  const publisherDetailColumns = [
+    { key: 'pubname', label: 'Publisher Name' },
+    { key: 'revenue_tier', label: 'Revenue Tier' },
+    { key: 'category', label: 'Category' },
+    { key: 'projected_revenue', label: 'Projected Revenue', format: (v: any) => `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+    { key: 'last_month_revenue', label: 'Last Month Revenue', format: (v: any) => `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+  ]
+
+  const mediaSummaryColumns = [
+    { key: 'category', label: 'Category' },
+    { key: 'revenue_tier', label: 'Revenue Tier' },
+    { key: 'mid', label: 'Count' },
+  ]
+
+  const mediaDetailColumns = [
+    { key: 'medianame', label: 'Media Name' },
+    { key: 'pubname', label: 'Publisher Name' },
+    { key: 'revenue_tier', label: 'Revenue Tier' },
+    { key: 'category', label: 'Category' },
+    { key: 'projected_revenue', label: 'Projected Revenue', format: (v: any) => `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+    { key: 'last_month_revenue', label: 'Last Month Revenue', format: (v: any) => `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+  ]
+
+  const newZonesColumns = [
+    { key: 'zid', label: 'Zone ID' },
+    { key: 'zonename', label: 'Zone Name' },
+    { key: 'product', label: 'Product' },
+    { key: 'req_yesterday', label: 'Requests Yesterday', format: (v: any) => Number(v).toLocaleString() },
+    { key: 'rev_yesterday', label: 'Revenue Yesterday', format: (v: any) => `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+  ]
+
+  const highTrafficZonesColumns = [
+    { key: 'zid', label: 'Zone ID' },
+    { key: 'zonename', label: 'Zone Name' },
+    { key: 'req', label: 'Requests', format: (v: any) => Number(v).toLocaleString() },
+    { key: 'rev', label: 'Revenue', format: (v: any) => `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+  ]
+
+  const closeWonColumns = [
+    { key: 'month', label: 'Month' },
+    { key: 'year', label: 'Year' },
+    { key: 'pic', label: 'PIC' },
+    { key: 'mid', label: 'Media ID' },
+    { key: 'media_name', label: 'Media Name' },
+    { key: 'day_start', label: 'Start Date', format: (v: any) => { if (!v) return '-'; return formatDate(v.value || v) } },
+    { key: 'deal_stage', label: 'Deal Stage' },
+  ]
 
   // Clear all filters when switching tabs
   useEffect(() => {
@@ -197,12 +252,12 @@ export default function DailyOpsPublisherSummaryPage() {
           <TabsContent value="publisher-media" className="space-y-6">
 
             {loading ? (
-              <>
-                <TableSkeleton />
-                <TableSkeleton />
-                <TableSkeleton />
-                <TableSkeleton />
-              </>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6">
+                <LazyDataTableSkeleton columns={publisherSummaryColumns} rows={7} />
+                <LazyDataTableSkeleton columns={publisherDetailColumns} rows={7} />
+                <LazyDataTableSkeleton columns={mediaSummaryColumns} rows={7} />
+                <LazyDataTableSkeleton columns={mediaDetailColumns} rows={7} />
+              </div>
             ) : data ? (
               <>
                 {/* Publisher Row - 2 columns */}
@@ -210,11 +265,7 @@ export default function DailyOpsPublisherSummaryPage() {
                   {/* Publisher Summary */}
                   <LazyDataTable
                     title="Churn and Active Publishers"
-                    columns={[
-                      { key: 'category', label: 'Category' },
-                      { key: 'revenue_tier', label: 'Revenue Tier' },
-                      { key: 'pid', label: 'Count' },
-                    ]}
+                    columns={publisherSummaryColumns}
                     data={data.publisherSummary || []}
                     crossFilterColumns={['category', 'revenue_tier']}
                   />
@@ -222,21 +273,7 @@ export default function DailyOpsPublisherSummaryPage() {
                   {/* Publisher Detail */}
                   <LazyDataTable
                     title="Churn and Active Publishers - Detail"
-                    columns={[
-                      { key: 'pubname', label: 'Publisher Name' },
-                      { key: 'revenue_tier', label: 'Revenue Tier' },
-                      { key: 'category', label: 'Category' },
-                      {
-                        key: 'projected_revenue',
-                        label: 'Projected Revenue',
-                        format: (v) => `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                      },
-                      {
-                        key: 'last_month_revenue',
-                        label: 'Last Month Revenue',
-                        format: (v) => `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                      },
-                    ]}
+                    columns={publisherDetailColumns}
                     data={data.publisherDetail || []}
                     crossFilterColumns={['pubname', 'category', 'revenue_tier']}
                   />
@@ -247,11 +284,7 @@ export default function DailyOpsPublisherSummaryPage() {
                   {/* Media Summary */}
                   <LazyDataTable
                     title="Churn and Active Media"
-                    columns={[
-                      { key: 'category', label: 'Category' },
-                      { key: 'revenue_tier', label: 'Revenue Tier' },
-                      { key: 'mid', label: 'Count' },
-                    ]}
+                    columns={mediaSummaryColumns}
                     data={data.mediaSummary || []}
                     crossFilterColumns={['category', 'revenue_tier']}
                   />
@@ -259,22 +292,7 @@ export default function DailyOpsPublisherSummaryPage() {
                   {/* Media Detail */}
                   <LazyDataTable
                     title="Churn and Active Media - Detail"
-                    columns={[
-                      { key: 'medianame', label: 'Media Name' },
-                      { key: 'pubname', label: 'Publisher Name' },
-                      { key: 'revenue_tier', label: 'Revenue Tier' },
-                      { key: 'category', label: 'Category' },
-                      {
-                        key: 'projected_revenue',
-                        label: 'Projected Revenue',
-                        format: (v) => `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                      },
-                      {
-                        key: 'last_month_revenue',
-                        label: 'Last Month Revenue',
-                        format: (v) => `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                      },
-                    ]}
+                    columns={mediaDetailColumns}
                     data={data.mediaDetail || []}
                     crossFilterColumns={['medianame', 'pubname', 'category', 'revenue_tier']}
                   />
@@ -286,30 +304,16 @@ export default function DailyOpsPublisherSummaryPage() {
           {/* Tab 2: Zone Operations */}
           <TabsContent value="zones" className="space-y-6">
             {loading ? (
-              <>
-                <TableSkeleton />
-                <TableSkeleton />
-              </>
+              <div className="grid grid-cols-1 gap-6">
+                <LazyDataTableSkeleton columns={newZonesColumns} rows={7} />
+                <LazyDataTableSkeleton columns={highTrafficZonesColumns} rows={7} />
+              </div>
             ) : data ? (
               <div className="grid grid-cols-1 gap-6">
                 {/* New Zones Active */}
                 <LazyDataTable
                   title="New Zones Active"
-                  columns={[
-                    { key: 'zid', label: 'Zone ID' },
-                    { key: 'zonename', label: 'Zone Name' },
-                    { key: 'product', label: 'Product' },
-                    {
-                      key: 'req_yesterday',
-                      label: 'Requests Yesterday',
-                      format: (v) => Number(v).toLocaleString()
-                    },
-                    {
-                      key: 'rev_yesterday',
-                      label: 'Revenue Yesterday',
-                      format: (v) => `$${Number(v).toFixed(2)}`
-                    },
-                  ]}
+                  columns={newZonesColumns}
                   data={data.newZones || []}
                   crossFilterColumns={['zid', 'zonename', 'product']}
                 />
@@ -317,25 +321,7 @@ export default function DailyOpsPublisherSummaryPage() {
                 {/* High Traffic Zones */}
                 <LazyDataTable
                   title="50k Ad Request Zones (Yesterday, >50k requests)"
-                  columns={[
-                    { key: 'zid', label: 'Zone ID' },
-                    { key: 'zonename', label: 'Zone Name' },
-                    {
-                      key: 'req',
-                      label: 'Requests',
-                      format: (v) => Number(v).toLocaleString()
-                    },
-                    {
-                      key: 'rev',
-                      label: 'Revenue',
-                      format: (v) => `$${Number(v).toFixed(2)}`
-                    },
-                    {
-                      key: 'request_CPM',
-                      label: 'Request CPM',
-                      format: (v) => v ? `$${Number(v).toFixed(2)}` : 'N/A'
-                    },
-                  ]}
+                  columns={highTrafficZonesColumns}
                   data={data.highTrafficZones || []}
                   crossFilterColumns={['zid', 'zonename']}
                 />
@@ -346,52 +332,11 @@ export default function DailyOpsPublisherSummaryPage() {
           {/* Tab 3: Sales Tracking */}
           <TabsContent value="sales" className="space-y-6">
             {loading ? (
-              <TableSkeleton />
+              <LazyDataTableSkeleton columns={closeWonColumns} rows={7} />
             ) : data ? (
               <LazyDataTable
                 title="Close Won Cases"
-                columns={[
-                  { key: 'month', label: 'Month' },
-                  { key: 'year', label: 'Year' },
-                  { key: 'pic', label: 'PIC' },
-                  { key: 'mid', label: 'Media ID' },
-                  { key: 'media_name', label: 'Media Name' },
-                  {
-                    key: 'day_start',
-                    label: 'Start Date',
-                    format: (v) => {
-                      if (!v) return '-'
-                      // Handle BigQueryDate object or string
-                      const dateStr = v.value || v
-                      return new Date(dateStr).toLocaleDateString()
-                    }
-                  },
-                  {
-                    key: 'close_won_day',
-                    label: 'Close Won Date',
-                    format: (v) => {
-                      if (!v) return '-'
-                      // Handle BigQueryDate object or string
-                      const dateStr = v.value || v
-                      return new Date(dateStr).toLocaleDateString()
-                    }
-                  },
-                  {
-                    key: 'total_req',
-                    label: 'Total Requests',
-                    format: (v) => Number(v).toLocaleString()
-                  },
-                  {
-                    key: 'total_profit',
-                    label: 'Total Profit',
-                    format: (v) => `$${Number(v).toFixed(2)}`
-                  },
-                  {
-                    key: 'total_revenue',
-                    label: 'Total Revenue',
-                    format: (v) => `$${Number(v).toFixed(2)}`
-                  },
-                ]}
+                columns={closeWonColumns}
                 data={data.closeWonCases || []}
                 crossFilterColumns={['pic', 'mid', 'media_name']}
               />

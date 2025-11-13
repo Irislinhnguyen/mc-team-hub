@@ -9,7 +9,8 @@ import React, { useState, useEffect, useRef } from 'react'
 import { PageHeader } from '../../../components/performance-tracker/PageHeader'
 import { Skeleton } from '../../../../src/components/ui/skeleton'
 import TeamSetupCardSkeleton from '../../../components/performance-tracker/skeletons/TeamSetupCardSkeleton'
-import TableSkeleton from '../../../components/performance-tracker/skeletons/TableSkeleton'
+import { DynamicTableSkeleton } from '../../../components/performance-tracker/skeletons/DynamicTableSkeleton'
+import type { ColumnConfig } from '../../../../lib/types/performanceTracker'
 
 interface PicAssignment {
   pic_name: string
@@ -23,6 +24,14 @@ const TEAMS = [
   { id: 'WEB_GTI', name: 'Indonesia Web Team' },
   { id: 'WEB_GV', name: 'Vietnam Web Team' },
   { id: 'APP', name: 'App Team' },
+]
+
+// Table column definitions
+const tableColumns: ColumnConfig[] = [
+  { key: 'pic_name', label: 'PIC Name' },
+  { key: 'team', label: 'Team' },
+  { key: 'updated_at', label: 'Last Updated' },
+  { key: 'updated_by', label: 'Updated By' },
 ]
 
 export default function TeamSetupPage() {
@@ -208,7 +217,7 @@ export default function TeamSetupPage() {
           </div>
 
           {/* Table Skeleton */}
-          <TableSkeleton rows={7} />
+          <DynamicTableSkeleton columns={tableColumns} rows={7} showPagination={false} />
         </div>
       </div>
     )

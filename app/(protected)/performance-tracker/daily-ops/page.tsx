@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { MetricCard } from '../../../components/performance-tracker/MetricCard'
 import MetricCardSkeleton from '../../../components/performance-tracker/skeletons/MetricCardSkeleton'
 import { LazyDataTable } from '../../../components/performance-tracker/LazyDataTable'
-import TableSkeleton from '../../../components/performance-tracker/skeletons/TableSkeleton'
+import { LazyDataTableSkeleton } from '../../../components/performance-tracker/skeletons/LazyDataTableSkeleton'
 import { AnalyticsPageLayout } from '../../../components/performance-tracker/AnalyticsPageLayout'
 import { MetadataFilterPanel } from '../../../components/performance-tracker/MetadataFilterPanel'
 import { useCrossFilter } from '../../../contexts/CrossFilterContext'
-import { fetchAnalyticsData } from '../../../../lib/api/analytics'
+import { useDailyOps } from '../../../../lib/hooks/queries/useDailyOps'
+import { useClientSideFilterMulti } from '../../../../lib/hooks/useClientSideFilter'
 
 /**
  * REFACTORED VERSION - Daily Ops Report Page
@@ -16,10 +17,11 @@ import { fetchAnalyticsData } from '../../../../lib/api/analytics'
  * Changes from original:
  * - Uses AnalyticsPageLayout for consistent structure
  * - Uses MetadataFilterPanel (eliminates ~80 lines of metadata handling)
- * - Uses fetchAnalyticsData API helper
+ * - Uses React Query for caching (useDailyOps hook)
  * - Added export functionality (contentRef)
  * - Added proper loading skeletons for metrics
  * - Extended metadata API to include rev_flag filter
+ * - Filter persistence via localStorage
  * - Cleaner, more maintainable code
  *
  * Cross-filter logic: KEPT AS-IS (not refactored per plan)
@@ -38,166 +40,59 @@ interface DailyOpsData {
 
 export default function DailyOpsPageRefactored() {
   const contentRef = useRef<HTMLDivElement>(null)
-  const [loading, setLoading] = useState(false)
   const [currentFilters, setCurrentFilters] = useState<Record<string, any>>({})
-  const [data, setData] = useState<DailyOpsData | null>(null)
-  const [shouldLoadTables, setShouldLoadTables] = useState(false)
-
-  // Lazy loading state for tables
-  const [topMoversData, setTopMoversData] = useState<any[]>([])
-  const [topMoversTotal, setTopMoversTotal] = useState(0)
-  const [topMoversLoading, setTopMoversLoading] = useState(false)
-  const [topMoversOffset, setTopMoversOffset] = useState(0)
-
-  const [topMoversDetailsData, setTopMoversDetailsData] = useState<any[]>([])
-  const [topMoversDetailsTotal, setTopMoversDetailsTotal] = useState(0)
-  const [topMoversDetailsLoading, setTopMoversDetailsLoading] = useState(false)
-  const [topMoversDetailsOffset, setTopMoversDetailsOffset] = useState(0)
-
-  // Cross-filter integration (kept as-is from original)
   const { crossFilters } = useCrossFilter()
-  const prevCrossFilterFieldsRef = useRef<string[]>([])
 
-  useEffect(() => {
-    setCurrentFilters(prev => {
-      const cleaned = { ...prev }
-      prevCrossFilterFieldsRef.current.forEach(field => {
-        delete cleaned[field]
-      })
+  // Stabilize setCurrentFilters to prevent infinite loops
+  const stableSetCurrentFilters = useCallback((filters: Record<string, any>) => {
+    setCurrentFilters(filters)
+  }, [])
 
-      // Group cross-filters by field to support multiple values
-      const newCrossFilterValues = crossFilters.reduce((acc, filter) => {
-        if (acc[filter.field]) {
-          // Field already exists - convert to array or append to existing array
-          if (Array.isArray(acc[filter.field])) {
-            acc[filter.field].push(filter.value)
-          } else {
-            acc[filter.field] = [acc[filter.field], filter.value]
-          }
-        } else {
-          // First value for this field
-          acc[filter.field] = filter.value
-        }
-        return acc
-      }, {} as Record<string, any>)
+  // Use React Query hook for data fetching and caching
+  const { data: rawData, isLoading: loading, error } = useDailyOps(currentFilters)
 
-      prevCrossFilterFieldsRef.current = crossFilters.map(f => f.field)
+  // Apply client-side filtering for cross-filters (instant, no API call)
+  const { filteredData: filteredTopMovers } = useClientSideFilterMulti(
+    rawData?.topMovers,
+    crossFilters
+  )
+  const { filteredData: filteredTopMoversDetails } = useClientSideFilterMulti(
+    rawData?.topMoversDetails,
+    crossFilters
+  )
 
-      return { ...cleaned, ...newCrossFilterValues }
-    })
-  }, [crossFilters])
-
-  // Lazy loading function for Top Movers
-  const loadTopMoversBatch = useCallback(async (offset: number) => {
-    setTopMoversLoading(true)
-    try {
-      const response = await fetch('/api/performance-tracker/daily-ops-paginated', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filters: currentFilters,
-          queryType: 'topMovers',
-          offset,
-          limit: 500
-        }),
-      })
-
-      if (!response.ok) throw new Error('Failed to fetch top movers data')
-      const result = await response.json()
-
-      if (result.status === 'success') {
-        setTopMoversData(prev => offset === 0 ? result.data.rows : [...prev, ...result.data.rows])
-        setTopMoversTotal(result.data.totalCount)
-        setTopMoversOffset(offset + result.data.rows.length)
-      }
-    } catch (error) {
-      console.error('Error loading top movers:', error)
-    } finally {
-      setTopMoversLoading(false)
+  // Combine filtered data
+  const data = useMemo(() => {
+    if (!rawData) return undefined
+    return {
+      metrics: rawData.metrics,
+      topMovers: filteredTopMovers,
+      topMoversDetails: filteredTopMoversDetails,
     }
-  }, [currentFilters])
+  }, [filteredTopMovers, filteredTopMoversDetails, rawData])
 
-  const loadMoreTopMovers = useCallback(async () => {
-    if (topMoversOffset < topMoversTotal) {
-      await loadTopMoversBatch(topMoversOffset)
-    }
-  }, [topMoversOffset, topMoversTotal, loadTopMoversBatch])
+  // Column configurations for skeletons
+  const topMoversColumns = [
+    { key: 'pic', label: 'pic' },
+    { key: 'zonename', label: 'zonename' },
+    { key: 'req_flag', label: 'req_flag' },
+    { key: 'paid_flag', label: 'paid_flag' },
+    { key: 'cpm_flag', label: 'cpm_flag' },
+    { key: 'rev_flag', label: 'rev_flag' },
+  ]
 
-  // Lazy loading function for Top Movers Details
-  const loadTopMoversDetailsBatch = useCallback(async (offset: number) => {
-    setTopMoversDetailsLoading(true)
-    try {
-      const response = await fetch('/api/performance-tracker/daily-ops-paginated', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filters: currentFilters,
-          queryType: 'topMoversDetails',
-          offset,
-          limit: 500
-        }),
-      })
-
-      if (!response.ok) throw new Error('Failed to fetch top movers details data')
-      const result = await response.json()
-
-      if (result.status === 'success') {
-        setTopMoversDetailsData(prev => offset === 0 ? result.data.rows : [...prev, ...result.data.rows])
-        setTopMoversDetailsTotal(result.data.totalCount)
-        setTopMoversDetailsOffset(offset + result.data.rows.length)
-      }
-    } catch (error) {
-      console.error('Error loading top movers details:', error)
-    } finally {
-      setTopMoversDetailsLoading(false)
-    }
-  }, [currentFilters])
-
-  const loadMoreTopMoversDetails = useCallback(async () => {
-    if (topMoversDetailsOffset < topMoversDetailsTotal) {
-      await loadTopMoversDetailsBatch(topMoversDetailsOffset)
-    }
-  }, [topMoversDetailsOffset, topMoversDetailsTotal, loadTopMoversDetailsBatch])
-
-  // Fetch data when filters change
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true)
-      try {
-        // Reset lazy loading state
-        setTopMoversData([])
-        setTopMoversOffset(0)
-        setTopMoversDetailsData([])
-        setTopMoversDetailsOffset(0)
-
-        const result = await fetchAnalyticsData<DailyOpsData>(
-          '/api/performance-tracker/daily-ops',
-          currentFilters
-        )
-        setData(result)
-
-        // Enable table loading after main data is loaded
-        setShouldLoadTables(true)
-      } catch (error) {
-        console.error('Error fetching daily ops data:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadData()
-  }, [currentFilters, loadTopMoversBatch, loadTopMoversDetailsBatch])
-
-  // Load tables when data is ready
-  useEffect(() => {
-    if (shouldLoadTables && data) {
-      setTimeout(() => {
-        loadTopMoversBatch(0)
-        loadTopMoversDetailsBatch(0)
-      }, 100)
-      setShouldLoadTables(false) // Reset flag
-    }
-  }, [shouldLoadTables, data, loadTopMoversBatch, loadTopMoversDetailsBatch])
+  const topMoversDetailsColumns = [
+    { key: 'zid', label: 'zid' },
+    { key: 'zonename', label: 'zonename' },
+    { key: 'req_7d_avg', label: 'req_7d_avg' },
+    { key: 'req_yesterday', label: 'req_yesterday' },
+    { key: 'paid_7d_avg', label: 'paid_7d_avg' },
+    { key: 'paid_yesterday', label: 'paid_yesterday' },
+    { key: 'cpm_7d_avg', label: 'cpm_7d_avg' },
+    { key: 'cpm_yesterday', label: 'cpm_yesterday' },
+    { key: 'rev_7d_avg', label: 'rev_7d_avg' },
+    { key: 'rev_yesterday', label: 'rev_yesterday' },
+  ]
 
   return (
     <AnalyticsPageLayout title="Daily Ops Report (CS)" showExport={true} contentRef={contentRef}>
@@ -205,7 +100,7 @@ export default function DailyOpsPageRefactored() {
       <MetadataFilterPanel
         page="daily-ops"
         filterFields={['team', 'pic', 'rev_flag']}
-        onFilterChange={setCurrentFilters}
+        onFilterChange={stableSetCurrentFilters}
         isLoading={loading}
       />
 
@@ -245,55 +140,29 @@ export default function DailyOpsPageRefactored() {
         </div>
       ) : null}
 
-      {/* Top Movers Table with Lazy Loading */}
+      {/* Top Movers Table - Client-side filtered */}
       {loading && !data ? (
-        <TableSkeleton rows={10} />
-      ) : (
+        <LazyDataTableSkeleton columns={topMoversColumns} rows={10} />
+      ) : data?.topMovers ? (
         <LazyDataTable
           title="Top movers"
-          columns={[
-            { key: 'pic', label: 'pic' },
-            { key: 'zonename', label: 'zonename' },
-            { key: 'req_flag', label: 'req_flag' },
-            { key: 'paid_flag', label: 'paid_flag' },
-            { key: 'cpm_flag', label: 'cpm_flag' },
-            { key: 'rev_flag', label: 'rev_flag' },
-          ]}
-          data={topMoversData}
+          columns={topMoversColumns}
+          data={data.topMovers}
           crossFilterColumns={['pic', 'zonename']}
-          onLoadMore={loadMoreTopMovers}
-          hasMore={topMoversOffset < topMoversTotal}
-          isLoading={topMoversLoading}
-          totalCount={topMoversTotal}
         />
-      )}
+      ) : null}
 
-      {/* Top Movers - Details Table with Lazy Loading */}
+      {/* Top Movers - Details Table - Client-side filtered */}
       {loading && !data ? (
-        <TableSkeleton rows={10} />
-      ) : (
+        <LazyDataTableSkeleton columns={topMoversDetailsColumns} rows={10} />
+      ) : data?.topMoversDetails ? (
         <LazyDataTable
           title="Top movers - Details"
-          columns={[
-            { key: 'zid', label: 'zid' },
-            { key: 'zonename', label: 'zonename' },
-            { key: 'req_7d_avg', label: 'req_7d_avg' },
-            { key: 'req_yesterday', label: 'req_yesterday' },
-            { key: 'paid_7d_avg', label: 'paid_7d_avg' },
-            { key: 'paid_yesterday', label: 'paid_yesterday' },
-            { key: 'cpm_7d_avg', label: 'cpm_7d_avg' },
-            { key: 'cpm_yesterday', label: 'cpm_yesterday' },
-            { key: 'rev_7d_avg', label: 'rev_7d_avg' },
-            { key: 'rev_yesterday', label: 'rev_yesterday' },
-          ]}
-          data={topMoversDetailsData}
+          columns={topMoversDetailsColumns}
+          data={data.topMoversDetails}
           crossFilterColumns={['zid', 'zonename']}
-          onLoadMore={loadMoreTopMoversDetails}
-          hasMore={topMoversDetailsOffset < topMoversDetailsTotal}
-          isLoading={topMoversDetailsLoading}
-          totalCount={topMoversDetailsTotal}
         />
-      )}
+      ) : null}
     </AnalyticsPageLayout>
   )
 }

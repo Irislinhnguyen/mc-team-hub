@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys, cacheConfig } from '../config/queryClient'
 
 export interface MetadataOptions {
   pics: Array<{ label: string; value: string }>
@@ -14,6 +15,16 @@ export interface MetadataOptions {
   months: Array<{ label: string; value: string }>
   years: Array<{ label: string; value: string }>
   teams: Array<{ label: string; value: string }>
+  // GCPP Check specific fields
+  partners?: Array<{ label: string; value: string }>
+  markets?: Array<{ label: string; value: string }>
+  publishers?: Array<{ label: string; value: string }>
+  domain_app_ids?: Array<{ label: string; value: string }>
+  app_names?: Array<{ label: string; value: string }>
+  pub_size_categories?: Array<{ label: string; value: string }>
+  categories?: Array<{ label: string; value: string }>
+  scenarios?: Array<{ label: string; value: string }>
+  performances?: Array<{ label: string; value: string }>
 }
 
 interface UseAnalyticsMetadataReturn {
@@ -26,6 +37,10 @@ interface UseAnalyticsMetadataReturn {
 /**
  * Custom hook to fetch and manage analytics metadata (filter options)
  *
+ * Now uses React Query for automatic caching and background refetching.
+ * Metadata is cached for 24 hours since it rarely changes.
+ *
+ * @param endpoint - Optional custom metadata endpoint (defaults to /api/performance-tracker/metadata)
  * @returns {UseAnalyticsMetadataReturn} Metadata state and refetch function
  *
  * @example
@@ -35,17 +50,13 @@ interface UseAnalyticsMetadataReturn {
  * if (loading) return <FilterPanelSkeleton />
  * return <FilterPanel options={metadata} />
  */
-export function useAnalyticsMetadata(): UseAnalyticsMetadataReturn {
-  const [metadata, setMetadata] = useState<MetadataOptions | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchMetadata = async () => {
-    setLoading(true)
-    setError(null)
-
-    try {
-      const response = await fetch('/api/performance-tracker/metadata')
+export function useAnalyticsMetadata(
+  endpoint: string = '/api/performance-tracker/metadata'
+): UseAnalyticsMetadataReturn {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: queryKeys.metadata(endpoint),
+    queryFn: async () => {
+      const response = await fetch(endpoint)
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: Failed to fetch metadata`)
@@ -54,29 +65,21 @@ export function useAnalyticsMetadata(): UseAnalyticsMetadataReturn {
       const result = await response.json()
 
       if (result.status === 'ok') {
-        setMetadata(result.data)
-        setError(null)
+        return result.data as MetadataOptions
       } else {
         throw new Error(result.message || 'Unknown error fetching metadata')
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load filters'
-      console.error('Error fetching metadata:', errorMessage)
-      setError(errorMessage)
-      setMetadata(null)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchMetadata()
-  }, [])
+    },
+    // Metadata rarely changes, cache aggressively
+    staleTime: cacheConfig.metadata.staleTime,
+    gcTime: cacheConfig.metadata.gcTime,
+    retry: 2,
+  })
 
   return {
-    metadata,
-    loading,
-    error,
-    refetch: fetchMetadata
+    metadata: data ?? null,
+    loading: isLoading,
+    error: error ? (error instanceof Error ? error.message : 'Failed to load filters') : null,
+    refetch: () => { refetch() }
   }
 }
