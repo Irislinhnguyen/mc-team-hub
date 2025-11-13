@@ -174,8 +174,8 @@ function MarketOverviewPageContent() {
   }
 
 
-  // Prepare data for stacked bar chart
-  const prepareStackedBarData = () => {
+  // Prepare data for stacked bar chart - memoized to prevent unnecessary recalculations
+  const stackedBarData = useMemo(() => {
     if (!data?.marketShareByMarketPartner) return { data: [], categories: [] }
 
     const groupedByMarket: Record<string, any> = {}
@@ -210,10 +210,10 @@ function MarketOverviewPageContent() {
     }))
 
     return { data: chartData, categories }
-  }
+  }, [data])
 
-  // Prepare time series data
-  const prepareTimeSeriesData = () => {
+  // Prepare time series data - memoized to prevent unnecessary recalculations
+  const timeSeriesData = useMemo(() => {
     if (!data?.impressionsTimeSeries) return { data: [], lines: [] }
 
     const groupedByDate: Record<string, any> = {}
@@ -243,10 +243,10 @@ function MarketOverviewPageContent() {
     }))
 
     return { data: chartData, lines }
-  }
+  }, [data])
 
-  // Prepare pie chart data - show all markets for selected partner, with highlighting for filtered markets
-  const preparePieChartData = () => {
+  // Prepare pie chart data - show all markets for selected partner, with highlighting for filtered markets - memoized
+  const pieChartResult = useMemo(() => {
     if (!data?.marketDistribution) return { data: [], highlightMarkets: [] }
 
     // Filter data for selected partner only
@@ -275,18 +275,18 @@ function MarketOverviewPageContent() {
     }
 
     return { data: chartData, highlightMarkets }
-  }
+  }, [data, selectedPartnerForPie, filters.market])
 
-  const stackedBarData = prepareStackedBarData()
-  const timeSeriesData = prepareTimeSeriesData()
-  const pieChartResult = preparePieChartData()
   const pieChartData = pieChartResult.data
   const highlightMarkets = pieChartResult.highlightMarkets
-  const partnerColorMap = getPartnerColorMap(
-    stackedBarData.categories
-      .filter(c => c && c.name && c.name.trim() !== '')
-      .map(c => c.name)
-  )
+
+  const partnerColorMap = useMemo(() => {
+    return getPartnerColorMap(
+      stackedBarData.categories
+        .filter(c => c && c.name && c.name.trim() !== '')
+        .map(c => c.name)
+    )
+  }, [stackedBarData.categories])
 
   return (
     <AnalyticsPageLayout
