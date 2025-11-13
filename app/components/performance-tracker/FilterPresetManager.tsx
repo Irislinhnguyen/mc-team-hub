@@ -12,6 +12,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '../../../src/components/ui/button';
+import { normalizeFilterValue } from '../../../lib/utils/filterHelpers';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -376,7 +377,7 @@ export function FilterPresetManager({
               <Bookmark className="h-4 w-4 shrink-0" />
               {loadedPreset ? (
                 <>
-                  <span className="truncate">{loadedPreset.name}</span>
+                  <span className="truncate">{normalizeFilterValue(loadedPreset.name)}</span>
                   {hasUnsavedChanges && <span className="text-orange-500 shrink-0">*</span>}
                   {loadedPreset.is_default && <Star className="h-3 w-3 shrink-0 fill-yellow-400 text-yellow-400" />}
                 </>
@@ -410,7 +411,7 @@ export function FilterPresetManager({
                         >
                           {preset.is_default && <Star className="h-3.5 w-3.5 shrink-0 fill-yellow-400 text-yellow-400" />}
                           <span className={`truncate ${isActive ? 'font-semibold text-blue-600' : ''}`}>
-                            {preset.name}
+                            {normalizeFilterValue(preset.name)}
                           </span>
                         </span>
                         <Popover
@@ -512,7 +513,7 @@ export function FilterPresetManager({
                       <span className="flex items-center gap-2">
                         <Share2 className={`h-3 w-3 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
                         <span className={isActive ? 'font-semibold text-blue-600' : ''}>
-                          {preset.name}
+                          {normalizeFilterValue(preset.name)}
                         </span>
                       </span>
                       <span className="text-xs text-gray-500">{preset.owner_email}</span>

@@ -113,14 +113,14 @@ export function MetadataFilterPanel({
 
   return (
     <div className="space-y-4">
-      {/* 🚧 TEMPORARILY DISABLED FilterPresetManager for debugging */}
-      {/* <FilterPresetManager
+      {/* ✨ Filter Preset Manager - Renders immediately (no blocking) */}
+      <FilterPresetManager
         page={page}
         currentFilters={internalFilters}
         currentCrossFilters={exportCrossFilters()}
         onLoadPreset={handleLoadPreset}
         presetIdFromUrl={presetIdFromUrl}
-      /> */}
+      />
 
       {/* Original Filter Panel - Shows skeleton while metadata loads */}
       {metadataLoading ? (

@@ -321,14 +321,14 @@ function MarketOverviewPageContent() {
         presetIdFromUrl={presetIdFromUrl || undefined}
       />
 
-      {/* TEST 4.5: Show test message */}
+      {/* TEST 4.6: Show test message */}
       <div className="p-8 text-center">
-        <p className="text-lg font-bold">TEST 4.5: Disabled FilterPresetManager</p>
+        <p className="text-lg font-bold">TEST 4.6: FilterPresetManager normalized</p>
         <p className="text-sm text-gray-600 mt-2">Selected Date: {selectedDate || 'Loading...'}</p>
         <p className="text-sm text-gray-600">Has Data: {data ? 'Yes' : 'No'}</p>
         {data && (
           <>
-            <p className="text-sm text-gray-600">✓ Ready to add charts!</p>
+            <p className="text-sm text-gray-600">✓ Ready to restore full page!</p>
           </>
         )}
       </div>
