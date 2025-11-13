@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import BigQueryService from '../../../../lib/services/bigquery'
+import { normalizeFilterValue } from '../../../../lib/utils/filterHelpers'
 
 export async function GET() {
   try {
@@ -94,15 +95,36 @@ export async function GET() {
     return NextResponse.json({
       status: 'ok',
       data: {
-        teams: teams.map((row: any) => ({ label: row.team, value: row.team })),
-        partners: partners.map((row: any) => ({ label: row.partner, value: row.partner })),
-        markets: markets.map((row: any) => ({ label: row.market, value: row.market })),
-        publishers: publishers.map((row: any) => ({ label: row.publisher, value: row.publisher })),
-        domain_app_ids: domainAppIds.map((row: any) => ({ label: row.domain_app_id, value: row.domain_app_id })),
-        app_names: appNames.map((row: any) => ({ label: row.app_name, value: row.app_name })),
+        teams: teams.map((row: any) => {
+          const value = normalizeFilterValue(row.team)
+          return { label: value, value }
+        }),
+        partners: partners.map((row: any) => {
+          const value = normalizeFilterValue(row.partner)
+          return { label: value, value }
+        }),
+        markets: markets.map((row: any) => {
+          const value = normalizeFilterValue(row.market)
+          return { label: value, value }
+        }),
+        publishers: publishers.map((row: any) => {
+          const value = normalizeFilterValue(row.publisher)
+          return { label: value, value }
+        }),
+        domain_app_ids: domainAppIds.map((row: any) => {
+          const value = normalizeFilterValue(row.domain_app_id)
+          return { label: value, value }
+        }),
+        app_names: appNames.map((row: any) => {
+          const value = normalizeFilterValue(row.app_name)
+          return { label: value, value }
+        }),
         pub_size_categories: pubCategories,
         categories: pubCategories,  // Same as pub_size_categories
-        scenarios: scenarios.map((row: any) => ({ label: row.scenario, value: row.scenario })),
+        scenarios: scenarios.map((row: any) => {
+          const value = normalizeFilterValue(row.scenario)
+          return { label: value, value }
+        }),
         performances: performanceLevels
       }
     })

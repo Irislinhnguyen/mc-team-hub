@@ -311,25 +311,29 @@ function MarketOverviewPageContent() {
         />
       </div>
 
-      {/* TEST 4.3: Remove MetadataFilterPanel but keep data fetching */}
+      {/* TEST 4.4: MetadataFilterPanel with API normalization fix */}
+      <MetadataFilterPanel
+        page="gcpp-market-overview"
+        filterFields={['team', 'partner', 'market']}
+        onFilterChange={setMetadataFilters}
+        isLoading={loading}
+        metadataEndpoint="/api/gcpp-check/metadata"
+        presetIdFromUrl={presetIdFromUrl || undefined}
+      />
+
+      {/* TEST 4.4: Show test message */}
       <div className="p-8 text-center">
-        <p className="text-lg font-bold">TEST 4.3: Data prep test (MetadataFilterPanel removed)</p>
+        <p className="text-lg font-bold">TEST 4.4: MetadataFilterPanel + API normalization fix</p>
         <p className="text-sm text-gray-600 mt-2">Selected Date: {selectedDate || 'Loading...'}</p>
         <p className="text-sm text-gray-600">Has Data: {data ? 'Yes' : 'No'}</p>
-        <p className="text-sm text-gray-600">Loading: {loading ? 'Yes' : 'No'}</p>
         {data && (
-          <div className="mt-4 text-left max-w-2xl mx-auto">
-            <p className="text-sm font-semibold">Data Prep Results:</p>
-            <p className="text-sm text-gray-600">✓ Categories: {stackedBarData.categories.length} items</p>
-            <p className="text-sm text-gray-600">✓ Lines: {timeSeriesData.lines.length} items</p>
-            <p className="text-sm text-gray-600">✓ Pie data: {pieChartData.length} items</p>
-            <p className="text-sm text-gray-600 mt-2">Sample category: {JSON.stringify(stackedBarData.categories[0])}</p>
-            <p className="text-sm text-gray-600">Sample line: {JSON.stringify(timeSeriesData.lines[0])}</p>
-          </div>
+          <>
+            <p className="text-sm text-gray-600">✓ Ready to add charts!</p>
+          </>
         )}
       </div>
 
-      {/* DISABLED FOR TEST 4.3: MetadataFilterPanel and all charts/tables */}
+      {/* DISABLED FOR TEST 4.4: All charts and tables */}
     </AnalyticsPageLayout>
   )
 }
