@@ -311,30 +311,25 @@ function MarketOverviewPageContent() {
         />
       </div>
 
-      {/* TEST 4.2: Add MetadataFilterPanel with data prep fixes */}
-      <MetadataFilterPanel
-        page="gcpp-market-overview"
-        filterFields={['team', 'partner', 'market']}
-        onFilterChange={setMetadataFilters}
-        isLoading={loading}
-        metadataEndpoint="/api/gcpp-check/metadata"
-        presetIdFromUrl={presetIdFromUrl || undefined}
-      />
-
-      {/* TEST 4.2: Show test message */}
+      {/* TEST 4.3: Remove MetadataFilterPanel but keep data fetching */}
       <div className="p-8 text-center">
-        <p className="text-lg font-bold">TEST 4.2: MetadataFilterPanel + Data prep fixes</p>
+        <p className="text-lg font-bold">TEST 4.3: Data prep test (MetadataFilterPanel removed)</p>
         <p className="text-sm text-gray-600 mt-2">Selected Date: {selectedDate || 'Loading...'}</p>
         <p className="text-sm text-gray-600">Has Data: {data ? 'Yes' : 'No'}</p>
+        <p className="text-sm text-gray-600">Loading: {loading ? 'Yes' : 'No'}</p>
         {data && (
-          <>
-            <p className="text-sm text-gray-600">Categories count: {stackedBarData.categories.length}</p>
-            <p className="text-sm text-gray-600">Lines count: {timeSeriesData.lines.length}</p>
-          </>
+          <div className="mt-4 text-left max-w-2xl mx-auto">
+            <p className="text-sm font-semibold">Data Prep Results:</p>
+            <p className="text-sm text-gray-600">✓ Categories: {stackedBarData.categories.length} items</p>
+            <p className="text-sm text-gray-600">✓ Lines: {timeSeriesData.lines.length} items</p>
+            <p className="text-sm text-gray-600">✓ Pie data: {pieChartData.length} items</p>
+            <p className="text-sm text-gray-600 mt-2">Sample category: {JSON.stringify(stackedBarData.categories[0])}</p>
+            <p className="text-sm text-gray-600">Sample line: {JSON.stringify(timeSeriesData.lines[0])}</p>
+          </div>
         )}
       </div>
 
-      {/* DISABLED FOR TEST 4.2: All charts and tables */}
+      {/* DISABLED FOR TEST 4.3: MetadataFilterPanel and all charts/tables */}
     </AnalyticsPageLayout>
   )
 }
