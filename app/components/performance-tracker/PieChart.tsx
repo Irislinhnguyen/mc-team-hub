@@ -222,4 +222,4 @@ function PieChartBase({
   )
 }
 
-export const PieChart = withExport(PieChartBase, 'PieChart')
+export const PieChart = withExport(PieChartBase)

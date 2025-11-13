@@ -238,4 +238,4 @@ function StackedBarChartBase({
   )
 }
 
-export const StackedBarChart = withExport(StackedBarChartBase, 'StackedBarChart')
+export const StackedBarChart = withExport(StackedBarChartBase)
