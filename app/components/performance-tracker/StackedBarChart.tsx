@@ -221,7 +221,7 @@ function StackedBarChartBase({
               }}
               iconType="rect"
             />
-            {categories.filter(c => c && c.dataKey).map((category, index) => (
+            {categories.filter(c => c && c.dataKey && c.dataKey.trim() !== '').map((category, index) => (
               <Bar
                 key={category.dataKey}
                 dataKey={category.dataKey}

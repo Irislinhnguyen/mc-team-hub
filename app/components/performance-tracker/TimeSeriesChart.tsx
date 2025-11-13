@@ -20,6 +20,7 @@ interface TimeSeriesChartProps {
   height?: number
   enableCrossFilter?: boolean
   dateKey?: string
+  crossFilterField?: string
   customYAxisFormatter?: (value: any) => string
   customTooltipFormatter?: (value: any, name: string) => [string, string]
 }
@@ -31,6 +32,7 @@ function TimeSeriesChartBase({
   height = chartSizes.heights.standard,
   enableCrossFilter = false,
   dateKey = 'date',
+  crossFilterField,
   customYAxisFormatter,
   customTooltipFormatter: customTooltipFormatterProp
 }: TimeSeriesChartProps) {
@@ -61,20 +63,45 @@ function TimeSeriesChartBase({
   const handlePointClick = (clickData: any) => {
     if (!isEnabled) return
 
-    const payload = clickData.activePayload?.[0]?.payload
-    if (!payload) return
+    const activePayload = clickData.activePayload
+    if (!activePayload || activePayload.length === 0) return
 
-    // Try to get rawDate first (ISO format), fall back to dateKey
-    const rawDateValue = payload.rawDate || payload[dateKey]
-    const displayValue = payload[dateKey]
+    const payload = activePayload[0]?.payload
+    const lineDataKey = activePayload[0]?.dataKey
 
-    if (rawDateValue) {
+    // Filter by clicked line (e.g., partner) if crossFilterField is provided
+    if (crossFilterField && lineDataKey) {
       addCrossFilter({
-        field: 'date',
-        value: String(rawDateValue), // Use ISO format for backend
-        label: `date: ${displayValue}`, // Use formatted date for display
+        field: crossFilterField,
+        value: String(lineDataKey),
+        label: `${crossFilterField}: ${lineDataKey}`,
       }, isCtrlPressed)
+    } else {
+      // Default: filter by date
+      const rawDateValue = payload.rawDate || payload[dateKey]
+      const displayValue = payload[dateKey]
+
+      if (rawDateValue) {
+        addCrossFilter({
+          field: 'date',
+          value: String(rawDateValue),
+          label: `date: ${displayValue}`,
+        }, isCtrlPressed)
+      }
     }
+  }
+
+  const handleLegendClick = (legendItem: any) => {
+    if (!isEnabled || !crossFilterField) return
+
+    const partnerName = legendItem.dataKey || legendItem.value
+    if (!partnerName) return
+
+    addCrossFilter({
+      field: crossFilterField,
+      value: String(partnerName),
+      label: `${crossFilterField}: ${partnerName}`,
+    }, isCtrlPressed)
   }
 
   // Custom tooltip formatter with metric type detection
@@ -108,7 +135,7 @@ function TimeSeriesChartBase({
         border: `1px solid ${colors.neutralLight}`,
         borderRadius: '4px',
         boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-        minHeight: '380px', // Prevent collapse (header + chart height + padding)
+        height: '480px',
       }}
     >
       <CardHeader className="pb-3">
@@ -134,10 +161,12 @@ function TimeSeriesChartBase({
             <XAxis dataKey={dateKey} tick={axisStyle} />
             <YAxis tick={axisStyle} tickFormatter={yAxisFormatter} />
             <Tooltip formatter={customTooltipFormatter} contentStyle={{ fontSize: '12px' }} />
-            <Legend wrapperStyle={{ fontSize: '12px' }} />
-            {lines.map((line) => {
-              // Check if there are date filters active
+            <Legend wrapperStyle={{ fontSize: '12px', cursor: isEnabled ? 'pointer' : 'default' }} onClick={isEnabled ? handleLegendClick : undefined} />
+            {lines.filter(line => line && line.dataKey && line.dataKey.trim() !== '').map((line) => {
+              // Check for active filters on BOTH date and line field
               const hasDateFilters = crossFilters.some(f => f.field === 'date')
+              const hasLineFilters = crossFilterField && crossFilters.some(f => f.field === crossFilterField)
+              const isLineSelected = crossFilters.some(f => f.field === crossFilterField && f.value === line.dataKey)
 
               return (
                 <Line
@@ -146,15 +175,16 @@ function TimeSeriesChartBase({
                   dataKey={line.dataKey}
                   name={line.name}
                   stroke={line.color}
-                  strokeWidth={2}
+                  strokeWidth={hasLineFilters && !isLineSelected ? 1 : 2}
+                  opacity={hasLineFilters && !isLineSelected ? 0.3 : 1}
                   dot={(props: any) => {
                     if (!isEnabled) return null
                     const { cx, cy, payload, index } = props
                     const rawDateValue = payload.rawDate || payload[dateKey]
-                    const isSelected = crossFilters.some(f => f.field === 'date' && f.value === String(rawDateValue))
+                    const isDateSelected = crossFilters.some(f => f.field === 'date' && f.value === String(rawDateValue))
                     const key = `${line.dataKey}-${index}-${rawDateValue}`
 
-                    if (hasDateFilters && isSelected) {
+                    if (hasDateFilters && isDateSelected) {
                       // Selected point: larger, filled
                       return <circle key={key} cx={cx} cy={cy} r={5} fill={line.color} stroke="#fff" strokeWidth={2} />
                     } else if (hasDateFilters) {
