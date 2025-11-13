@@ -195,7 +195,7 @@ function MarketOverviewPageContent() {
     })
 
     // Second pass: fill missing values with 0 for stacked bars to work
-    const partnersList = Array.from(partners)
+    const partnersList = Array.from(partners).filter(p => p && p.trim() !== '')
     Object.values(groupedByMarket).forEach((marketData: any) => {
       partnersList.forEach(partner => {
         if (marketData[partner] === undefined) {
@@ -235,8 +235,9 @@ function MarketOverviewPageContent() {
       new Date(a.date).getTime() - new Date(b.date).getTime()
     )
 
-    const colorMap = getPartnerColorMap(Array.from(partners))
-    const lines = Array.from(partners).map(partner => ({
+    const filteredPartners = Array.from(partners).filter(p => p && p.trim() !== '')
+    const colorMap = getPartnerColorMap(filteredPartners)
+    const lines = filteredPartners.map(partner => ({
       dataKey: partner,
       name: partner,
       color: colorMap[partner]
