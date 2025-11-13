@@ -128,8 +128,10 @@ function MarketOverviewPageContent() {
         const response = await fetch('/api/gcpp-check/available-dates')
         const result = await response.json()
         if (result.status === 'ok' && result.data.latestDate) {
-          setSelectedDate(result.data.latestDate)
-          setDateFilters({ date: result.data.latestDate })
+          // Normalize latestDate to handle both string and {value: string} formats
+          const normalizedDate = normalizeFilterValue(result.data.latestDate)
+          setSelectedDate(normalizedDate)
+          setDateFilters({ date: normalizedDate })
           setLatestDateLoaded(true)
         }
       } catch (error) {
