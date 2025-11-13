@@ -1,5 +1,20 @@
 'use client'
 
+// TEST 1: Absolute minimum - just return text
+export default function MarketOverviewPage() {
+  return (
+    <div className="p-8">
+      <h1 className="text-2xl font-bold">GCPP Check - Market Overview</h1>
+      <p className="mt-4">Test 1: Bare minimum page</p>
+      <p className="mt-2">If you see this without crash, the issue is in the components below.</p>
+    </div>
+  )
+}
+
+/*
+// ORIGINAL CODE - COMMENTED OUT FOR TESTING
+// Will uncomment sections progressively to find the crash
+
 import { useState, useRef, Suspense, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { AnalyticsPageLayout } from '../../../components/performance-tracker/AnalyticsPageLayout'
