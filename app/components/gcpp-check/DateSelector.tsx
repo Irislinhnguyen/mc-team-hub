@@ -54,7 +54,12 @@ export function DateSelector({
     gcTime: cacheConfig.availableDates.gcTime,
   })
 
-  const availableDates = datesData?.dates || []
+  // Normalize dates - handle both string and {value: string} formats
+  const availableDates = (datesData?.dates || []).map((date: any) => {
+    if (typeof date === 'string') return date
+    if (date && typeof date === 'object' && date.value) return date.value
+    return String(date)
+  })
 
   // Auto-select latest date on first load if no initial date (single mode)
   useEffect(() => {
