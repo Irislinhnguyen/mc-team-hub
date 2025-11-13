@@ -7,7 +7,6 @@ import { DataTable } from '../../../components/performance-tracker/DataTable'
 import { TimeSeriesChart } from '../../../components/performance-tracker/TimeSeriesChart'
 import { StackedBarChart } from '../../../components/performance-tracker/StackedBarChart'
 import { PieChart } from '../../../components/performance-tracker/PieChart'
-import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 import { colors } from '../../../../lib/colors'
 import { formatChartTooltip } from '../../../../lib/utils/formatters'
 import { DateModeToggle } from '../../../components/gcpp-check/DateModeToggle'
@@ -369,7 +368,7 @@ function MarketOverviewPageContent() {
         {/* Chart 3: Market distribution by partner */}
         {chartsLoading && !data ? (
           <ChartSkeleton />
-        ) : pieChartData.length > 0 ? (
+        ) : pieChartData && pieChartData.length > 0 ? (
           <div className="bg-white border border-gray-200 rounded shadow-sm" style={{ height: '480px', borderColor: colors.neutralLight }}>
             {/* Card Header with Title and Partner Selector */}
             <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: colors.neutralLight }}>
@@ -401,70 +400,16 @@ function MarketOverviewPageContent() {
 
             {/* Chart Content */}
             <div className="p-6" style={{ height: 'calc(100% - 68px)' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartsPieChart>
-                  <Pie
-                    data={pieChartData}
-                    cx="50%"
-                    cy="48%"
-                    labelLine={true}
-                    label={(entry: any) => {
-                      if (!entry) return null
-                      // Ensure percent is a number, not an object
-                      const rawPercent = entry.payload?.percent !== undefined
-                        ? entry.payload.percent
-                        : entry.percent
-                      const numPercent = typeof rawPercent === 'number' ? rawPercent : parseFloat(rawPercent)
-                      const percent = entry.payload?.percent !== undefined
-                        ? numPercent
-                        : numPercent * 100
-                      if (percent < 5) return null
-                      return `${percent.toFixed(1)}%`
-                    }}
-                    outerRadius="70%"
-                    fill="#8884d8"
-                    dataKey="value"
-                    nameKey="market"
-                  >
-                    {pieChartData.map((entry: any, index: number) => {
-                      const defaultColors = [
-                        '#EC4899', '#8B5CF6', '#3B82F6', '#10B981', '#F59E0B',
-                        '#EF4444', '#6B7280', '#14B8A6', '#F97316', '#06B6D4'
-                      ]
-                      // Apply highlighting - dim non-highlighted markets
-                      const isHighlighted = highlightMarkets.length === 0 || highlightMarkets.includes(entry.market)
-                      const opacity = highlightMarkets.length > 0 && !isHighlighted ? 0.3 : 1
-                      return (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={defaultColors[index % defaultColors.length]}
-                          opacity={opacity}
-                        />
-                      )
-                    })}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value: any, name: string, entry: any) => {
-                      if (!entry?.payload) return formatChartTooltip(value, 'value')
-                      const payload = entry.payload
-                      if (payload?.percent !== undefined && payload?.impressions !== undefined) {
-                        return [
-                          `${payload.percent.toFixed(1)}% (${formatChartTooltip(payload.impressions, 'impressions')})`,
-                          name
-                        ]
-                      }
-                      return formatChartTooltip(value, 'value')
-                    }}
-                    contentStyle={{ fontSize: '12px' }}
-                  />
-                  <Legend
-                    verticalAlign="bottom"
-                    height={36}
-                    iconType="circle"
-                    wrapperStyle={{ fontSize: '12px', paddingTop: '16px' }}
-                  />
-                </RechartsPieChart>
-              </ResponsiveContainer>
+              <PieChart
+                title=""
+                data={pieChartData}
+                dataKey="value"
+                nameKey="market"
+                height={380}
+                showLegend={true}
+                showLabels={true}
+                highlightValues={highlightMarkets}
+              />
             </div>
           </div>
         ) : null}
