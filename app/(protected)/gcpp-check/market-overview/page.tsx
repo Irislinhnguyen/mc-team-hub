@@ -206,10 +206,12 @@ function MarketOverviewPageContent() {
     })
 
     const chartData = Object.values(groupedByMarket)
-    const categories = partnersList.map(partner => ({
-      dataKey: partner,
-      name: partner,
-    }))
+    const categories = partnersList
+      .filter(partner => partner && partner.trim() !== '')
+      .map(partner => ({
+        dataKey: partner,
+        name: partner,
+      }))
 
     return { data: chartData, categories }
   }, [data])
@@ -241,7 +243,7 @@ function MarketOverviewPageContent() {
     const lines = filteredPartners.map(partner => ({
       dataKey: partner,
       name: partner,
-      color: colorMap[partner]
+      color: colorMap[partner] || '#8884d8' // Fallback color if undefined
     }))
 
     return { data: chartData, lines }
@@ -309,7 +311,7 @@ function MarketOverviewPageContent() {
         />
       </div>
 
-      {/* TEST 4: Add MetadataFilterPanel */}
+      {/* TEST 4.2: Add MetadataFilterPanel with data prep fixes */}
       <MetadataFilterPanel
         page="gcpp-market-overview"
         filterFields={['team', 'partner', 'market']}
@@ -319,15 +321,20 @@ function MarketOverviewPageContent() {
         presetIdFromUrl={presetIdFromUrl || undefined}
       />
 
-      {/* TEST 4: Show test message */}
+      {/* TEST 4.2: Show test message */}
       <div className="p-8 text-center">
-        <p className="text-lg font-bold">TEST 4: MetadataFilterPanel added</p>
+        <p className="text-lg font-bold">TEST 4.2: MetadataFilterPanel + Data prep fixes</p>
         <p className="text-sm text-gray-600 mt-2">Selected Date: {selectedDate || 'Loading...'}</p>
-        <p className="text-sm text-gray-600">Filters: {JSON.stringify(filters)}</p>
-        <p className="text-sm text-gray-600">Loading: {loading ? 'Yes' : 'No'}</p>
+        <p className="text-sm text-gray-600">Has Data: {data ? 'Yes' : 'No'}</p>
+        {data && (
+          <>
+            <p className="text-sm text-gray-600">Categories count: {stackedBarData.categories.length}</p>
+            <p className="text-sm text-gray-600">Lines count: {timeSeriesData.lines.length}</p>
+          </>
+        )}
       </div>
 
-      {/* DISABLED FOR TEST 4: All charts and tables */}
+      {/* DISABLED FOR TEST 4.2: All charts and tables */}
     </AnalyticsPageLayout>
   )
 }
