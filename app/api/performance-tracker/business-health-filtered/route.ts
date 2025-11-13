@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     const queries = getBusinessHealthQueries(whereClause)
 
     // Execute all queries in parallel
-    const [metrics, timeSeries, publishers, media, zones, ecpm, zoneMonitoring, profitRate, productTrend, zoneMonitoringTimeSeries, listOfPid, listOfPidByDate] = await Promise.all([
+    const [metrics, timeSeries, publishers, media, zones, ecpm, zoneMonitoring, profitRate, productTrend, zoneMonitoringTimeSeries, listOfPid, listOfPidByDate, listOfMid, listOfMidByDate] = await Promise.all([
       BigQueryService.executeQuery(queries.metrics),
       BigQueryService.executeQuery(queries.timeSeries),
       BigQueryService.executeQuery(queries.topPublishers),
@@ -23,6 +23,8 @@ export async function POST(request: NextRequest) {
       BigQueryService.executeQuery(queries.zoneMonitoringTimeSeries),
       BigQueryService.executeQuery(queries.listOfPid),
       BigQueryService.executeQuery(queries.listOfPidByDate),
+      BigQueryService.executeQuery(queries.listOfMid),
+      BigQueryService.executeQuery(queries.listOfMidByDate),
     ])
 
     // Helper function to safely parse BigQuery numbers
@@ -75,6 +77,8 @@ export async function POST(request: NextRequest) {
         zoneMonitoringTimeSeries,
         listOfPid,
         listOfPidByDate,
+        listOfMid,
+        listOfMidByDate,
       },
     })
   } catch (error) {
