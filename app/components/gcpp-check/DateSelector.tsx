@@ -61,11 +61,19 @@ export function DateSelector({
     return String(date)
   })
 
+  // Helper to normalize date value before using
+  const normalizeDateValue = (date: any): string => {
+    if (typeof date === 'string') return date
+    if (date && typeof date === 'object' && date.value) return date.value
+    return String(date)
+  }
+
   // Auto-select latest date on first load if no initial date (single mode)
   useEffect(() => {
     if (mode === 'single' && !initialDate && datesData?.latestDate && !selectedDate) {
-      setSelectedDate(datesData.latestDate)
-      onDateChange?.(datesData.latestDate)
+      const normalizedDate = normalizeDateValue(datesData.latestDate)
+      setSelectedDate(normalizedDate)
+      onDateChange?.(normalizedDate)
     }
   }, [mode, datesData, initialDate, selectedDate, onDateChange])
 
