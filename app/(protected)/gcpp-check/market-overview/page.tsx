@@ -309,14 +309,25 @@ function MarketOverviewPageContent() {
         />
       </div>
 
-      {/* TEST 3: Show test message */}
+      {/* TEST 4: Add MetadataFilterPanel */}
+      <MetadataFilterPanel
+        page="gcpp-market-overview"
+        filterFields={['team', 'partner', 'market']}
+        onFilterChange={setMetadataFilters}
+        isLoading={loading}
+        metadataEndpoint="/api/gcpp-check/metadata"
+        presetIdFromUrl={presetIdFromUrl || undefined}
+      />
+
+      {/* TEST 4: Show test message */}
       <div className="p-8 text-center">
-        <p className="text-lg font-bold">TEST 3: DateSelector added (with normalize fix)</p>
+        <p className="text-lg font-bold">TEST 4: MetadataFilterPanel added</p>
         <p className="text-sm text-gray-600 mt-2">Selected Date: {selectedDate || 'Loading...'}</p>
         <p className="text-sm text-gray-600">Filters: {JSON.stringify(filters)}</p>
+        <p className="text-sm text-gray-600">Loading: {loading ? 'Yes' : 'No'}</p>
       </div>
 
-      {/* DISABLED FOR TEST 3: All charts, tables, and MetadataFilterPanel */}
+      {/* DISABLED FOR TEST 4: All charts and tables */}
     </AnalyticsPageLayout>
   )
 }
