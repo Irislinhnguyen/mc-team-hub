@@ -296,7 +296,7 @@ function MarketOverviewPageContent() {
       showExport={true}
       contentRef={contentRef}
     >
-      {/* Filter Controls Row */}
+      {/* TEST 3: Filter Controls Row */}
       <div className="flex items-center gap-4 mb-6">
         <DateModeToggle mode={dateMode} onModeChange={handleDateModeChange} />
         <DateSelector
@@ -309,127 +309,14 @@ function MarketOverviewPageContent() {
         />
       </div>
 
-      {/* Filter Panel with Preset System */}
-      <MetadataFilterPanel
-        page="gcpp-market-overview"
-        filterFields={['team', 'partner', 'market']}
-        onFilterChange={setMetadataFilters}
-        isLoading={loading}
-        metadataEndpoint="/api/gcpp-check/metadata"
-        presetIdFromUrl={presetIdFromUrl || undefined}
-      />
-
-      {/* Row 1: Stacked Bar Chart + Market Share Detail Table */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6 [&>*]:min-w-0">
-        {/* Chart 1: Market share by market and partner */}
-        {chartsLoading && !data ? (
-          <ChartSkeleton />
-        ) : stackedBarData.data.length > 0 ? (
-          <StackedBarChart
-            title="Market share by market and partner"
-            data={stackedBarData.data}
-            categories={stackedBarData.categories}
-            xAxisDataKey="market"
-            layout="vertical"
-            colorMap={partnerColorMap}
-            height={400}
-            enableCrossFilter={true}
-            crossFilterField="market"
-          />
-        ) : null}
-
-        {/* Table 1: Market share in detail */}
-        {tablesLoading ? (
-          <DataTableSkeleton columns={marketShareDetailColumns} rows={10} />
-        ) : data?.marketShareDetail ? (
-          <DataTable
-            title="Market share in detail"
-            columns={marketShareDetailColumns}
-            data={data.marketShareDetail}
-            crossFilterColumns={['partner', 'market']}
-          />
-        ) : null}
+      {/* TEST 3: Show test message */}
+      <div className="p-8 text-center">
+        <p className="text-lg font-bold">TEST 3: DateSelector added (with normalize fix)</p>
+        <p className="text-sm text-gray-600 mt-2">Selected Date: {selectedDate || 'Loading...'}</p>
+        <p className="text-sm text-gray-600">Filters: {JSON.stringify(filters)}</p>
       </div>
 
-      {/* Row 2: Time Series Chart + Pie Chart */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6 [&>*]:min-w-0">
-        {/* Chart 2: Impressions by market and partner */}
-        {chartsLoading && !data ? (
-          <ChartSkeleton />
-        ) : timeSeriesData.data.length > 0 ? (
-          <TimeSeriesChart
-            title="Impressions by market and partner"
-            data={timeSeriesData.data}
-            lines={timeSeriesData.lines}
-            height={400}
-            enableCrossFilter={true}
-            dateKey="date"
-          />
-        ) : null}
-
-        {/* Chart 3: Market distribution by partner */}
-        {chartsLoading && !data ? (
-          <ChartSkeleton />
-        ) : pieChartData && pieChartData.length > 0 ? (
-          <div className="bg-white border border-gray-200 rounded shadow-sm" style={{ height: '480px', borderColor: colors.neutralLight }}>
-            {/* Card Header with Title and Partner Selector */}
-            <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: colors.neutralLight }}>
-              <h3
-                className={composedStyles.sectionTitle}
-                style={{
-                  fontSize: typography.sizes.sectionTitle,
-                  color: colors.main
-                }}
-              >
-                Market distribution - {formatPartnerName(selectedPartnerForPie)}
-              </h3>
-              <Select
-                value={selectedPartnerForPie}
-                onValueChange={setSelectedPartnerForPie}
-              >
-                <SelectTrigger className="w-[140px] h-8 text-sm">
-                  <SelectValue placeholder="Partner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.keys(partnerColors).map((partner) => (
-                    <SelectItem key={partner} value={partner.toUpperCase()}>
-                      {partner}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Chart Content */}
-            <div className="p-6" style={{ height: 'calc(100% - 68px)' }}>
-              <PieChart
-                title=""
-                data={pieChartData}
-                dataKey="value"
-                nameKey="market"
-                height={380}
-                showLegend={true}
-                showLabels={true}
-                highlightValues={highlightMarkets}
-              />
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      {fetchingInitialDate && (
-        <>
-          <ChartSkeleton />
-          <DataTableSkeleton columns={marketShareDetailColumns} rows={5} />
-          <ChartSkeleton />
-        </>
-      )}
-
-      {!loading && !data && !fetchingInitialDate && (
-        <div className="p-8 text-center text-gray-500">
-          <p>No data available. Please select filters.</p>
-        </div>
-      )}
+      {/* DISABLED FOR TEST 3: All charts, tables, and MetadataFilterPanel */}
     </AnalyticsPageLayout>
   )
 }
