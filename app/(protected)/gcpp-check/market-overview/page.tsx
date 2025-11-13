@@ -255,12 +255,17 @@ function MarketOverviewPageContent() {
       (row: any) => normalizeFilterValue(row.partner)?.toUpperCase() === selectedPartnerForPie
     )
 
-    const chartData = partnerData.map((row: any) => ({
-      market: normalizeFilterValue(row.market),
-      value: parseFloat(normalizeFilterValue(row.percent_of_total)) || 0, // Use percent as the value for pie chart
-      impressions: parseFloat(normalizeFilterValue(row.impressions)) || 0, // Keep for tooltip
-      percent: parseFloat(normalizeFilterValue(row.percent_of_total)) || 0
-    }))
+    const chartData = partnerData
+      .filter((row: any) => {
+        const market = normalizeFilterValue(row.market)
+        return market && market.trim() !== ''
+      })
+      .map((row: any) => ({
+        market: normalizeFilterValue(row.market),
+        value: parseFloat(normalizeFilterValue(row.percent_of_total)) || 0, // Use percent as the value for pie chart
+        impressions: parseFloat(normalizeFilterValue(row.impressions)) || 0, // Keep for tooltip
+        percent: parseFloat(normalizeFilterValue(row.percent_of_total)) || 0
+      }))
 
     // Detect market filters (includes both metadata filters and cross-filters)
     const highlightMarkets: string[] = []
@@ -279,7 +284,9 @@ function MarketOverviewPageContent() {
   const pieChartData = pieChartResult.data
   const highlightMarkets = pieChartResult.highlightMarkets
   const partnerColorMap = getPartnerColorMap(
-    stackedBarData.categories.filter(c => c).map(c => c.name)
+    stackedBarData.categories
+      .filter(c => c && c.name && c.name.trim() !== '')
+      .map(c => c.name)
   )
 
   return (
@@ -402,6 +409,7 @@ function MarketOverviewPageContent() {
                     cy="48%"
                     labelLine={true}
                     label={(entry: any) => {
+                      if (!entry) return null
                       // Ensure percent is a number, not an object
                       const rawPercent = entry.payload?.percent !== undefined
                         ? entry.payload.percent
@@ -437,6 +445,7 @@ function MarketOverviewPageContent() {
                   </Pie>
                   <Tooltip
                     formatter={(value: any, name: string, entry: any) => {
+                      if (!entry?.payload) return formatChartTooltip(value, 'value')
                       const payload = entry.payload
                       if (payload?.percent !== undefined && payload?.impressions !== undefined) {
                         return [
