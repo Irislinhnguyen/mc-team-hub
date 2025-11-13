@@ -3,20 +3,15 @@
 import { Suspense, useRef, useState } from 'react'
 import { AnalyticsPageLayout } from '../../../components/performance-tracker/AnalyticsPageLayout'
 import { DateModeToggle } from '../../../components/gcpp-check/DateModeToggle'
-import { DateSelector } from '../../../components/gcpp-check/DateSelector'
+// import { DateSelector } from '../../../components/gcpp-check/DateSelector'
 
-// TEST 2+3: Add AnalyticsPageLayout + DateModeToggle + DateSelector
+// TEST 2.1: Just AnalyticsPageLayout + DateModeToggle (NO DateSelector)
 function MarketOverviewPageContent() {
   const contentRef = useRef<HTMLDivElement>(null)
   const [dateMode, setDateMode] = useState<'single' | 'range'>('single')
-  const [selectedDate, setSelectedDate] = useState<string>('')
 
   const handleDateModeChange = (mode: 'single' | 'range') => {
     setDateMode(mode)
-  }
-
-  const handleSingleDateChange = (date: string) => {
-    setSelectedDate(date)
   }
 
   return (
@@ -27,21 +22,14 @@ function MarketOverviewPageContent() {
     >
       <div className="flex items-center gap-4 mb-6">
         <DateModeToggle mode={dateMode} onModeChange={handleDateModeChange} />
-        <DateSelector
-          mode={dateMode}
-          onDateChange={handleSingleDateChange}
-          initialDate={selectedDate}
-        />
+        {/* DateSelector removed to test */}
       </div>
 
       <div className="p-8">
         <h1 className="text-2xl font-bold">GCPP Check - Market Overview</h1>
-        <p className="mt-4 text-green-600 font-semibold">✅ TEST 2+3: AnalyticsPageLayout + Date components</p>
-        <p className="mt-2">Date Mode: {dateMode}, Selected: {selectedDate || 'none'}</p>
-        <p className="mt-2">If you see this without crash, these components are OK.</p>
-        <p className="mt-4 text-sm text-gray-600">
-          Next: Will add MetadataFilterPanel (prime suspect).
-        </p>
+        <p className="mt-4 text-orange-600 font-semibold">⚠️ TEST 2.1: WITHOUT DateSelector</p>
+        <p className="mt-2">Date Mode: {dateMode}</p>
+        <p className="mt-2">If this works, DateSelector is the problem. If crashes, DateModeToggle is the problem.</p>
       </div>
     </AnalyticsPageLayout>
   )
