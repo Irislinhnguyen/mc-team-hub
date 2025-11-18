@@ -7,8 +7,11 @@ import { extractBaseFilters } from '../../utils/filterHelpers'
  * useProfitProjections - React Query hook for Profit Projections data
  *
  * Optimized for client-side cross-filtering:
- * - Base filters (date range, team, etc.) → trigger API calls
+ * - Base filters (team, pic, product, etc.) → trigger API calls
  * - Cross-filters (clicking cells/charts) → client-side only, instant
+ *
+ * Note: weekly_prediction_table is a snapshot table without DATE column,
+ * so date filters are not required or used by the API.
  */
 export function useProfitProjections(filters: Record<string, any>) {
   const { crossFilters } = useCrossFilter()
@@ -35,7 +38,7 @@ export function useProfitProjections(filters: Record<string, any>) {
         throw new Error(result.message || 'Unknown error fetching profit projections')
       }
     },
-    enabled: !!(baseFilters.startDate && baseFilters.endDate),
+    enabled: true, // No date filter needed - snapshot table without DATE column
     staleTime: cacheConfig.dailyAnalytics.staleTime,
     gcTime: cacheConfig.dailyAnalytics.gcTime,
     retry: 2,
