@@ -374,7 +374,7 @@ function MarketOverviewPageContent() {
         {chartsLoading && !data ? (
           <ChartSkeleton />
         ) : pieChartData && pieChartData.length > 0 ? (
-          <div className="bg-white border border-gray-200 rounded shadow-sm overflow-hidden" style={{ height: '480px', borderColor: colors.neutralLight }}>
+          <div className="bg-white border border-gray-200 rounded shadow-sm" style={{ borderColor: colors.neutralLight }}>
             {/* Card Header with Title and Partner Selector */}
             <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: colors.neutralLight }}>
               <h3
@@ -404,7 +404,7 @@ function MarketOverviewPageContent() {
             </div>
 
             {/* Chart Content */}
-            <div className="p-6" style={{ height: 'calc(100% - 68px)' }}>
+            <div className="p-6">
               <PieChart
                 title=""
                 data={pieChartData}
