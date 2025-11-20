@@ -646,3 +646,103 @@ export function getPublisherMonitoringQueries(filters: GCPPFilters) {
     `
   }
 }
+
+/**
+ * Churned Publishers by Partner Query
+ * Compares 3 most recent weekly dates to find publishers that had impressions
+ * in the last week (week 2) but are missing from current week (week 1)
+ *
+ * SCHEMA NOTES:
+ * - Uses master_partner table with date, partner, domain_app_id, filtered_impressions
+ * - Compares Week 1 (current), Week 2 (last week), Week 3 (2 weeks ago)
+ */
+export function getChurnedPublishersByPartnerQuery(filters: GCPPFilters) {
+  // Build filter conditions excluding date (we handle dates separately)
+  const filterOnlyFilters = { ...filters }
+  delete filterOnlyFilters.date
+  delete filterOnlyFilters.startDate
+  delete filterOnlyFilters.endDate
+
+  // Build WHERE clause and extract conditions only (remove 'WHERE' keyword)
+  const whereClause = buildGCPPWhereClause(filterOnlyFilters)
+  const conditions = whereClause.replace(/^WHERE\s+/, '')
+
+  return `
+    WITH recent_dates AS (
+      -- Get 3 most recent weekly snapshot dates
+      SELECT DISTINCT date
+      FROM \`gcpp-check.geniee.master_partner\`
+      ORDER BY date DESC
+      LIMIT 3
+    ),
+    dates_numbered AS (
+      -- Assign week numbers: 1 = current week, 2 = last week, 3 = 2 weeks ago
+      SELECT
+        date,
+        ROW_NUMBER() OVER (ORDER BY date DESC) as week_num
+      FROM recent_dates
+    ),
+    week_1_current AS (
+      -- Publishers in current week (Week 1)
+      SELECT DISTINCT partner, domain_app_id
+      FROM \`gcpp-check.geniee.master_partner\` mp
+      WHERE date = (SELECT date FROM dates_numbered WHERE week_num = 1)
+      ${conditions ? 'AND ' + conditions : ''}
+    ),
+    week_2_last AS (
+      -- Publishers in last week (Week 2) with their impressions
+      SELECT
+        partner,
+        domain_app_id,
+        app_name,
+        SUM(filtered_impressions) as impressions,
+        MAX(date) as week_date
+      FROM \`gcpp-check.geniee.master_partner\` mp
+      WHERE date = (SELECT date FROM dates_numbered WHERE week_num = 2)
+      ${conditions ? 'AND ' + conditions : ''}
+      GROUP BY partner, domain_app_id, app_name
+    ),
+    week_3_prev AS (
+      -- Publishers 2 weeks ago (Week 3) with their impressions
+      SELECT
+        partner,
+        domain_app_id,
+        app_name,
+        SUM(filtered_impressions) as impressions,
+        MAX(date) as week_date
+      FROM \`gcpp-check.geniee.master_partner\` mp
+      WHERE date = (SELECT date FROM dates_numbered WHERE week_num = 3)
+      ${conditions ? 'AND ' + conditions : ''}
+      GROUP BY partner, domain_app_id, app_name
+    ),
+    all_previous AS (
+      -- Union of all publishers from Week 2 or Week 3
+      SELECT partner, domain_app_id, app_name FROM week_2_last
+      UNION DISTINCT
+      SELECT partner, domain_app_id, app_name FROM week_3_prev
+    )
+    SELECT
+      ap.partner,
+      ap.domain_app_id,
+      ap.app_name,
+      CASE WHEN ap.app_name IS NULL THEN 'WEB' ELSE 'APP' END as team,
+      CAST(w2.week_date AS STRING) as last_week_date,
+      COALESCE(w2.impressions, 0) as last_week_impressions,
+      CAST(w3.week_date AS STRING) as previous_week_date,
+      COALESCE(w3.impressions, 0) as previous_week_impressions,
+      (COALESCE(w2.impressions, 0) + COALESCE(w3.impressions, 0)) as total_impressions
+    FROM all_previous ap
+    LEFT JOIN week_2_last w2
+      ON ap.partner = w2.partner
+      AND ap.domain_app_id = w2.domain_app_id
+    LEFT JOIN week_3_prev w3
+      ON ap.partner = w3.partner
+      AND ap.domain_app_id = w3.domain_app_id
+    LEFT JOIN week_1_current w1
+      ON ap.partner = w1.partner
+      AND ap.domain_app_id = w1.domain_app_id
+    WHERE w1.domain_app_id IS NULL  -- Missing in current week = CHURNED
+    ORDER BY (COALESCE(w2.impressions, 0) + COALESCE(w3.impressions, 0)) DESC  -- Sort by total impressions from both weeks
+    LIMIT 500
+  `
+}

@@ -46,6 +46,10 @@ function PublisherMonitoringPageContent() {
     rawData?.newPubsByPartner,
     crossFilters
   )
+  const { filteredData: filteredChurnedPubsByPartner } = useClientSideFilterMulti(
+    rawData?.churnedPubsByPartner,
+    crossFilters
+  )
 
   // Combine filtered data
   const data = useMemo(() => {
@@ -54,8 +58,9 @@ function PublisherMonitoringPageContent() {
       sharedPubsMonitoring: filteredSharedPubsMonitoring,
       sharedPubsDetails: filteredSharedPubsDetails,
       newPubsByPartner: filteredNewPubsByPartner,
+      churnedPubsByPartner: filteredChurnedPubsByPartner,
     }
-  }, [filteredSharedPubsMonitoring, filteredSharedPubsDetails, filteredNewPubsByPartner, rawData])
+  }, [filteredSharedPubsMonitoring, filteredSharedPubsDetails, filteredNewPubsByPartner, filteredChurnedPubsByPartner, rawData])
 
   // Show loading state when query is running OR when we have filters but no data yet
   const hasFilters = Object.keys(filters).length > 0
@@ -70,6 +75,22 @@ function PublisherMonitoringPageContent() {
     { key: 'filtered_impressions', label: 'Impressions' },
     { key: 'team', label: 'Team', format: formatStringValue }
   ]
+
+  // Dynamic columns for churned publishers with date labels
+  const churnedPubsByPartnerColumns = useMemo(() => {
+    const firstRow = data?.churnedPubsByPartner?.[0]
+    const lastWeekDate = firstRow?.last_week_date || 'Last Week'
+    const previousWeekDate = firstRow?.previous_week_date || 'Previous Week'
+
+    return [
+      { key: 'domain_app_id', label: 'Domain/App ID', format: formatStringValue },
+      { key: 'app_name', label: 'App Name', format: formatStringValue },
+      { key: 'partner', label: 'Partner', format: formatStringValue },
+      { key: 'team', label: 'Team', format: formatStringValue },
+      { key: 'last_week_impressions', label: lastWeekDate },
+      { key: 'previous_week_impressions', label: previousWeekDate }
+    ]
+  }, [data?.churnedPubsByPartner])
 
   const sharedPubsMonitoringColumns = [
     { key: 'domain_app_id', label: 'Domain/App ID', format: formatStringValue },
@@ -172,7 +193,21 @@ function PublisherMonitoringPageContent() {
         </div>
       ) : null}
 
-      {/* Table 2: Shared pubs monitoring */}
+      {/* Table 2: Churned Publishers by Partner */}
+      {shouldShowLoading ? (
+        <DataTableSkeleton columns={churnedPubsByPartnerColumns} rows={10} />
+      ) : data?.churnedPubsByPartner ? (
+        <div className="mb-6">
+          <DataTable
+            title="Churned Publishers by Partner"
+            columns={churnedPubsByPartnerColumns}
+            data={data.churnedPubsByPartner}
+            crossFilterColumns={['partner', 'team']}
+          />
+        </div>
+      ) : null}
+
+      {/* Table 3: Shared pubs monitoring */}
       {shouldShowLoading ? (
         <DataTableSkeleton columns={sharedPubsMonitoringColumns} rows={10} />
       ) : data?.sharedPubsMonitoring ? (
@@ -186,7 +221,7 @@ function PublisherMonitoringPageContent() {
         </div>
       ) : null}
 
-      {/* Table 3: Shared pub monitoring details */}
+      {/* Table 4: Shared pub monitoring details */}
       {shouldShowLoading ? (
         <DataTableSkeleton columns={sharedPubsDetailsColumns} rows={10} />
       ) : data?.sharedPubsDetails ? (
