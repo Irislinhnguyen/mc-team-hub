@@ -8,7 +8,7 @@ import { composedStyles, typography } from '../../../lib/design-tokens'
 import { colors } from '../../../lib/colors'
 import { withExport } from './withExport'
 import { useCrossFilter } from '../../contexts/CrossFilterContext'
-import { safeToFixed, safeNumber } from '../../../lib/utils/formatters'
+import { safeToFixed, safeNumber, formatMetricValue } from '../../../lib/utils/formatters'
 
 interface Column {
   key: string
@@ -70,27 +70,27 @@ function LazyDataTableBase({
     }, append)
   }
 
-  // Auto-format numbers to 2 decimal places (except IDs)
+  // Auto-format numbers with thousand separators
   const formatCellValue = (value: any, formatter?: (value: any) => string, columnKey?: string) => {
     if (formatter) {
       return formatter(value)
     }
 
-    // Don't format ID columns (zid, mid, pid, etc.)
-    const idColumns = ['zid', 'mid', 'pid', 'req']
+    // Don't format ID columns (zid, mid, pid)
+    const idColumns = ['zid', 'mid', 'pid']
     if (columnKey && idColumns.includes(columnKey)) {
       return value
     }
 
-    // Auto-format numbers to 2 decimals
+    // Auto-format numbers using formatMetricValue (with thousand separators)
     if (typeof value === 'number') {
-      return safeToFixed(value, 2)
+      return formatMetricValue(value, 'auto', columnKey)
     }
 
     // Try to parse as number
     const numValue = parseFloat(value)
     if (!isNaN(numValue) && value !== '') {
-      return safeToFixed(numValue, 2)
+      return formatMetricValue(numValue, 'auto', columnKey)
     }
 
     return value

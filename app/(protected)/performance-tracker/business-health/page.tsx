@@ -111,32 +111,36 @@ function BusinessHealthPageContent() {
   // Column configurations for skeletons
   const listOfPidColumns = [
     { key: 'pid', label: 'pid', width: '15%' },
-    { key: 'pubname', label: 'pubname', width: '45%' },
-    { key: 'rev', label: 'rev', width: '20%' },
-    { key: 'profit', label: 'profit', width: '20%' },
+    { key: 'pubname', label: 'pubname', width: '35%' },
+    { key: 'rev', label: 'rev', width: '16.67%' },
+    { key: 'profit', label: 'profit', width: '16.67%' },
+    { key: 'rev_to_pub', label: 'rev to pub', width: '16.67%' },
   ]
 
   const listOfPidByDateColumns = [
     { key: 'date', label: 'date', width: '18%', format: (v: any) => formatDate(v.value || v) },
     { key: 'pid', label: 'pid', width: '12%' },
-    { key: 'pubname', label: 'pubname', width: '40%' },
-    { key: 'rev', label: 'rev', width: '15%' },
-    { key: 'profit', label: 'profit', width: '15%' },
+    { key: 'pubname', label: 'pubname', width: '30%' },
+    { key: 'rev', label: 'rev', width: '13.33%' },
+    { key: 'profit', label: 'profit', width: '13.33%' },
+    { key: 'rev_to_pub', label: 'rev to pub', width: '13.33%' },
   ]
 
   const listOfMidColumns = [
     { key: 'mid', label: 'mid', width: '15%' },
-    { key: 'medianame', label: 'medianame', width: '45%' },
-    { key: 'rev', label: 'rev', width: '20%' },
-    { key: 'profit', label: 'profit', width: '20%' },
+    { key: 'medianame', label: 'medianame', width: '35%' },
+    { key: 'rev', label: 'rev', width: '16.67%' },
+    { key: 'profit', label: 'profit', width: '16.67%' },
+    { key: 'rev_to_pub', label: 'rev to pub', width: '16.67%' },
   ]
 
   const listOfMidByDateColumns = [
     { key: 'date', label: 'date', width: '18%', format: (v: any) => formatDate(v.value || v) },
     { key: 'mid', label: 'mid', width: '12%' },
-    { key: 'medianame', label: 'medianame', width: '40%' },
-    { key: 'rev', label: 'rev', width: '15%' },
-    { key: 'profit', label: 'profit', width: '15%' },
+    { key: 'medianame', label: 'medianame', width: '30%' },
+    { key: 'rev', label: 'rev', width: '13.33%' },
+    { key: 'profit', label: 'profit', width: '13.33%' },
+    { key: 'rev_to_pub', label: 'rev to pub', width: '13.33%' },
   ]
 
   const zoneMonitoringColumns = [
@@ -148,18 +152,20 @@ function BusinessHealthPageContent() {
     { key: 'request_CPM', label: 'request_CPM' },
     { key: 'rev', label: 'rev' },
     { key: 'profit', label: 'profit' },
+    { key: 'rev_to_pub', label: 'rev to pub' },
   ]
 
   const zoneMonitoringByDateColumns = [
-    { key: 'date', label: 'date', width: '18%', format: (v: any) => formatDate(v.value || v) },
-    { key: 'zid', label: 'zid', width: '7%' },
-    { key: 'zonename', label: 'zonename', width: '16%' },
-    { key: 'product', label: 'product', width: '11%' },
-    { key: 'req', label: 'req', width: '10%', format: (v: any) => parseInt(v).toLocaleString() },
-    { key: 'fill_rate', label: 'fill rate', width: '9%', format: (v: any) => `${Math.round(v * 100)}%` },
-    { key: 'request_CPM', label: 'request_CPM', width: '11%' },
+    { key: 'date', label: 'date', width: '16%', format: (v: any) => formatDate(v.value || v) },
+    { key: 'zid', label: 'zid', width: '6%' },
+    { key: 'zonename', label: 'zonename', width: '14%' },
+    { key: 'product', label: 'product', width: '10%' },
+    { key: 'req', label: 'req', width: '9%', format: (v: any) => parseInt(v).toLocaleString() },
+    { key: 'fill_rate', label: 'fill rate', width: '8%', format: (v: any) => `${Math.round(v * 100)}%` },
+    { key: 'request_CPM', label: 'request_CPM', width: '10%' },
     { key: 'rev', label: 'rev', width: '9%' },
     { key: 'profit', label: 'profit', width: '9%' },
+    { key: 'rev_to_pub', label: 'rev to pub', width: '9%' },
   ]
 
   const metrics = data?.metrics || {}

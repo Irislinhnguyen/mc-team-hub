@@ -15,6 +15,7 @@ import {
   revenueColumn,
   changeColumn,
   requestsColumn,
+  fillRateColumn,
   ecpmColumn,
   warningsColumn,
   groupColumn,
@@ -237,6 +238,7 @@ export default function UnifiedDeepDiveView({
     revenueColumn('A'),
     changeColumn(),
     requestsColumn(),
+    fillRateColumn(),
     ecpmColumn(),
     warningsColumn()
   ]
@@ -267,6 +269,7 @@ export default function UnifiedDeepDiveView({
     },
     revenueColumn('NEW'),
     requestsColumn(),
+    fillRateColumn(),
     ecpmColumn(),
     groupColumn(),
     notesColumn()

@@ -633,7 +633,8 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
         ROUND(SUM(paid) / NULLIF(SUM(req), 0), 2) as fill_rate,
         AVG(CAST(request_CPM as FLOAT64)) as request_CPM,
         SUM(rev) as rev,
-        SUM(profit) as profit
+        SUM(profit) as profit,
+        SUM(rev) - SUM(profit) as rev_to_pub
       FROM ${tableName}
       ${whereClause}
       GROUP BY zid, zonename, product
@@ -672,7 +673,8 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
         ROUND(SUM(paid) / NULLIF(SUM(req), 0), 2) as fill_rate,
         AVG(CAST(request_CPM as FLOAT64)) as request_CPM,
         SUM(rev) as rev,
-        SUM(profit) as profit
+        SUM(profit) as profit,
+        SUM(rev) - SUM(profit) as rev_to_pub
       FROM ${tableName}
       ${whereClause}
       GROUP BY DATE, zid, zonename, product
@@ -700,7 +702,8 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
         pid,
         pubname,
         SUM(rev) as rev,
-        SUM(profit) as profit
+        SUM(profit) as profit,
+        SUM(rev) - SUM(profit) as rev_to_pub
       FROM ${tableName}
       ${whereClause}
       GROUP BY pid, pubname
@@ -727,7 +730,8 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
         pid,
         pubname,
         SUM(rev) as rev,
-        SUM(profit) as profit
+        SUM(profit) as profit,
+        SUM(rev) - SUM(profit) as rev_to_pub
       FROM ${tableName}
       ${whereClause}
       GROUP BY DATE, pid, pubname
@@ -754,7 +758,8 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
         mid,
         medianame,
         SUM(rev) as rev,
-        SUM(profit) as profit
+        SUM(profit) as profit,
+        SUM(rev) - SUM(profit) as rev_to_pub
       FROM ${tableName}
       ${whereClause}
       GROUP BY mid, medianame
@@ -781,7 +786,8 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
         mid,
         medianame,
         SUM(rev) as rev,
-        SUM(profit) as profit
+        SUM(profit) as profit,
+        SUM(rev) - SUM(profit) as rev_to_pub
       FROM ${tableName}
       ${whereClause}
       GROUP BY DATE, mid, medianame

@@ -145,6 +145,37 @@ export const ecpmColumn = (): ColumnConfig => ({
 })
 
 /**
+ * Fill Rate column (P2, P1, %)
+ */
+export const fillRateColumn = (): ColumnConfig => ({
+  key: 'fill_rate',
+  label: 'Fill Rate',
+  width: '10%',
+  render: (item) => {
+    const req1 = item.req_p1 || 0
+    const req2 = item.req_p2 || 0
+    const paid1 = item.paid_p1 || 0
+    const paid2 = item.paid_p2 || 0
+
+    const fillRate1 = req1 > 0 ? (paid1 / req1) * 100 : 0
+    const fillRate2 = req2 > 0 ? (paid2 / req2) * 100 : 0
+    const fillRateChange = fillRate1 > 0 ? ((fillRate2 - fillRate1) / fillRate1) * 100 : 0
+
+    return (
+      <div>
+        <div style={{ color: colors.text.primary }}>{fillRate2.toFixed(1)}%</div>
+        <div className="text-xs" style={{ color: colors.text.secondary }}>
+          {fillRate1.toFixed(1)}%
+        </div>
+        <div className="text-xs" style={{ color: getChangeColor(fillRateChange) }}>
+          {formatPct(fillRateChange)}
+        </div>
+      </div>
+    )
+  }
+})
+
+/**
  * Actionable Warnings column
  * Shows intelligent warnings based on metric analysis
  */
