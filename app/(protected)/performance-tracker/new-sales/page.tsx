@@ -49,6 +49,7 @@ interface NewSalesData {
 
 export default function NewSalesPage() {
   const contentRef = useRef<HTMLDivElement>(null)
+  const prevCrossFilterFieldsRef = useRef<string[]>([])
   const [activeTab, setActiveTab] = useState('summary')
   const [summaryFilters, setSummaryFilters] = useState<Record<string, any>>({})
 

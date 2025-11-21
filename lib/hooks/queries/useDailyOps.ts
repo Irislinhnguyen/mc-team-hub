@@ -35,7 +35,7 @@ export function useDailyOps(filters: Record<string, any>) {
         throw new Error(result.message || 'Unknown error fetching daily ops')
       }
     },
-    enabled: !!(baseFilters.startDate && baseFilters.endDate),
+    enabled: true, // No date filter needed - top_movers_daily is snapshot table without DATE column
     staleTime: cacheConfig.dailyAnalytics.staleTime,
     gcTime: cacheConfig.dailyAnalytics.gcTime,
     retry: 2,
