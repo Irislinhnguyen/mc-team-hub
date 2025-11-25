@@ -14,7 +14,7 @@ import { redirect } from 'next/navigation'
 export async function getServerUser(): Promise<TokenPayload | null> {
   try {
     const cookieStore = await cookies()
-    const authToken = cookieStore.get('auth_token')?.value
+    const authToken = cookieStore.get('__Host-auth_token')?.value
 
     if (!authToken) {
       return null
@@ -64,7 +64,7 @@ export function getUserFromRequest(request: Request): TokenPayload | null {
       {} as Record<string, string>
     )
 
-    const authToken = cookies['auth_token']
+    const authToken = cookies['__Host-auth_token']
     if (!authToken) {
       return null
     }
@@ -106,11 +106,35 @@ export function isAdmin(user: TokenPayload): boolean {
 }
 
 /**
+ * Check if user is manager
+ */
+export function isManager(user: TokenPayload): boolean {
+  return hasRole(user, 'manager')
+}
+
+/**
+ * Check if user is admin or manager
+ */
+export function isAdminOrManager(user: TokenPayload): boolean {
+  return isAdmin(user) || isManager(user)
+}
+
+/**
  * Require admin role
  * Throws an error if user is not admin
  */
 export function requireAdmin(user: TokenPayload): void {
   if (!isAdmin(user)) {
     throw new Error('Forbidden: Admin access required')
+  }
+}
+
+/**
+ * Require admin or manager role
+ * Throws an error if user is neither admin nor manager
+ */
+export function requireAdminOrManager(user: TokenPayload): void {
+  if (!isAdminOrManager(user)) {
+    throw new Error('Forbidden: Admin or Manager access required')
   }
 }

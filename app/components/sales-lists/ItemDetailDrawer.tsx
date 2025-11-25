@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSalesList } from '@/contexts/SalesListContext'
+import { useSalesList } from '@/app/contexts/SalesListContext'
 import { SalesListItemSummary, SalesListActivity } from '@/lib/types/salesLists'
 import { X, Plus, Edit, Trash2, Calendar, User } from 'lucide-react'
 import { LogActivityModal } from './LogActivityModal'

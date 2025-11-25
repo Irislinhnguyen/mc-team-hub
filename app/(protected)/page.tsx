@@ -2,10 +2,9 @@
 
 import { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { LineChart, Shield, GitBranch, LogOut, BookOpen, Trophy, Newspaper, Heart } from 'lucide-react'
+import { LineChart, Shield, GitBranch, BookOpen, Trophy, Newspaper, Heart } from 'lucide-react'
 import { ProductCard } from '../components/home/ProductCard'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Header } from '../components/layout/Header'
 import { useAuth } from '../contexts/AuthContext'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -78,53 +77,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-      {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-10">
-        <div className="container mx-auto px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-[#1565C0]">MC Team Hub</h1>
-              <p className="text-gray-600 mt-1">
-                Your central hub for analytics, compliance monitoring, and team collaboration
-              </p>
-            </div>
-
-            {/* User Profile */}
-            {isLoading ? (
-              <div className="flex items-center gap-4">
-                <div className="text-right space-y-2">
-                  <Skeleton className="h-5 w-32 ml-auto" />
-                  <Skeleton className="h-4 w-40 ml-auto" />
-                </div>
-                <Skeleton className="h-9 w-24" />
-              </div>
-            ) : user ? (
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="flex items-center gap-2 justify-end">
-                    <p className="text-sm font-medium text-gray-900">{user.name || 'User'}</p>
-                    {user.role === 'admin' && (
-                      <Badge className="text-xs bg-[#1565C0] hover:bg-[#0D47A1]">
-                        Admin
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-600">{user.email}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="gap-2"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Logout
-                </Button>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Main Content */}
       <main className="container mx-auto px-8 py-16">
@@ -185,8 +138,8 @@ export default function HomePage() {
               title="Knowledge Championship"
               description="Monthly testing challenges with competitive leaderboard and performance rankings"
               icon={<Trophy className="h-full w-full" />}
-              status="developing"
-              onClick={null}
+              status="active"
+              onClick={() => router.push('/challenges')}
             />
 
             <ProductCard

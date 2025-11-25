@@ -1,5 +1,6 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
 import { AnalyticsSidebar } from '../../components/performance-tracker/AnalyticsSidebar'
 import { FloatingToggle } from '../../components/performance-tracker/FloatingToggle'
 import { CrossFilterProvider } from '../../contexts/CrossFilterContext'
@@ -8,16 +9,12 @@ import { SidebarProvider, SidebarInset, useSidebar } from '@/components/ui/sideb
 function AnalyticsContent({ children }: { children: React.ReactNode }) {
   const { open } = useSidebar()
 
-  // ✨ REMOVED: Filter clearing on navigation
-  // Now using React Query caching + persisted filters per tab
-  // Each tab remembers its own filters via localStorage
-
   return (
     <SidebarInset>
       <div
         className="min-h-screen bg-gray-50 transition-[padding-left] duration-150 ease-out"
         style={{
-          paddingLeft: open ? '0' : '48px', // Reserve space for floating toggle when sidebar closed
+          paddingLeft: open ? '0' : '48px',
           minWidth: 0,
           width: '100%',
           maxWidth: '100%',
@@ -32,6 +29,20 @@ function AnalyticsContent({ children }: { children: React.ReactNode }) {
 }
 
 export default function AnalyticsLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+
+  // Query Lab has its own layout with session sidebar - don't show Analytics sidebar
+  const isQueryLab = pathname?.startsWith('/performance-tracker/query')
+
+  if (isQueryLab) {
+    // Query Lab uses its own full-screen layout
+    return (
+      <CrossFilterProvider>
+        {children}
+      </CrossFilterProvider>
+    )
+  }
+
   return (
     <CrossFilterProvider>
       <SidebarProvider defaultOpen={true}>

@@ -89,3 +89,8 @@ export async function createAdminClient() {
     }
   )
 }
+
+/**
+ * Default export - alias for createServerComponentClient
+ */
+export const createClient = createServerComponentClient

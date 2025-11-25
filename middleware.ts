@@ -21,8 +21,16 @@ export async function middleware(request: NextRequest) {
   const protectedRoutes = ['/analytics', '/performance-tracker']
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
 
-  // Skip auth check for public routes
+  // Skip auth check for public routes, but redirect authenticated users away from /auth
   if (isPublicRoute) {
+    // If user is already authenticated and trying to access /auth, redirect to home
+    if (pathname === '/auth' || pathname.startsWith('/auth')) {
+      const authToken = request.cookies.get('__Host-auth_token')?.value
+      if (authToken) {
+        console.log('[Middleware] User already authenticated, redirecting from /auth to home')
+        return NextResponse.redirect(new URL('/', request.url))
+      }
+    }
     return NextResponse.next()
   }
 

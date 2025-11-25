@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from './AuthContext'
 import {
   SalesList,
   SalesListWithStats,

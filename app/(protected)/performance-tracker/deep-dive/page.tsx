@@ -12,7 +12,7 @@ import React, { useState, useMemo, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import UnifiedDeepDiveView from '../../../components/performance-tracker/UnifiedDeepDiveView'
 import SegmentedDeepDiveView from '../../../components/performance-tracker/SegmentedDeepDiveView'
-import TabNavigation from '../../../components/performance-tracker/TabNavigation'
+// QueryLabView and TabNavigation removed - Query Lab is now at /performance-tracker/query
 import { CompactFilterPanel } from '../../../components/performance-tracker/CompactFilterPanel'
 import { TierClassificationHelp } from '../../../components/performance-tracker/TierClassificationHelp'
 import { FilterPresetManager } from '../../../components/performance-tracker/FilterPresetManager'
@@ -591,11 +591,10 @@ function DeepDiveV2PageContent() {
           <TierClassificationHelp />
         </CompactFilterPanel>
         </div>
-      </div>
 
-      {/* Back Button (if drilled down) */}
-      {getDrillDownState.canGoBack && (
-        <div className="max-w-7xl mx-auto mb-4">
+        {/* Back Button (if drilled down) */}
+        {getDrillDownState.canGoBack && (
+          <div className="mb-4">
           <button
             onClick={handleBackButton}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -611,10 +610,10 @@ function DeepDiveV2PageContent() {
             <span>Back to {getPerspectiveLabel(getDrillDownState.parentPerspective!)}</span>
           </button>
         </div>
-      )}
+        )}
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto">
+        {/* Main Content */}
+        <div>
         {multiSelectInfo ? (
           // Multi-select view: Show segmented comparison
           <SegmentedDeepDiveView
@@ -659,6 +658,8 @@ function DeepDiveV2PageContent() {
             }}
           />
         )}
+        </div>
+
       </div>
     </div>
   )

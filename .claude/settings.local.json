@@ -5,11 +5,28 @@
       "Bash(wc:*)",
       "Bash(ls:*)",
       "Bash(npx tsc:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "WebFetch(domain:docs.moodle.org)",
+      "WebFetch(domain:moodleschema.zoola.io)",
+      "Bash(node scripts/test-2step-workflow.cjs:*)",
+      "Bash(node scripts/test-execute-only.cjs:*)",
+      "Bash(node scripts/test-simple-sql.cjs:*)",
+      "Bash(node scripts/test-simple-plan.cjs:*)",
+      "Bash(node scripts/test-terminal-workflow.cjs:*)",
+      "WebFetch(domain:support.neo4j.com)",
+      "WebFetch(domain:aura.support.neo4j.com)",
+      "mcp__supabase__apply_migration",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__list_migrations"
     ],
     "deny": [],
     "ask": [
       "Bash(npm run build:*)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }
