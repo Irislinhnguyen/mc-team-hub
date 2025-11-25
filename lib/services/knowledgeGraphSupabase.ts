@@ -257,7 +257,7 @@ class KnowledgeGraphService {
     // Process each concept
     for (const { concept } of concepts) {
       switch (concept.maps_to_type) {
-        case 'column':
+        case 'column': {
           // Add column info
           const tableName = concept.maps_to_table || 'pub_data'
           const table = tableMap.get(tableName)
@@ -276,13 +276,15 @@ class KnowledgeGraphService {
             }
           }
           break
+        }
 
-        case 'table':
+        case 'table': {
           const targetTable = tableMap.get(concept.maps_to_value)
           if (targetTable && !tables.find(t => t.name === targetTable.name)) {
             tables.push(targetTable)
           }
           break
+        }
 
         case 'expression':
           expressions.push({
@@ -292,7 +294,7 @@ class KnowledgeGraphService {
           })
           break
 
-        case 'entity':
+        case 'entity': {
           // Entity maps to a column used for grouping/filtering
           const entityTable = concept.maps_to_table || 'pub_data'
           const entityTableInfo = tableMap.get(entityTable)
@@ -309,6 +311,7 @@ class KnowledgeGraphService {
             }
           }
           break
+        }
       }
     }
 
