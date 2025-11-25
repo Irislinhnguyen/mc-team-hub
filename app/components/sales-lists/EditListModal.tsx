@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSalesList } from '@/contexts/SalesListContext'
+import { useSalesList } from '@/app/contexts/SalesListContext'
 import { SalesList } from '@/lib/types/salesLists'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'

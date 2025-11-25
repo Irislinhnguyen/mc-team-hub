@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { useSalesList } from '@/contexts/SalesListContext'
+import { useSalesList } from '@/app/contexts/SalesListContext'
 import { SalesListItemSummary } from '@/lib/types/salesLists'
 import { ArrowLeft, Plus, MoreVertical, Trash2, Edit, Share2, TrendingUp } from 'lucide-react'
 import { AddItemManualModal } from '@/app/components/sales-lists/AddItemManualModal'
