@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useSalesList } from '@/contexts/SalesListContext'
 import { SalesListWithStats } from '@/lib/types/salesLists'
 import { Plus, Search, ListChecks, TrendingUp, Users, Calendar } from 'lucide-react'
-import { CreateListModal } from '@/components/sales-lists/CreateListModal'
+import { CreateListModal } from '@/app/components/sales-lists/CreateListModal'
 // import { formatDate } from '@/lib/utils/formatters'
 
 export default function SalesListsPage() {
