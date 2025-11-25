@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { generateReasoningFromQuestion } from '../../../../../lib/services/aiSqlGenerator'
 import { getUserFromRequest } from '../../../../../lib/auth/server'
 import type { UserContext } from '../../../../../lib/services/openaiUsageTracker'
-import { v4 as uuidv4 } from 'uuid'
+import crypto from 'crypto'
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     )
 
     // Generate unique question ID
-    const questionId = uuidv4()
+    const questionId = crypto.randomUUID()
 
     return NextResponse.json({
       status: 'success',

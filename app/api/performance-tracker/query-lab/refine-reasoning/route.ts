@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { refineReasoningWithFeedback } from '../../../../../lib/services/aiSqlGenerator'
 import { getUserFromRequest } from '../../../../../lib/auth/server'
 import type { UserContext } from '../../../../../lib/services/openaiUsageTracker'
-import { v4 as uuidv4 } from 'uuid'
+import crypto from 'crypto'
 
 export async function POST(request: NextRequest) {
   try {
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
 
     // Create conversation exchange record
     const exchange = {
-      id: uuidv4(),
+      id: crypto.randomUUID(),
       stepNumber,
       userFeedback,
       aiResponse: result.aiResponse,
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       status: 'success',
-      questionId: questionId || uuidv4(),
+      questionId: questionId || crypto.randomUUID(),
       refinedReasoning: result.reasoning,
       aiResponse: result.aiResponse,
       confidence: result.confidence,
