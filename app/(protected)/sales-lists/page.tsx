@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSalesList } from '@/app/contexts/SalesListContext'
+import { useSalesList } from '@/contexts/SalesListContext'
 import { SalesListWithStats } from '@/lib/types/salesLists'
 import { Plus, Search, ListChecks, TrendingUp, Users, Calendar } from 'lucide-react'
 import { CreateListModal } from '@/components/sales-lists/CreateListModal'

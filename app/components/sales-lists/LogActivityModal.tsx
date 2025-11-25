@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useSalesList } from '@/app/contexts/SalesListContext'
+import { useSalesList } from '@/contexts/SalesListContext'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
 import { ACTIVITY_TYPES, CONTACT_OUTCOMES, RESPONSE_OUTCOMES, CLOSED_STATUSES } from './statusUtils'
