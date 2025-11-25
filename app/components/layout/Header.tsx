@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LogOut, ChevronDown, LayoutDashboard, Shield } from 'lucide-react';
-import { NotificationBell } from '../notifications/NotificationBell';
+// import { NotificationBell } from '../notifications/NotificationBell'; // TODO: Enable when notifications feature is ready
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -46,8 +46,8 @@ export function Header() {
             </div>
           ) : user ? (
             <div className="flex items-center gap-4">
-              {/* Notification Bell */}
-              <NotificationBell />
+              {/* Notification Bell - TODO: Enable when notifications feature is ready */}
+              {/* <NotificationBell /> */}
 
               {/* User Dropdown Menu */}
               <DropdownMenu>
