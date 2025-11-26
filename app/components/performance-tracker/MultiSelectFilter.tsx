@@ -8,8 +8,6 @@ import {
   Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
-  CommandItem,
 } from '@/components/ui/command'
 import {
   Popover,
@@ -133,30 +131,30 @@ export function MultiSelectFilter({
               ) : (
                 <>
                   {/* Select All Option */}
-                  <CommandItem
-                    onSelect={handleSelectAll}
-                    className="cursor-pointer"
+                  <div
+                    onClick={handleSelectAll}
+                    className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
                   >
                     <Checkbox
                       checked={someSelected ? 'indeterminate' : allSelected}
                       className="mr-2"
                     />
                     <span className="font-medium">Select All</span>
-                  </CommandItem>
+                  </div>
 
                   {/* Individual Options */}
                   {filteredOptions.map((option) => (
-                    <CommandItem
+                    <div
                       key={option.value}
-                      onSelect={() => handleToggle(option.value)}
-                      className="cursor-pointer"
+                      onClick={() => handleToggle(option.value)}
+                      className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
                     >
                       <Checkbox
                         checked={value.includes(option.value)}
                         className="mr-2"
                       />
                       {option.label}
-                    </CommandItem>
+                    </div>
                   ))}
                 </>
               )}
