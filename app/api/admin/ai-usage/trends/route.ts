@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       let key: string
 
       switch (groupBy) {
-        case 'week':
+        case 'week': {
           // Get ISO week start (Monday)
           const weekStart = new Date(date)
           const day = weekStart.getDay()
@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
           weekStart.setDate(diff)
           key = weekStart.toISOString().split('T')[0]
           break
+        }
         case 'month':
           key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`
           break
