@@ -359,7 +359,7 @@ export function FilterPresetManager({
 
       <div className="flex items-center gap-2">
         {/* Preset Selector Dropdown */}
-        <DropdownMenu modal={false} open={mainDropdownOpen} onOpenChange={setMainDropdownOpen}>
+        <DropdownMenu modal={true} open={mainDropdownOpen} onOpenChange={setMainDropdownOpen}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
@@ -528,7 +528,7 @@ export function FilterPresetManager({
 
       {/* Actions Dropdown */}
       {loadedPreset ? (
-        <DropdownMenu modal={false}>
+        <DropdownMenu modal={true}>
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
