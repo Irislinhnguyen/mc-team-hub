@@ -514,8 +514,20 @@ export function getPartnerBreakdownQueries(whereClause: string, filters?: GCPPFi
 /**
  * Partner Breakdown Part 2 Queries (Tab 4)
  * Tables: master_top_100_by_partner_all_market, master_partner_market_top_by_market, geniee_wallet_analysis
+ *
+ * NOTE: Only master_partner_market_top_by_market has 'market' column.
+ * Other tables aggregate across all markets, so we exclude 'market' filter from their WHERE clauses.
  */
-export function getPartnerBreakdown2Queries(whereClause: string) {
+export function getPartnerBreakdown2Queries(filters: GCPPFilters) {
+  // For top100ByPartner: exclude 'market' (table doesn't have it - aggregates all markets)
+  const top100WhereClause = buildGCPPWhereClause(filters, undefined, ['market'])
+
+  // For topPubsByPartnerMarket: include all filters (has market column)
+  const topPubsWhereClause = buildGCPPWhereClause(filters)
+
+  // For genieeWallet: exclude 'market' (table doesn't have it - aggregates all markets)
+  const walletWhereClause = buildGCPPWhereClause(filters, undefined, ['market'])
+
   return {
     // Top 100 by partner (all markets)
     top100ByPartner: `
@@ -528,7 +540,7 @@ export function getPartnerBreakdown2Queries(whereClause: string) {
         filtered_impressions,
         date
       FROM \`gcpp-check.geniee.master_top_100_by_partner_all_market\`
-      ${whereClause}
+      ${top100WhereClause}
       ORDER BY rank ASC
     `,
 
@@ -545,7 +557,7 @@ export function getPartnerBreakdown2Queries(whereClause: string) {
         CASE WHEN app_name IS NULL THEN 'WEB' ELSE 'APP' END as team,
         date
       FROM \`gcpp-check.geniee.master_partner_market_top_by_market\`
-      ${whereClause}
+      ${topPubsWhereClause}
       ORDER BY filtered_impressions DESC
     `,
 
@@ -560,7 +572,7 @@ export function getPartnerBreakdown2Queries(whereClause: string) {
         total_impressions,
         impressions_percentage
       FROM \`gcpp-check.geniee.geniee_wallet_analysis\`
-      ${whereClause}
+      ${walletWhereClause}
       ORDER BY impressions_percentage DESC
     `
   }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import BigQueryService from '../../../../lib/services/bigquery'
-import { buildGCPPWhereClause, getPartnerBreakdown2Queries } from '../../../../lib/services/gcppQueries'
+import { getPartnerBreakdown2Queries } from '../../../../lib/services/gcppQueries'
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,8 +10,9 @@ export async function POST(request: NextRequest) {
     const filtersForWhere = { ...filters }
     delete filtersForWhere.category
 
-    const whereClause = buildGCPPWhereClause(filtersForWhere)
-    const queries = getPartnerBreakdown2Queries(whereClause)
+    // getPartnerBreakdown2Queries now handles WHERE clause generation internally
+    // It excludes 'market' filter for queries whose tables don't have the market column
+    const queries = getPartnerBreakdown2Queries(filtersForWhere)
 
     const [
       top100ByPartner,
