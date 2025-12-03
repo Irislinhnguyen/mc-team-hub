@@ -106,6 +106,7 @@ export default function ProfitProjectionsPage() {
         { key: 'medianame', label: 'Media Name', width: '200px' },
       ],
       zid: [
+        { key: 'pid', label: 'PID', width: '80px' },
         { key: 'mid', label: 'MID', width: '80px' },
         { key: 'zid', label: 'ZID', width: '80px' },
         { key: 'zonename', label: 'Zone Name', width: '200px' },
@@ -161,6 +162,7 @@ export default function ProfitProjectionsPage() {
         filterFields={['team', 'pic', 'product', 'pid', 'mid', 'pubname', 'medianame', 'zid', 'zonename']}
         onFilterChange={stableSetCurrentFilters}
         isLoading={loading}
+        enableCascading={true}
       />
 
       {/* Metric Selector */}
@@ -208,7 +210,7 @@ export default function ProfitProjectionsPage() {
               data={midDataWithTotal}
               pageSize={100}
               enableCrossFilter={true}
-              crossFilterColumns={['pid', 'mid', 'medianame']}
+              crossFilterColumns={['pic', 'pid', 'mid', 'medianame']}
             />
 
             {/* ZID Projections Table */}
@@ -218,7 +220,7 @@ export default function ProfitProjectionsPage() {
               data={zidDataWithTotal}
               pageSize={100}
               enableCrossFilter={true}
-              crossFilterColumns={['mid', 'zid', 'zonename']}
+              crossFilterColumns={['pic', 'pid', 'mid', 'zid', 'zonename']}
             />
           </>
         ) : (

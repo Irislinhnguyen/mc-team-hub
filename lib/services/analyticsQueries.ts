@@ -935,11 +935,13 @@ export function getProjectionQueries(filterType: string, whereClause?: string) {
   let groupByColumns = 'pic, pid, pubname'
 
   if (filterType === 'mid') {
-    selectColumns = 'pid, mid, medianame'
-    groupByColumns = 'pid, mid, medianame'
+    // Add pic for cross-filtering with PID table
+    selectColumns = 'pic, pid, mid, medianame'
+    groupByColumns = 'pic, pid, mid, medianame'
   } else if (filterType === 'zid') {
-    selectColumns = 'mid, zid, zonename'
-    groupByColumns = 'mid, zid, zonename'
+    // Add pic and pid for cross-filtering with PID and MID tables
+    selectColumns = 'pic, pid, mid, zid, zonename'
+    groupByColumns = 'pic, pid, mid, zid, zonename'
   }
 
   return {
