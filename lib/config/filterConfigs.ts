@@ -9,10 +9,24 @@ import type { FilterConfig, FilterField } from '../types/performanceTracker'
  */
 
 /**
+ * Dynamic options override for cascading filters
+ */
+export interface DynamicFilterOptions {
+  pics?: Array<{ label: string; value: string }>
+  pids?: Array<{ label: string; value: string }>
+  pubnames?: Array<{ label: string; value: string }>
+  mids?: Array<{ label: string; value: string }>
+  medianames?: Array<{ label: string; value: string }>
+  zids?: Array<{ label: string; value: string }>
+  zonenames?: Array<{ label: string; value: string }>
+}
+
+/**
  * Build filter configuration array from metadata
  *
  * @param metadata - Metadata options containing filter values
  * @param fields - Array of filter field names to include
+ * @param dynamicOptions - Optional override for cascading filter options
  * @returns Object with filter configurations and count
  *
  * @example
@@ -24,10 +38,17 @@ import type { FilterConfig, FilterField } from '../types/performanceTracker'
  * ])
  *
  * <FilterPanel filters={filters} filterCount={count} ... />
+ *
+ * @example With cascading filters
+ * const { filters, count } = buildFilterConfig(metadata, fields, {
+ *   pics: availablePics,
+ *   pids: availablePids
+ * })
  */
 export function buildFilterConfig(
   metadata: MetadataOptions | null,
-  fields: FilterField[]
+  fields: FilterField[],
+  dynamicOptions?: DynamicFilterOptions
 ): { filters: FilterConfig[]; count: number } {
   // Base configuration for all possible filters
   const configs: Record<FilterField, FilterConfig> = {
@@ -46,7 +67,7 @@ export function buildFilterConfig(
       name: 'pic',
       label: 'pic',
       type: 'select',
-      options: metadata?.pics || [],
+      options: dynamicOptions?.pics || metadata?.pics || [],
     },
     h5: {
       name: 'h5',
@@ -64,37 +85,37 @@ export function buildFilterConfig(
       name: 'pid',
       label: 'pid',
       type: 'select',
-      options: metadata?.pids || [],
+      options: dynamicOptions?.pids || metadata?.pids || [],
     },
     mid: {
       name: 'mid',
       label: 'mid',
       type: 'select',
-      options: metadata?.mids || [],
+      options: dynamicOptions?.mids || metadata?.mids || [],
     },
     pubname: {
       name: 'pubname',
       label: 'pubname',
       type: 'select',
-      options: metadata?.pubnames || [],
+      options: dynamicOptions?.pubnames || metadata?.pubnames || [],
     },
     medianame: {
       name: 'medianame',
       label: 'medianame',
       type: 'select',
-      options: metadata?.medianames || [],
+      options: dynamicOptions?.medianames || metadata?.medianames || [],
     },
     zid: {
       name: 'zid',
       label: 'zid',
       type: 'select',
-      options: metadata?.zids || [],
+      options: dynamicOptions?.zids || metadata?.zids || [],
     },
     zonename: {
       name: 'zonename',
       label: 'zonename',
       type: 'select',
-      options: metadata?.zonenames || [],
+      options: dynamicOptions?.zonenames || metadata?.zonenames || [],
     },
     rev_flag: {
       name: 'rev_flag',

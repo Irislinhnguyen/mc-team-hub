@@ -122,10 +122,14 @@ export function CompactFilterPanel({
     if (midFilter.length > 0) newFilters.mid = midFilter.length === 1 ? midFilter[0] : midFilter
     if (zidFilter.length > 0) newFilters.zid = zidFilter.length === 1 ? zidFilter[0] : zidFilter
 
-    // Preserve other filters (like product)
+    // Preserve other filters (like product), but skip empty arrays/strings
     Object.keys(currentFilters).forEach(key => {
       if (!['team', 'pic', 'pid', 'mid', 'zid'].includes(key)) {
-        newFilters[key] = currentFilters[key]
+        const value = currentFilters[key]
+        // Skip empty arrays and empty strings
+        if (Array.isArray(value) && value.length === 0) return
+        if (value === '') return
+        newFilters[key] = value
       }
     })
 

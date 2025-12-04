@@ -104,10 +104,11 @@ export function MultiSelectFilter({
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-[300px] p-0 z-[9999] pointer-events-auto"
+          className="w-[300px] p-0 pointer-events-auto"
           align="start"
           side="bottom"
           style={{ pointerEvents: 'auto' }}
+          sideOffset={5}
         >
           <Command shouldFilter={false} className="pointer-events-auto">
             <div className="flex items-center border-b px-3 pointer-events-auto" style={{ borderColor: colors.neutralLight }}>
@@ -119,7 +120,6 @@ export function MultiSelectFilter({
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup
               className="max-h-[300px] overflow-y-auto overscroll-contain pointer-events-auto"
               style={{ pointerEvents: 'auto' }}
@@ -127,6 +127,10 @@ export function MultiSelectFilter({
               {options.length === 0 ? (
                 <div className="py-6 text-center text-sm" style={{ color: colors.text.secondary }}>
                   No data available
+                </div>
+              ) : filteredOptions.length === 0 ? (
+                <div className="py-6 text-center text-sm" style={{ color: colors.text.secondary }}>
+                  No results found for "{searchQuery}"
                 </div>
               ) : (
                 <>

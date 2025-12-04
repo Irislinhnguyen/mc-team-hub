@@ -32,6 +32,7 @@ interface FilterPanelProps {
   showDateRangePicker?: boolean
   defaultDateRange?: { startDate: string; endDate: string }
   initialFilters?: Record<string, any>  // ✨ NEW: For loading preset values
+  filterLoadingStates?: Record<string, boolean>  // ✨ CASCADING FILTERS: Per-filter loading states
 }
 
 export function FilterPanel({
@@ -44,7 +45,8 @@ export function FilterPanel({
   includeDateInFilters = true,
   showDateRangePicker = true,
   defaultDateRange,
-  initialFilters
+  initialFilters,
+  filterLoadingStates = {}
 }: FilterPanelProps) {
   const [filterValues, setFilterValues] = useState<Record<string, any>>({})
   const [startDate, setStartDate] = useState<Date | null>(
@@ -91,7 +93,18 @@ export function FilterPanel({
   // Auto-apply filters with debounce
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      const allFilters = { ...filterValues }
+      // Filter out empty arrays and empty strings - only send non-empty filters
+      const cleanedFilters = Object.fromEntries(
+        Object.entries(filterValues).filter(([key, value]) => {
+          // Remove empty arrays (e.g., pic: [])
+          if (Array.isArray(value) && value.length === 0) return false
+          // Remove empty strings
+          if (value === '') return false
+          return true
+        })
+      )
+
+      const allFilters = { ...cleanedFilters }
 
       // Only include dates if flag is set and dates are available
       if (includeDateInFilters && startDate && endDate) {
@@ -219,6 +232,8 @@ export function FilterPanel({
             }
 
             if (filter.type === 'select') {
+              const isFilterLoading = filterLoadingStates[filter.name] || false
+
               return (
                 <div key={filter.name} className="flex-1" style={{ minWidth: '180px' }}>
                   <MultiSelectFilter
@@ -226,7 +241,18 @@ export function FilterPanel({
                     options={filter.options || []}
                     value={filterValues[filter.name] || []}
                     onChange={(value) => handleFilterChange(filter.name, value)}
+                    disabled={isFilterLoading}
                   />
+                  {/* ✨ CASCADING FILTERS: Show loading indicator */}
+                  {isFilterLoading && (
+                    <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                      <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Loading options...
+                    </div>
+                  )}
                 </div>
               )
             }

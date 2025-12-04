@@ -478,19 +478,19 @@ export async function buildWhereClause(
 
   if (filters.pid) {
     if (Array.isArray(filters.pid) && filters.pid.length > 0) {
-      const values = filters.pid.map(v => v).join(', ')
+      const values = filters.pid.map(v => `'${v}'`).join(', ')
       conditions.push(`pid IN (${values})`)
     } else if (filters.pid !== '') {
-      conditions.push(`pid = ${filters.pid}`)
+      conditions.push(`pid = '${filters.pid}'`)
     }
   }
 
   if (filters.mid) {
     if (Array.isArray(filters.mid) && filters.mid.length > 0) {
-      const values = filters.mid.map(v => v).join(', ')
+      const values = filters.mid.map(v => `'${v}'`).join(', ')
       conditions.push(`mid IN (${values})`)
     } else if (filters.mid !== '') {
-      conditions.push(`mid = ${filters.mid}`)
+      conditions.push(`mid = '${filters.mid}'`)
     }
   }
 
@@ -514,10 +514,10 @@ export async function buildWhereClause(
 
   if (filters.zid) {
     if (Array.isArray(filters.zid) && filters.zid.length > 0) {
-      const values = filters.zid.map(v => v).join(', ')
+      const values = filters.zid.map(v => `'${v}'`).join(', ')
       conditions.push(`zid IN (${values})`)
     } else if (filters.zid !== '') {
-      conditions.push(`zid = ${filters.zid}`)
+      conditions.push(`zid = '${filters.zid}'`)
     }
   }
 
@@ -1295,10 +1295,10 @@ export async function getNewSalesQueries(filters: Record<string, any>) {
 
   if (filters.pid) {
     if (Array.isArray(filters.pid) && filters.pid.length > 0) {
-      const values = filters.pid.map(v => v).join(', ')
+      const values = filters.pid.map(v => `'${v}'`).join(', ')
       breakdownConditions.push(`pid IN (${values})`)
     } else if (filters.pid !== '') {
-      breakdownConditions.push(`pid = ${filters.pid}`)
+      breakdownConditions.push(`pid = '${filters.pid}'`)
     }
   }
 
