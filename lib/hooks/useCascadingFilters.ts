@@ -122,13 +122,13 @@ export function useCascadingFilters({
   const teamMappingsLoaded = !isLoadingTeamMappings && teamPicMappings.size > 0
 
   const availablePics = useMemo(() => {
-    if (!enableCascading || !metadata) return metadata?.pics || []
-    if (selectedTeams.length === 0) return metadata.pics
+    if (!enableCascading || !metadata) return metadata?.pics ?? []
+    if (selectedTeams.length === 0) return metadata.pics ?? []
 
     // Wait for team mappings to load
     if (!teamMappingsLoaded || teamPicMappings.size === 0) {
       console.log('[useCascadingFilters] ⏳ Team mappings not loaded yet, showing all PICs (loaded:', teamMappingsLoaded, ', size:', teamPicMappings.size, ')')
-      return metadata.pics
+      return metadata.pics ?? []
     }
 
     // Union of PICs from all selected teams
@@ -140,13 +140,14 @@ export function useCascadingFilters({
     })
 
     // Filter metadata PICs to only include those in selected teams
-    const filtered = metadata.pics.filter((pic) => picSet.has(pic.value))
+    const pics = metadata.pics ?? []
+    const filtered = pics.filter((pic) => picSet.has(pic.value))
     console.log(`[useCascadingFilters] ✅ Team→PIC filter: ${selectedTeams.length} teams → ${filtered.length} PICs (from ${picSet.size} unique)`)
 
     if (filtered.length === 0 && picSet.size > 0) {
       console.warn('[useCascadingFilters] ⚠️ No PICs found in metadata matching team mappings!')
       console.warn('[useCascadingFilters]    Team PICs:', Array.from(picSet).slice(0, 5))
-      console.warn('[useCascadingFilters]    Metadata PICs sample:', metadata.pics.slice(0, 5).map(p => p.value))
+      console.warn('[useCascadingFilters]    Metadata PICs sample:', pics.slice(0, 5).map(p => p.value))
     }
 
     return filtered
@@ -186,9 +187,9 @@ export function useCascadingFilters({
   })
 
   const availablePids = useMemo(() => {
-    if (!enableCascading || !metadata) return metadata?.pids || []
-    if (selectedPics.length === 0) return metadata.pids
-    if (isLoadingPids) return metadata.pids  // Keep showing all during load
+    if (!enableCascading || !metadata) return metadata?.pids ?? []
+    if (selectedPics.length === 0) return metadata.pids ?? []
+    if (isLoadingPids) return metadata.pids ?? []  // Keep showing all during load
     return fetchedPids || []
   }, [enableCascading, metadata, selectedPics.length, isLoadingPids, fetchedPids])
 
@@ -226,9 +227,9 @@ export function useCascadingFilters({
   })
 
   const availableMids = useMemo(() => {
-    if (!enableCascading || !metadata) return metadata?.mids || []
-    if (selectedPids.length === 0) return metadata.mids
-    if (isLoadingMids) return metadata.mids  // Keep showing all during load
+    if (!enableCascading || !metadata) return metadata?.mids ?? []
+    if (selectedPids.length === 0) return metadata.mids ?? []
+    if (isLoadingMids) return metadata.mids ?? []  // Keep showing all during load
     return fetchedMids || []
   }, [enableCascading, metadata, selectedPids.length, isLoadingMids, fetchedMids])
 
@@ -266,9 +267,9 @@ export function useCascadingFilters({
   })
 
   const availableZids = useMemo(() => {
-    if (!enableCascading || !metadata) return metadata?.zids || []
-    if (selectedMids.length === 0) return metadata.zids
-    if (isLoadingZids) return metadata.zids  // Keep showing all during load
+    if (!enableCascading || !metadata) return metadata?.zids ?? []
+    if (selectedMids.length === 0) return metadata.zids ?? []
+    if (isLoadingZids) return metadata.zids ?? []  // Keep showing all during load
     return fetchedZids || []
   }, [enableCascading, metadata, selectedMids.length, isLoadingZids, fetchedZids])
 
@@ -306,9 +307,9 @@ export function useCascadingFilters({
   })
 
   const availablePubnames = useMemo(() => {
-    if (!enableCascading || !metadata) return metadata?.pubnames || []
-    if (selectedPids.length === 0) return metadata.pubnames
-    if (isLoadingPubnames) return metadata.pubnames  // Keep showing all during load
+    if (!enableCascading || !metadata) return metadata?.pubnames ?? []
+    if (selectedPids.length === 0) return metadata.pubnames ?? []
+    if (isLoadingPubnames) return metadata.pubnames ?? []  // Keep showing all during load
     return fetchedPubnames || []
   }, [enableCascading, metadata, selectedPids.length, isLoadingPubnames, fetchedPubnames])
 
@@ -346,9 +347,9 @@ export function useCascadingFilters({
   })
 
   const availableMedianames = useMemo(() => {
-    if (!enableCascading || !metadata) return metadata?.medianames || []
-    if (selectedMids.length === 0) return metadata.medianames
-    if (isLoadingMedianames) return metadata.medianames  // Keep showing all during load
+    if (!enableCascading || !metadata) return metadata?.medianames ?? []
+    if (selectedMids.length === 0) return metadata.medianames ?? []
+    if (isLoadingMedianames) return metadata.medianames ?? []  // Keep showing all during load
     return fetchedMedianames || []
   }, [enableCascading, metadata, selectedMids.length, isLoadingMedianames, fetchedMedianames])
 
@@ -386,9 +387,9 @@ export function useCascadingFilters({
   })
 
   const availableZonenames = useMemo(() => {
-    if (!enableCascading || !metadata) return metadata?.zonenames || []
-    if (selectedZids.length === 0) return metadata.zonenames
-    if (isLoadingZonenames) return metadata.zonenames  // Keep showing all during load
+    if (!enableCascading || !metadata) return metadata?.zonenames ?? []
+    if (selectedZids.length === 0) return metadata.zonenames ?? []
+    if (isLoadingZonenames) return metadata.zonenames ?? []  // Keep showing all during load
     return fetchedZonenames || []
   }, [enableCascading, metadata, selectedZids.length, isLoadingZonenames, fetchedZonenames])
 
