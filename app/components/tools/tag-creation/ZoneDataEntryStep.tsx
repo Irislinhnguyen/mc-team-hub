@@ -30,13 +30,14 @@ interface ZoneWithMetadata extends ExtractedZone {
   // Individual zone fields
   zone_type?: string
   cs_sales_note_type?: string
-  content?: string
+  // content moved to global field
 }
 
 interface ZoneDataEntryStepProps {
   zones: ExtractedZone[]
   initialAppId?: string
   initialAppstoreUrl?: string
+  initialPayoutRate?: string
   onComplete: (zonesWithMetadata: ZoneWithMetadata[]) => void
   onBack: () => void
 }
@@ -62,18 +63,21 @@ export function ZoneDataEntryStep({
   zones,
   initialAppId = '',
   initialAppstoreUrl = '',
+  initialPayoutRate = '',
   onComplete,
   onBack
 }: ZoneDataEntryStepProps) {
   // Common fields (apply to all zones) - auto-fill from Step 1 if available
   const [appId, setAppId] = useState(initialAppId)
   const [appstoreUrl, setAppstoreUrl] = useState(initialAppstoreUrl)
+  const [payoutRate, setPayoutRate] = useState(initialPayoutRate)
   const [pid, setPid] = useState('')
   const [pubname, setPubname] = useState('')
   const [mid, setMid] = useState('')
   const [mediaName, setMediaName] = useState('')
   const [childNetworkCode, setChildNetworkCode] = useState('')
   const [pic, setPic] = useState('')
+  const [content, setContent] = useState('')
 
   // Individual zone data
   const [zoneData, setZoneData] = useState<ZoneWithMetadata[]>([])
@@ -88,19 +92,51 @@ export function ZoneDataEntryStep({
   const [syncSuccess, setSyncSuccess] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
 
+  /**
+   * Extract Floor Price (FP) from zone name
+   * Expected format: {product}_{fp}_{app_id}_app
+   * Example: "reward_0.76_123456_app" → "0.76"
+   */
+  const extractFPFromZoneName = (zoneName: string): string => {
+    try {
+      const parts = zoneName.split('_')
+      if (parts.length >= 2) {
+        const fpCandidate = parts[1]
+        // Validate it's a number
+        if (!isNaN(parseFloat(fpCandidate))) {
+          return fpCandidate
+        }
+      }
+      return ''
+    } catch (error) {
+      console.error('Error extracting FP from zone name:', error)
+      return ''
+    }
+  }
+
   // Update zoneData when zones prop changes from Step 2
   useEffect(() => {
     if (zones && zones.length > 0) {
+      console.log('[ZoneDataEntryStep] Auto-filling notes with PR:', payoutRate)
       setZoneData(
-        zones.map((zone) => ({
-          ...zone,
-          zone_type: '',
-          cs_sales_note_type: '',
-          content: '',
-        }))
+        zones.map((zone) => {
+          // Extract FP from zone_name
+          const fp = extractFPFromZoneName(zone.zone_name)
+
+          // Build auto-filled template
+          const autoFilledNote = `PR: ${payoutRate || ''}\nFP: ${fp}\nGI act `
+
+          console.log(`[ZoneDataEntryStep] Zone: ${zone.zone_name} → FP: ${fp}, Note: ${autoFilledNote}`)
+
+          return {
+            ...zone,
+            zone_type: '',
+            cs_sales_note_type: autoFilledNote,
+          }
+        })
       )
     }
-  }, [zones])
+  }, [zones, payoutRate])
 
   const handleZoneFieldChange = (
     index: number,
@@ -115,13 +151,37 @@ export function ZoneDataEntryStep({
 
   // Update state when initial values change from Step 1
   useEffect(() => {
+    console.log('[ZoneDataEntryStep] Props from Step 1:', {
+      initialAppId,
+      initialAppstoreUrl,
+      initialPayoutRate
+    })
     if (initialAppId) {
       setAppId(initialAppId)
     }
     if (initialAppstoreUrl) {
       setAppstoreUrl(initialAppstoreUrl)
     }
-  }, [initialAppId, initialAppstoreUrl])
+    if (initialPayoutRate) {
+      setPayoutRate(initialPayoutRate)
+    }
+  }, [initialAppId, initialAppstoreUrl, initialPayoutRate])
+
+  // Update all zone notes when payoutRate changes
+  useEffect(() => {
+    if (zoneData.length > 0) {
+      setZoneData(prevZoneData =>
+        prevZoneData.map(zone => {
+          const fp = extractFPFromZoneName(zone.zone_name)
+          const autoFilledNote = `PR: ${payoutRate || ''}\nFP: ${fp}\nGI act `
+          return {
+            ...zone,
+            cs_sales_note_type: autoFilledNote,
+          }
+        })
+      )
+    }
+  }, [payoutRate])
 
   // Auto-extract App ID from Appstore URL whenever URL changes
   useEffect(() => {
@@ -159,6 +219,7 @@ export function ZoneDataEntryStep({
     if (!mediaName.trim()) validationErrors.push('Media Name is required')
     if (!childNetworkCode.trim()) validationErrors.push('Child Network Code is required')
     if (!pic.trim()) validationErrors.push('PIC is required')
+    if (!content.trim()) validationErrors.push('Content is required')
 
     // Validate individual zone fields
     zoneData.forEach((zone, index) => {
@@ -167,9 +228,6 @@ export function ZoneDataEntryStep({
       }
       if (!zone.cs_sales_note_type?.trim()) {
         validationErrors.push(`Zone ${index + 1}: CS/Sales Note is required`)
-      }
-      if (!zone.content) {
-        validationErrors.push(`Zone ${index + 1}: Content is required`)
       }
     })
 
@@ -189,6 +247,7 @@ export function ZoneDataEntryStep({
       media_name: mediaName,
       child_network_code: childNetworkCode,
       pic,
+      content,
     }))
 
     // Sync to Google Sheets
@@ -257,21 +316,22 @@ export function ZoneDataEntryStep({
       <CardContent className="space-y-4">
         {/* Common Fields Section */}
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Row 1: App ID, Zone URL, PIC */}
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 block">
-                App ID <span className="text-xs text-gray-500 font-normal">(Auto-extracted from URL)</span>
+              <label className="text-xs font-medium text-gray-700 block">
+                App ID <span className="text-xs text-gray-500 font-normal">(Auto)</span>
               </label>
               <Input
                 value={appId}
                 disabled
-                placeholder="Will be auto-filled from Appstore URL"
-                className="h-9 bg-gray-50 text-gray-600 cursor-not-allowed"
+                placeholder="Auto-filled"
+                className="h-8 text-xs bg-gray-50 text-gray-600 cursor-not-allowed"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 block">
+              <label className="text-xs font-medium text-gray-700 block">
                 Zone URL <span className="text-red-500">*</span>
               </label>
               <Input
@@ -280,88 +340,12 @@ export function ZoneDataEntryStep({
                   setAppstoreUrl(e.target.value)
                   setErrors([])
                 }}
-                placeholder="https://apps.apple.com/..."
-                className="h-9"
+                className="h-8 text-xs"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 block">
-                PID <span className="text-red-500">*</span>
-              </label>
-              <Input
-                value={pid}
-                onChange={(e) => {
-                  setPid(e.target.value)
-                  setErrors([])
-                }}
-                placeholder="Publisher ID"
-                className="h-9"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 block">
-                Publisher Name <span className="text-red-500">*</span>
-              </label>
-              <Input
-                value={pubname}
-                onChange={(e) => {
-                  setPubname(e.target.value)
-                  setErrors([])
-                }}
-                placeholder="Publisher Name"
-                className="h-9"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 block">
-                MID <span className="text-red-500">*</span>
-              </label>
-              <Input
-                value={mid}
-                onChange={(e) => {
-                  setMid(e.target.value)
-                  setErrors([])
-                }}
-                placeholder="Media ID"
-                className="h-9"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 block">
-                Media Name <span className="text-red-500">*</span>
-              </label>
-              <Input
-                value={mediaName}
-                onChange={(e) => {
-                  setMediaName(e.target.value)
-                  setErrors([])
-                }}
-                placeholder="Media Name"
-                className="h-9"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 block">
-                Child Network Code <span className="text-red-500">*</span>
-              </label>
-              <Input
-                value={childNetworkCode}
-                onChange={(e) => {
-                  setChildNetworkCode(e.target.value)
-                  setErrors([])
-                }}
-                placeholder="Child Network Code"
-                className="h-9"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 block">
+              <label className="text-xs font-medium text-gray-700 block">
                 PIC <span className="text-red-500">*</span>
               </label>
               <Input
@@ -370,9 +354,105 @@ export function ZoneDataEntryStep({
                   setPic(e.target.value)
                   setErrors([])
                 }}
-                placeholder="Person In Charge"
-                className="h-9"
+                className="h-8 text-xs"
               />
+            </div>
+          </div>
+
+          {/* Row 2: PID, Publisher Name, Child Network Code */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-700 block">
+                PID <span className="text-red-500">*</span>
+              </label>
+              <Input
+                value={pid}
+                onChange={(e) => {
+                  setPid(e.target.value)
+                  setErrors([])
+                }}
+                className="h-8 text-xs"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-700 block">
+                Publisher Name <span className="text-red-500">*</span>
+              </label>
+              <Input
+                value={pubname}
+                onChange={(e) => {
+                  setPubname(e.target.value)
+                  setErrors([])
+                }}
+                className="h-8 text-xs"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-700 block">
+                Child Network Code
+              </label>
+              <Input
+                value={childNetworkCode}
+                onChange={(e) => {
+                  setChildNetworkCode(e.target.value)
+                  setErrors([])
+                }}
+                className="h-8 text-xs"
+              />
+            </div>
+          </div>
+
+          {/* Row 3: MID, Media Name, Content */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-700 block">
+                MID <span className="text-red-500">*</span>
+              </label>
+              <Input
+                value={mid}
+                onChange={(e) => {
+                  setMid(e.target.value)
+                  setErrors([])
+                }}
+                className="h-8 text-xs"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-700 block">
+                Media Name <span className="text-red-500">*</span>
+              </label>
+              <Input
+                value={mediaName}
+                onChange={(e) => {
+                  setMediaName(e.target.value)
+                  setErrors([])
+                }}
+                className="h-8 text-xs"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-700 block">
+                Content <span className="text-red-500">*</span>
+              </label>
+              <Select value={content} onValueChange={(value) => {
+                setContent(value)
+                setErrors([])
+              }}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent position="popper" sideOffset={4}>
+                  {CONTENT_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option} className="text-xs">
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
@@ -388,7 +468,6 @@ export function ZoneDataEntryStep({
                   <th className="px-3 py-3 text-left font-medium text-gray-700">Zone Name</th>
                   <th className="px-3 py-3 text-left font-medium text-gray-700">Zone Type *</th>
                   <th className="px-3 py-3 text-left font-medium text-gray-700">CS/Sales Note *</th>
-                  <th className="px-3 py-3 text-left font-medium text-gray-700">Content *</th>
                 </tr>
               </thead>
               <tbody>
@@ -449,23 +528,6 @@ export function ZoneDataEntryStep({
                         className="min-h-[50px] w-48 resize-y !text-xs leading-tight"
                         rows={2}
                       />
-                    </td>
-                    <td className="px-3 py-2">
-                      <Select
-                        value={zone.content}
-                        onValueChange={(value) => handleZoneFieldChange(index, 'content', value)}
-                      >
-                        <SelectTrigger className="w-28 h-8 text-xs">
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent position="popper" sideOffset={4}>
-                          {CONTENT_OPTIONS.map((content) => (
-                            <SelectItem key={content} value={content} className="text-xs">
-                              {content}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                     </td>
                   </tr>
                 ))}

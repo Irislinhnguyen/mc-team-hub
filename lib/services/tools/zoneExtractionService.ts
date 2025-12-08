@@ -36,7 +36,7 @@ Return JSON with this exact structure:
   "zones": [
     {
       "zone_id": "1598735",
-      "zone_name": "banner_com.chgames.nds64emulator_app",
+      "zone_name": "banner_0.46_com.chgames.nds64emulator_app",
       "size": "300x250",
       "inventory_type": "Mobile optimized web",
       "type": "Standard banner",
@@ -55,9 +55,10 @@ Important:
 1. Extract ALL rows from the table
 2. Convert text to proper format (numbers, decimals, etc.)
 3. Use null for missing/empty values
-4. Preserve exact zone IDs and names
-5. Handle comma-separated numbers correctly (remove commas)
-6. Return only the JSON, no additional text`
+4. Preserve exact zone IDs and names AS-IS - do NOT modify zone names
+5. Zone names contain decimal numbers (e.g., "0.46", "0.27") - keep the DOT/PERIOD character, do NOT replace with underscore
+6. Handle comma-separated numbers correctly (remove commas)
+7. Return only the JSON, no additional text`
 
 /**
  * Extract zone IDs and metadata from screenshot using AI Vision

@@ -172,9 +172,10 @@ export function ZoneExtractionStep({ onComplete, onBack }: ZoneExtractionStepPro
         }
       }
 
+      console.log('[ZoneExtractionStep] Successfully extracted zones:', allZones)
       setExtractedZones(allZones)
     } catch (err: any) {
-      console.error('Error extracting zones:', err)
+      console.error('[ZoneExtractionStep] Error extracting zones:', err)
       setError(err.message)
     } finally {
       setIsExtracting(false)
@@ -182,8 +183,14 @@ export function ZoneExtractionStep({ onComplete, onBack }: ZoneExtractionStepPro
   }
 
   const handleNext = () => {
-    if (extractedZones) {
+    console.log('[ZoneExtractionStep] Continue button clicked')
+    console.log('[ZoneExtractionStep] Extracted zones:', extractedZones)
+    if (extractedZones && extractedZones.length > 0) {
+      console.log('[ZoneExtractionStep] Calling onComplete with', extractedZones.length, 'zones')
       onComplete(extractedZones)
+    } else {
+      console.error('[ZoneExtractionStep] No zones to pass to next step')
+      setError('No zones extracted. Please try scanning again.')
     }
   }
 
@@ -351,8 +358,6 @@ All zones from all screenshots will be combined into one list.`}
                   <tr>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Zone ID</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Zone Name</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Size</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Category</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -360,8 +365,6 @@ All zones from all screenshots will be combined into one list.`}
                     <tr key={index} className="even:bg-gray-50">
                       <td className="px-3 py-2 font-mono text-xs text-gray-900">{zone.zone_id}</td>
                       <td className="px-3 py-2 text-xs text-gray-900">{zone.zone_name}</td>
-                      <td className="px-3 py-2 text-xs text-gray-600">{zone.size}</td>
-                      <td className="px-3 py-2 text-xs text-gray-600">{zone.category || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -372,8 +375,20 @@ All zones from all screenshots will be combined into one list.`}
 
         {/* Navigation Buttons */}
         {extractedZones && (
-          <div className="flex justify-end pt-4">
-            <Button onClick={handleNext} size="lg" className="w-full bg-[#1565C0] hover:bg-[#0D47A1] text-white">
+          <div className="flex gap-3 pt-4">
+            <Button
+              onClick={() => {
+                setExtractedZones(null)
+                setError(null)
+              }}
+              variant="outline"
+              size="lg"
+              className="flex-1"
+            >
+              <ImageIcon className="mr-2 h-4 w-4" />
+              Re-scan
+            </Button>
+            <Button onClick={handleNext} size="lg" className="flex-1 bg-[#1565C0] hover:bg-[#0D47A1] text-white">
               Continue to Enter Metadata
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>

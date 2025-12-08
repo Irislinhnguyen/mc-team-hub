@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -11,15 +11,20 @@ import { HelpIcon } from './HelpIcon'
 
 
 interface PromptInputStepProps {
-  onComplete: (zones: GeneratedZone[], appId?: string, appstoreUrl?: string) => void
+  onComplete: (zones: GeneratedZone[], appId?: string, appstoreUrl?: string, payoutRate?: string) => void
 }
 
 export function PromptInputStep({ onComplete }: PromptInputStepProps) {
   const [zoneUrl, setZoneUrl] = useState('')
-  const [prompt, setPrompt] = useState('Create 3 reward zones with FR: 0.4, 0.12, 0.67 respectively - add "_pack 1" at the end of each zone name, and 2 interstitial zones with FR: 0.85, 0.90 - add "_pack 2" at the end')
+  const [prompt, setPrompt] = useState('Create 3 reward zones with FP: 0.4, 0.12, 0.67 respectively - add "_pack 1" at the end of each zone name, and 2 interstitial zones with FP: 0.85, 0.90 - add "_pack 2" at the end')
   const [payoutRate, setPayoutRate] = useState('0.85')
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Auto-pass payoutRate to parent whenever it changes (even if user doesn't generate CSV)
+  useEffect(() => {
+    onComplete([], undefined, undefined, payoutRate)
+  }, [payoutRate])
 
   // Extract App ID from URL and auto-fill to Step 3
   const extractAndPassAppId = (url: string) => {
@@ -41,7 +46,7 @@ export function PromptInputStep({ onComplete }: PromptInputStepProps) {
 
     // Pass to Step 3 immediately when URL is detected
     if (appId) {
-      onComplete([], appId, url)
+      onComplete([], appId, url, payoutRate)
     }
   }
 
@@ -115,7 +120,7 @@ export function PromptInputStep({ onComplete }: PromptInputStepProps) {
       }
 
       // Move to next step, passing App ID and Appstore URL
-      onComplete([], appId, zoneUrl)
+      onComplete([], appId, zoneUrl, payoutRate)
     } catch (err: any) {
       console.error('Error generating CSV:', err)
       setError(err.message)
@@ -155,22 +160,44 @@ If you already have zones created, skip this step and go to Step 2.`}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Zone URL Input */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700 block">
-            Zone URL (App URL) <span className="text-red-500">*</span>
-          </label>
-          <Input
-            value={zoneUrl}
-            onChange={(e) => {
-              const url = e.target.value
-              setZoneUrl(url)
-              setError(null)
-              // Auto-extract and pass App ID to Step 3 immediately
-              extractAndPassAppId(url)
-            }}
-            placeholder="https://apps.apple.com/app/id6752558926"
-          />
+        {/* Row 1: Zone URL and Payout Rate */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* Zone URL Input */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700 block">
+              Zone URL (App URL) <span className="text-red-500">*</span>
+            </label>
+            <Input
+              value={zoneUrl}
+              onChange={(e) => {
+                const url = e.target.value
+                setZoneUrl(url)
+                setError(null)
+                // Auto-extract and pass App ID to Step 3 immediately
+                extractAndPassAppId(url)
+              }}
+              placeholder="https://apps.apple.com/app/id6752558926"
+            />
+          </div>
+
+          {/* Payout Rate Input */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700 block">
+              Payout Rate <span className="text-red-500">*</span>
+            </label>
+            <Input
+              value={payoutRate}
+              onChange={(e) => {
+                setPayoutRate(e.target.value)
+                setError(null)
+              }}
+              placeholder="0.85"
+              type="text"
+            />
+            <p className="text-xs text-gray-500">
+              Default payout rate for all zones (value between 0 and 1)
+            </p>
+          </div>
         </div>
 
         {/* Prompt Input */}
@@ -184,29 +211,10 @@ If you already have zones created, skip this step and go to Step 2.`}
               setPrompt(e.target.value)
               setError(null)
             }}
-            placeholder='e.g., Create 3 reward zones with FR: 0.4, 0.12, 0.67 respectively - add "_pack 1" at the end of each zone name'
+            placeholder='e.g., Create 3 reward zones with FP: 0.4, 0.12, 0.67 respectively - add "_pack 1" at the end of each zone name'
             rows={3}
             className="resize-none"
           />
-        </div>
-
-        {/* Payout Rate Input */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700 block">
-            Payout Rate (Column AA) <span className="text-red-500">*</span>
-          </label>
-          <Input
-            value={payoutRate}
-            onChange={(e) => {
-              setPayoutRate(e.target.value)
-              setError(null)
-            }}
-            placeholder="0.85"
-            type="text"
-          />
-          <p className="text-xs text-gray-500">
-            Default payout rate for all zones (value between 0 and 1)
-          </p>
         </div>
 
         {/* Error Message */}
