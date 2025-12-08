@@ -255,11 +255,11 @@ export function MetadataFilterPanel({
     if (enableCascading && selectedTeams.length > 0) {
       console.log('[MetadataFilterPanel] 🐛 DEBUG - Team filter active:')
       console.log('   Selected teams:', selectedTeams)
-      console.log('   Available PICs:', availablePics.length, '/', metadata?.pics?.length || 0)
+      console.log('   Available PICs:', availablePics.length, '/', metadata?.pics?.length ?? 0)
       console.log('   PIC values:', availablePics.slice(0, 5).map(p => p.value).join(', '))
       console.log('   Loading states:', loadingStates)
     }
-  }, [selectedTeams, availablePics, enableCascading, metadata, loadingStates])
+  }, [selectedTeams, availablePics, enableCascading, metadata?.pics, loadingStates])
 
   // Auto-detect: if no daterange in filterFields, don't include dates
   const shouldIncludeDates = includeDateInFilters ?? filterFields.includes('daterange')
