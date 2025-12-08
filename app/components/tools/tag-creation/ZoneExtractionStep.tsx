@@ -25,7 +25,7 @@ export function ZoneExtractionStep({ onComplete, onBack }: ZoneExtractionStepPro
   const MAX_FILES = 10
 
   // Helper function to process files from any source
-  const processFiles = (newFiles: File[]) => {
+  const processFiles = useCallback((newFiles: File[]) => {
     // Check total count
     const totalFiles = files.length + newFiles.length
     if (totalFiles > MAX_FILES) {
@@ -68,7 +68,7 @@ export function ZoneExtractionStep({ onComplete, onBack }: ZoneExtractionStepPro
       }
       reader.readAsDataURL(file)
     })
-  }
+  }, [files])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files
@@ -130,7 +130,7 @@ export function ZoneExtractionStep({ onComplete, onBack }: ZoneExtractionStepPro
     if (pastedFiles.length > 0) {
       processFiles(pastedFiles)
     }
-  }, [files])
+  }, [processFiles])
 
   // Add paste event listener
   useEffect(() => {
