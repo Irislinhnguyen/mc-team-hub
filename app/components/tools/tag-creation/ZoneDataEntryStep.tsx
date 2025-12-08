@@ -83,6 +83,11 @@ export function ZoneDataEntryStep({
   // Search filter for zone type dropdown
   const [zoneTypeSearch, setZoneTypeSearch] = useState('')
 
+  // Sync state
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [syncSuccess, setSyncSuccess] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
+
   // Update zoneData when zones prop changes from Step 2
   useEffect(() => {
     if (zones && zones.length > 0) {
@@ -107,10 +112,6 @@ export function ZoneDataEntryStep({
     setZoneData(updated)
     setErrors([])
   }
-
-  const [isSyncing, setIsSyncing] = useState(false)
-  const [syncSuccess, setSyncSuccess] = useState(false)
-  const [syncError, setSyncError] = useState<string | null>(null)
 
   // Update state when initial values change from Step 1
   useEffect(() => {
