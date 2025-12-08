@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { FilterPanel } from './FilterPanel'
 import { FilterPresetManager } from './FilterPresetManager'
 import { MetadataErrorUI } from './MetadataErrorUI'
@@ -76,11 +76,26 @@ export function MetadataFilterPanel({
   const [internalFilters, setInternalFilters] = useState<Record<string, any>>(persistedFilters)
 
   // ✨ CASCADING FILTERS: Extract selected values for cascading logic
-  const selectedTeams = Array.isArray(internalFilters.team) ? internalFilters.team : []
-  const selectedPics = Array.isArray(internalFilters.pic) ? internalFilters.pic : []
-  const selectedPids = Array.isArray(internalFilters.pid) ? internalFilters.pid : []
-  const selectedMids = Array.isArray(internalFilters.mid) ? internalFilters.mid : []
-  const selectedZids = Array.isArray(internalFilters.zid) ? internalFilters.zid : []
+  const selectedTeams = useMemo(
+    () => (Array.isArray(internalFilters.team) ? internalFilters.team : []),
+    [internalFilters.team]
+  )
+  const selectedPics = useMemo(
+    () => (Array.isArray(internalFilters.pic) ? internalFilters.pic : []),
+    [internalFilters.pic]
+  )
+  const selectedPids = useMemo(
+    () => (Array.isArray(internalFilters.pid) ? internalFilters.pid : []),
+    [internalFilters.pid]
+  )
+  const selectedMids = useMemo(
+    () => (Array.isArray(internalFilters.mid) ? internalFilters.mid : []),
+    [internalFilters.mid]
+  )
+  const selectedZids = useMemo(
+    () => (Array.isArray(internalFilters.zid) ? internalFilters.zid : []),
+    [internalFilters.zid]
+  )
 
   // ✨ CASCADING FILTERS: Use multi-level cascading hook
   const {
