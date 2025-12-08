@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { LineChart, Shield, GitBranch, BookOpen, Trophy, Newspaper, Heart } from 'lucide-react'
+import { LineChart, Shield, GitBranch, BookOpen, Trophy, Newspaper, Heart, Wrench } from 'lucide-react'
 import { ProductCard } from '../components/home/ProductCard'
 import { Header } from '../components/layout/Header'
 import { useAuth } from '../contexts/AuthContext'
@@ -116,6 +116,14 @@ export default function HomePage() {
               icon={<LineChart className="h-full w-full" />}
               status="active"
               onClick={() => router.push('/performance-tracker/business-health')}
+            />
+
+            <ProductCard
+              title="Tools"
+              description="AI-powered tools to automate your workflow (App team only)"
+              icon={<Wrench className="h-full w-full" />}
+              status="active"
+              onClick={() => router.push('/tools')}
             />
 
             <ProductCard
