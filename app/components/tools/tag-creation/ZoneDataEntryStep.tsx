@@ -39,6 +39,7 @@ interface ZoneDataEntryStepProps {
   initialAppstoreUrl?: string
   initialPayoutRate?: string
   onComplete: (zonesWithMetadata: ZoneWithMetadata[]) => void
+  onReset: () => void
   onBack: () => void
 }
 
@@ -65,6 +66,7 @@ export function ZoneDataEntryStep({
   initialAppstoreUrl = '',
   initialPayoutRate = '',
   onComplete,
+  onReset,
   onBack
 }: ZoneDataEntryStepProps) {
   // Common fields (apply to all zones) - auto-fill from Step 1 if available
@@ -573,7 +575,7 @@ export function ZoneDataEntryStep({
           </div>
         )}
 
-        {/* Sync Success */}
+        {/* Sync Success Message */}
         {syncSuccess && (
           <div className="rounded-lg border border-[#1565C0]/20 bg-[#E3F2FD] p-4">
             <div className="flex items-start gap-2">
@@ -599,31 +601,36 @@ export function ZoneDataEntryStep({
           </div>
         )}
 
-        {/* Sync Button */}
+        {/* Sync Button or Create New Tag */}
         <div className="flex justify-end pt-4">
-          <Button
-            onClick={validateAndSync}
-            size="lg"
-            className="w-full bg-[#1565C0] hover:bg-[#0D47A1] text-white"
-            disabled={isSyncing || syncSuccess}
-          >
-            {isSyncing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Syncing to Google Sheets...
-              </>
-            ) : syncSuccess ? (
-              <>
-                <CheckCircle2 className="mr-2 h-4 w-4" />
-                Synced Successfully
-              </>
-            ) : (
-              <>
-                Sync to Google Sheets
-                <Upload className="ml-2 h-4 w-4" />
-              </>
-            )}
-          </Button>
+          {syncSuccess ? (
+            <Button
+              onClick={onReset}
+              size="lg"
+              className="w-full bg-[#1565C0] hover:bg-[#0D47A1] text-white"
+            >
+              Create New Tag
+            </Button>
+          ) : (
+            <Button
+              onClick={validateAndSync}
+              size="lg"
+              className="w-full bg-[#1565C0] hover:bg-[#0D47A1] text-white"
+              disabled={isSyncing}
+            >
+              {isSyncing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Syncing to Google Sheets...
+                </>
+              ) : (
+                <>
+                  Sync to Google Sheets
+                  <Upload className="ml-2 h-4 w-4" />
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
