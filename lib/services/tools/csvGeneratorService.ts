@@ -52,7 +52,7 @@ const CSV_SCHEMA = {
   'Delivery Method': 'string?',
 }
 
-function buildSystemPrompt(zoneUrl: string, appId: string): string {
+function buildSystemPrompt(zoneUrl: string, appId: string, payoutRate: number): string {
   return `You are an expert ad zone CSV generator. Generate zone configurations based on user requirements.
 
 IMPORTANT RULES:
@@ -87,7 +87,7 @@ IMPORTANT RULES:
    - Allow External Delivery: "YES"
    - Category: "アート＆エンターテイメント"
    - Category Detail: "ユーモア"
-   - Default Payout rate: 0.85
+   - Default Payout rate for zone: ${payoutRate}
    - Zone position: "Under the article/column"
    - RTB optimisation type: "Prioritise revenue"
    - Floor Price(USD): use the FR value from user prompt
@@ -134,11 +134,13 @@ function extractAppIdFromUrl(url: string): string {
  * Generate zone CSV from natural language prompt
  * @param zoneUrl App URL to extract App ID from
  * @param userPrompt User's description of zones to create (e.g., "3 zone reward FR 0.76, 3 zone interstitial FR 0.85")
+ * @param payoutRate Payout rate for all zones (0-1, e.g., 0.85)
  * @returns Buffer containing Excel file data
  */
 export async function generateZoneCSV(
   zoneUrl: string,
-  userPrompt: string
+  userPrompt: string,
+  payoutRate: number
 ): Promise<{
   buffer: Buffer
   zones: GeneratedZone[]
@@ -146,6 +148,7 @@ export async function generateZoneCSV(
   try {
     console.log('[CSV Generator] Zone URL:', zoneUrl)
     console.log('[CSV Generator] Prompt:', userPrompt)
+    console.log('[CSV Generator] Payout Rate:', payoutRate)
 
     // Extract App ID from URL
     const appId = extractAppIdFromUrl(zoneUrl)
@@ -154,7 +157,7 @@ export async function generateZoneCSV(
     }
     console.log('[CSV Generator] Extracted App ID:', appId)
 
-    const systemPrompt = buildSystemPrompt(zoneUrl, appId)
+    const systemPrompt = buildSystemPrompt(zoneUrl, appId, payoutRate)
 
     const openai = getOpenAIClient()
     const response = await openai.chat.completions.create({

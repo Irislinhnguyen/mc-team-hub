@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { zoneUrl, prompt } = await request.json()
+    const { zoneUrl, prompt, payoutRate } = await request.json()
 
     if (!zoneUrl || zoneUrl.trim().length === 0) {
       return NextResponse.json({ error: 'Zone URL is required' }, { status: 400 })
@@ -31,11 +31,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (payoutRate === undefined || payoutRate === null) {
+      return NextResponse.json({ error: 'Payout Rate is required' }, { status: 400 })
+    }
+
+    if (typeof payoutRate !== 'number' || payoutRate < 0 || payoutRate > 1) {
+      return NextResponse.json(
+        { error: 'Payout Rate must be a number between 0 and 1' },
+        { status: 400 }
+      )
+    }
+
     console.log(`[Generate CSV API] User ${user.id} generating zones`)
     console.log(`[Generate CSV API] Zone URL: ${zoneUrl}`)
     console.log(`[Generate CSV API] Prompt: ${prompt}`)
+    console.log(`[Generate CSV API] Payout Rate: ${payoutRate}`)
 
-    const { buffer, zones } = await generateZoneCSV(zoneUrl, prompt)
+    const { buffer, zones } = await generateZoneCSV(zoneUrl, prompt, payoutRate)
 
     const filename = `zones_${Date.now()}.xlsx`
 

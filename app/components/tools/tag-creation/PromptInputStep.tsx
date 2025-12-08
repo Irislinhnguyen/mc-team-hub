@@ -17,6 +17,7 @@ interface PromptInputStepProps {
 export function PromptInputStep({ onComplete }: PromptInputStepProps) {
   const [zoneUrl, setZoneUrl] = useState('')
   const [prompt, setPrompt] = useState('Create 3 reward zones with FR: 0.4, 0.12, 0.67 respectively - add "_pack 1" at the end of each zone name, and 2 interstitial zones with FR: 0.85, 0.90 - add "_pack 2" at the end')
+  const [payoutRate, setPayoutRate] = useState('0.85')
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -55,6 +56,18 @@ export function PromptInputStep({ onComplete }: PromptInputStepProps) {
       return
     }
 
+    if (!payoutRate.trim()) {
+      setError('Please enter a Payout Rate')
+      return
+    }
+
+    // Validate payout rate is a number between 0 and 1
+    const payoutRateNum = parseFloat(payoutRate)
+    if (isNaN(payoutRateNum) || payoutRateNum < 0 || payoutRateNum > 1) {
+      setError('Payout Rate must be a number between 0 and 1 (e.g., 0.85)')
+      return
+    }
+
     setError(null)
     setIsGenerating(true)
 
@@ -64,7 +77,7 @@ export function PromptInputStep({ onComplete }: PromptInputStepProps) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ zoneUrl, prompt }),
+        body: JSON.stringify({ zoneUrl, prompt, payoutRate: payoutRateNum }),
       })
 
       if (!response.ok) {
@@ -177,6 +190,25 @@ If you already have zones created, skip this step and go to Step 2.`}
           />
         </div>
 
+        {/* Payout Rate Input */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700 block">
+            Payout Rate (Column AA) <span className="text-red-500">*</span>
+          </label>
+          <Input
+            value={payoutRate}
+            onChange={(e) => {
+              setPayoutRate(e.target.value)
+              setError(null)
+            }}
+            placeholder="0.85"
+            type="text"
+          />
+          <p className="text-xs text-gray-500">
+            Default payout rate for all zones (value between 0 and 1)
+          </p>
+        </div>
+
         {/* Error Message */}
         {error && (
           <div className="flex items-start gap-2 text-sm text-red-600">
@@ -191,7 +223,7 @@ If you already have zones created, skip this step and go to Step 2.`}
         <div className="flex justify-end pt-4">
           <Button
             onClick={handleGenerate}
-            disabled={isGenerating || !zoneUrl.trim() || !prompt.trim()}
+            disabled={isGenerating || !zoneUrl.trim() || !prompt.trim() || !payoutRate.trim()}
             size="lg"
             className="w-full bg-[#1565C0] hover:bg-[#0D47A1] text-white"
           >
