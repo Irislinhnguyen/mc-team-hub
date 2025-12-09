@@ -46,66 +46,116 @@ export async function writeZonesToSheet(
     const nextRow = (existingData.data.values?.length || 2) + 1 // Start after last row (minimum row 3)
     console.log(`[Sheets Write] Next empty row: ${nextRow}`)
 
-    // Prepare data rows - Map to "Tag Creation_APP" sheet structure
-    // Headers in ROW 1: A-Q (no protected ranges!)
-    // Skip columns: E (Approval status), O (Ad Unit Name), P (Status YM Note)
+    // Prepare data rows - Map to sheet structure based on sheet name
+    // Tag Creation_WEB: A, B, C, D, F, J-P, R
+    // Tag Creation_APP: A, C-D, F-M, Q-R
     const now = new Date()
-    // Format date as DD-MM-YYYY
+    // Format date as MM-DD-YYYY
     const day = String(now.getDate()).padStart(2, '0')
     const month = String(now.getMonth() + 1).padStart(2, '0')
     const year = now.getFullYear()
-    const formattedDate = `${day}-${month}-${year}`
+    const formattedDate = `${month}-${day}-${year}`
 
     const rows = zones.map((zone) => {
       const row = []
 
-      // A: Date (DD-MM-YYYY format)
-      row[0] = formattedDate
+      if (sheetName === 'Tag Creation_WEB') {
+        // ===== Tag Creation_WEB Mapping =====
+        // A: Reg. Date
+        row[0] = formattedDate
 
-      // B: App ID
-      row[1] = zone.app_id || ''
+        // B: PIC
+        row[1] = zone.pic || ''
 
-      // C: PIC
-      row[2] = zone.pic || ''
+        // C: Company Name (Child pub name)
+        row[2] = zone.company_name || ''
 
-      // D: Appstore URL
-      row[3] = zone.appstore_url || ''
+        // D: Domain(s)/AppStorelink
+        row[3] = zone.appstore_url || ''
 
-      // E: SKIP - Approval status
+        // E: SKIP - Contact
 
-      // F: PID
-      row[5] = zone.pid || ''
+        // F: GAM Network ID
+        row[5] = zone.child_network_code || ''
 
-      // G: Publisher name
-      row[6] = zone.pubname || ''
+        // G-I: SKIP (Domain Approval, Company Code, Media Type)
 
-      // H: MID
-      row[7] = zone.mid || ''
+        // J: PID
+        row[9] = zone.pid || ''
 
-      // I: Media Name
-      row[8] = zone.media_name || ''
+        // K: Publisher name
+        row[10] = zone.pubname || ''
 
-      // J: ZID
-      row[9] = zone.zone_id || ''
+        // L: MID
+        row[11] = zone.mid || ''
 
-      // K: Zone Name
-      row[10] = zone.zone_name || ''
+        // M: Media Name
+        row[12] = zone.media_name || ''
 
-      // L: Type
-      row[11] = zone.zone_type || ''
+        // N: ZID
+        row[13] = zone.zone_id || ''
 
-      // M: CS/Sales Note
-      row[12] = zone.cs_sales_note_type || ''
+        // O: Zone Name
+        row[14] = zone.zone_name || ''
 
-      // N: Content
-      row[13] = zone.content || ''
+        // P: Type (New)
+        row[15] = zone.zone_type || ''
 
-      // O: SKIP - Ad Unit Name
+        // Q: SKIP - Type (Old)
 
-      // P: SKIP - Status YM Note
+        // R: Note
+        row[17] = zone.cs_sales_note_type || ''
+      } else {
+        // ===== Tag Creation_APP Mapping (default) =====
+        // A: Date (DD-MM-YYYY format)
+        row[0] = formattedDate
 
-      // Q: Child network code
-      row[16] = zone.child_network_code || ''
+        // B: SKIP - App ID (removed from UI)
+
+        // C: PIC
+        row[2] = zone.pic || ''
+
+        // D: Appstore URL
+        row[3] = zone.appstore_url || ''
+
+        // E: SKIP - Approval status
+
+        // F: PID
+        row[5] = zone.pid || ''
+
+        // G: Publisher name
+        row[6] = zone.pubname || ''
+
+        // H: MID
+        row[7] = zone.mid || ''
+
+        // I: Media Name
+        row[8] = zone.media_name || ''
+
+        // J: ZID
+        row[9] = zone.zone_id || ''
+
+        // K: Zone Name
+        row[10] = zone.zone_name || ''
+
+        // L: Type
+        row[11] = zone.zone_type || ''
+
+        // M: CS/Sales Note
+        row[12] = zone.cs_sales_note_type || ''
+
+        // N: SKIP - Content (removed from UI)
+
+        // O: SKIP - Ad Unit Name
+
+        // P: SKIP - Status YM Note
+
+        // Q: Child network code
+        row[16] = zone.child_network_code || ''
+
+        // R: Company Name
+        row[17] = zone.company_name || ''
+      }
 
       return row
     })
@@ -115,7 +165,7 @@ export async function writeZonesToSheet(
     const requests = rows.map((row, index) => {
       const rowNumber = nextRow + index
       return {
-        range: `${sheetName}!A${rowNumber}:Q${rowNumber}`,
+        range: `${sheetName}!A${rowNumber}:R${rowNumber}`,
         values: [row],
       }
     })

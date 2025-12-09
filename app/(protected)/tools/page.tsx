@@ -41,7 +41,7 @@ export default function ToolsPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <ProductCard
               title="AI Tag Creation Assistant"
-              description="Generate zone CSV files, extract Zone IDs from screenshots, and sync to Google Sheets (App team only)"
+              description="Generate zone CSV files, extract Zone IDs from screenshots, and sync to Google Sheets"
               icon={<Wrench className="h-full w-full" />}
               status="active"
               onClick={() => router.push('/tools/tag-creation')}

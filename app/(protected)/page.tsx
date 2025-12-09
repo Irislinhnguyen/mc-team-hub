@@ -120,7 +120,7 @@ export default function HomePage() {
 
             <ProductCard
               title="Tools"
-              description="AI-powered tools to automate your workflow (App team only)"
+              description="AI-powered tools to automate your workflow"
               icon={<Wrench className="h-full w-full" />}
               status="active"
               onClick={() => router.push('/tools')}

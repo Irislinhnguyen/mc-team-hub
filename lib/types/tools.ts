@@ -91,3 +91,38 @@ export interface SyncResponse {
   sheetUrl: string
   error?: string
 }
+
+// Team Type (App vs Web workflows)
+export type TeamType = 'app' | 'web'
+
+// Product Selection for Web Team
+export interface ProductSelection {
+  product: string
+  quantity: number // For non-Banner products
+  sizes?: { size: string; quantity: number }[] // For Banner products - each size has its own quantity
+  notes?: string // Optional notes (e.g., "GAMtag", "Header", etc.)
+}
+
+// Banner Size Configuration
+export interface BannerSizeConfig {
+  preset?: '300x250' | '728x90' | '320x50' | '468x60' | '970x250'
+  custom?: {
+    width: number
+    height: number
+  }
+}
+
+// Web Team Zone Form Data
+export interface WebZoneFormData {
+  mediaName: string
+  products: ProductSelection[]
+  bannerSize?: BannerSizeConfig
+  payoutRate: string
+  aiPrompt?: string
+}
+
+// Generated Web Zone (extends ExtractedZone)
+export interface GeneratedWebZone extends ExtractedZone {
+  product: string
+  sequenceNumber: number
+}

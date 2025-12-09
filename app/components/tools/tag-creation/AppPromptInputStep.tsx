@@ -10,11 +10,11 @@ import type { GeneratedZone } from '@/lib/types/tools'
 import { HelpIcon } from './HelpIcon'
 
 
-interface PromptInputStepProps {
+interface AppPromptInputStepProps {
   onComplete: (zones: GeneratedZone[], appId?: string, appstoreUrl?: string, payoutRate?: string) => void
 }
 
-export function PromptInputStep({ onComplete }: PromptInputStepProps) {
+export function AppPromptInputStep({ onComplete }: AppPromptInputStepProps) {
   const [zoneUrl, setZoneUrl] = useState('')
   const [prompt, setPrompt] = useState('Create 3 reward zones with FP: 0.4, 0.12, 0.67 respectively - add "_pack 1" at the end of each zone name, and 2 interstitial zones with FP: 0.85, 0.90 - add "_pack 2" at the end')
   const [payoutRate, setPayoutRate] = useState('0.85')
