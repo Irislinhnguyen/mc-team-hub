@@ -49,13 +49,18 @@ export async function writeZonesToSheet(
     // Prepare data rows - Map to "Tag Creation_APP" sheet structure
     // Headers in ROW 1: A-Q (no protected ranges!)
     // Skip columns: E (Approval status), O (Ad Unit Name), P (Status YM Note)
-    const now = new Date().toISOString()
+    const now = new Date()
+    // Format date as DD-MM-YYYY
+    const day = String(now.getDate()).padStart(2, '0')
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const year = now.getFullYear()
+    const formattedDate = `${day}-${month}-${year}`
 
     const rows = zones.map((zone) => {
       const row = []
 
-      // A: Date
-      row[0] = now.split('T')[0]
+      // A: Date (DD-MM-YYYY format)
+      row[0] = formattedDate
 
       // B: App ID
       row[1] = zone.app_id || ''

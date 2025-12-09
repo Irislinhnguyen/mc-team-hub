@@ -90,7 +90,7 @@ IMPORTANT RULES:
    - Default Payout rate for zone: ${payoutRate}
    - Zone position: "Under the article/column"
    - RTB optimisation type: "Prioritise revenue"
-   - Floor Price(USD): use the FR value from user prompt
+   - Floor Price(USD): LEAVE EMPTY (null or empty string)
 
 6. Return JSON with "zones" array containing all zone objects.
 
