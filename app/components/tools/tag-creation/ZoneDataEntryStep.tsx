@@ -43,7 +43,22 @@ interface ZoneDataEntryStepProps {
 }
 
 // Hard coded options (based on actual usage)
-const ZONE_TYPES = [
+const ZONE_TYPES_APP = [
+  'AppOpen',
+  'Banner_adaptive',
+  'Banner_allsize',
+  'Banner_320x50',
+  'Banner_300x250',
+  'Banner_custom',
+  'Interstitial',
+  'Native',
+  'Reward',
+  'Video_instream',
+  'Video_CTV',
+  'Reward Interstitial',
+]
+
+const ZONE_TYPES_WEB = [
   'Banner',
   '300x600',
   'Inpage',
@@ -88,6 +103,9 @@ export function ZoneDataEntryStep({
 
   // Search filter for zone type dropdown
   const [zoneTypeSearch, setZoneTypeSearch] = useState('')
+
+  // Select the correct zone types based on team type
+  const ZONE_TYPES = teamType === 'app' ? ZONE_TYPES_APP : ZONE_TYPES_WEB
 
   // Sync state
   const [isSyncing, setIsSyncing] = useState(false)
