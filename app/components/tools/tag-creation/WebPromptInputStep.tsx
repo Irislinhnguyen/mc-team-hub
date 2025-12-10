@@ -25,6 +25,7 @@ import { HelpIcon } from './HelpIcon'
 
 interface WebPromptInputStepProps {
   onComplete: (zones: ExtractedZone[], appId?: string, appstoreUrl?: string, payoutRate?: string) => void
+  onValuesChange?: (domain: string, payoutRate: string) => void
 }
 
 // Banner size presets
@@ -36,7 +37,7 @@ const BANNER_SIZE_PRESETS = [
   '970x250',
 ]
 
-export function WebPromptInputStep({ onComplete }: WebPromptInputStepProps) {
+export function WebPromptInputStep({ onComplete, onValuesChange }: WebPromptInputStepProps) {
   const [mediaName, setMediaName] = useState('')
   const [products, setProducts] = useState<{label: string, value: string}[]>([])
   const [selectedProducts, setSelectedProducts] = useState<ProductSelection[]>([])
@@ -49,6 +50,13 @@ export function WebPromptInputStep({ onComplete }: WebPromptInputStepProps) {
   const [cacheAge, setCacheAge] = useState<number | null>(null)
   const [sizeSelectorOpen, setSizeSelectorOpen] = useState<Record<string, boolean>>({})
   const [customSizeInput, setCustomSizeInput] = useState<Record<string, string>>({})
+
+  // Sync domain (mediaName) and payoutRate to parent in real-time
+  useEffect(() => {
+    if (onValuesChange) {
+      onValuesChange(mediaName, payoutRate)
+    }
+  }, [mediaName, payoutRate, onValuesChange])
 
   useEffect(() => {
     const CACHE_KEY = 'tag-creation-products-cache'

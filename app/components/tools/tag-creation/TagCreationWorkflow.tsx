@@ -78,6 +78,12 @@ export function TagCreationWorkflow() {
     if (payoutRate) setPayoutRateFromStep1(payoutRate)
   }, [])
 
+  // Handle real-time sync of domain and payout rate from Step 1 (Web)
+  const handleWebValuesChange = useCallback((domain: string, payoutRate: string) => {
+    setAppstoreUrlFromStep1(domain)
+    setPayoutRateFromStep1(payoutRate)
+  }, [])
+
   // Step 2 callback handler
   const handleExtractionComplete = useCallback((zones: ExtractedZone[]) => {
     setExtractedZones(zones)
@@ -126,7 +132,7 @@ export function TagCreationWorkflow() {
 
       {/* Step 1: Conditional rendering based on team type */}
       {teamType === 'app' && <AppPromptInputStep onComplete={handleAppStepComplete} />}
-      {teamType === 'web' && <WebPromptInputStep key="web-step" onComplete={handleWebStepComplete} />}
+      {teamType === 'web' && <WebPromptInputStep key="web-step" onComplete={handleWebStepComplete} onValuesChange={handleWebValuesChange} />}
 
       {/* Step 2: Extract Zones (Always visible) */}
       <ZoneExtractionStep
