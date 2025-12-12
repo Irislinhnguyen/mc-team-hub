@@ -14,57 +14,61 @@ function getOpenAIClient() {
   })
 }
 
-// CSV Schema template with all 34 columns
-const CSV_SCHEMA = {
-  'Name of zone': 'string (e.g., "reward_game_001_app")',
-  'Zone URL': 'string (app URL or website URL)',
-  'Allowed domain list': 'string? (optional)',
-  'Inventory Type': 'Mobile Optimized Web | Desktop | App',
-  'Type of zone': 'スタンダードバナー | インタースティシャル | native (Japanese)',
-  width: 'number (300, 728, 970, 320, etc.)',
-  height: 'number (250, 90, 250, 50, etc.)',
-  'Use multiple sizes': 'string?',
-  'Multi sizes': 'string?',
-  'Enable Bidder Delivery': 'string?',
-  'Create Reports from Bid Price': 'string?',
-  'Method of Bidprice': 'string?',
-  'CPM(iOS)(USD)': 'number?',
-  'CPM(Android)(USD)': 'number?',
-  'CPM(Other)(USD)': 'number?',
-  'Floor Price(USD)': 'number?',
-  'Deduct margin from RTB value at bidder delivery': 'string?',
-  'Zone position': 'Above the article | Under the article/column | etc.',
-  'Allow Semi Adult Contents': 'string?',
-  'Allow semi-adult categories': 'string?',
-  'Use RTB': 'YES | NO',
-  'Allow External Delivery': 'YES | NO',
-  'App ID': 'string?',
-  'Allow VtoV': 'string?',
-  Category: 'アート＆エンターテイメント | ニュース | ゲーム | etc. (Japanese)',
-  'Category Detail': 'ユーモア | etc. (Japanese)',
-  'Default Payout rate for zone': 'number (0-1, e.g., 0.85)',
-  'Adjust Iframe size': 'string?',
-  'Selector of Iframe Adjuster': 'string?',
-  'RTB optimisation type': 'Prioritise revenue | etc.',
-  'Vendor comment': 'string?',
-  Format: 'string?',
-  Device: 'string?',
-  'Delivery Method': 'string?',
+/**
+ * Create zone template with all 34 columns and default values
+ * AI will only fill in: Name of zone, width, height
+ * Other 31 columns use default values
+ */
+function createZoneTemplate(zoneUrl: string, payoutRate: number): Record<string, any> {
+  return {
+    'Name of zone': '', // AI fills this
+    'Zone URL': zoneUrl,
+    'Allowed domain list': '',
+    'Inventory Type': 'Mobile Optimized Web',
+    'Type of zone': 'スタンダードバナー',
+    width: 300, // AI can override
+    height: 250, // AI can override
+    'Use multiple sizes': '',
+    'Multi sizes': '',
+    'Enable Bidder Delivery': '',
+    'Create Reports from Bid Price': '',
+    'Method of Bidprice': '',
+    'CPM(iOS)(USD)': null,
+    'CPM(Android)(USD)': null,
+    'CPM(Other)(USD)': null,
+    'Floor Price(USD)': null,
+    'Deduct margin from RTB value at bidder delivery': '',
+    'Zone position': 'Under the article/column',
+    'Allow Semi Adult Contents': '',
+    'Allow semi-adult categories': '',
+    'Use RTB': 'YES',
+    'Allow External Delivery': 'YES',
+    'App ID': '',
+    'Allow VtoV': '',
+    Category: 'アート＆エンターテイメント',
+    'Category Detail': 'ユーモア',
+    'Default Payout rate for zone': payoutRate,
+    'Adjust Iframe size': '',
+    'Selector of Iframe Adjuster': '',
+    'RTB optimisation type': 'Prioritise revenue',
+    'Vendor comment': '',
+    Format: '',
+    Device: '',
+    'Delivery Method': '',
+  }
 }
 
 function buildSystemPrompt(zoneUrl: string, appId: string, payoutRate: number): string {
-  return `You are an expert ad zone CSV generator. Generate zone configurations based on user requirements.
+  return `You are an expert ad zone name generator. Generate ONLY zone names based on user requirements.
 
 IMPORTANT RULES:
-1. Zone URL is ALWAYS: "${zoneUrl}"
-2. App ID extracted from URL: "${appId}"
-3. Zone naming format: {product}_{floor_price}_{app_id}_app
+1. Zone naming format: {product}_{floor_price}_{app_id}_app
    - product: "reward", "interstitial", "native", "banner", etc.
    - floor_price: floor price value as decimal string (e.g., "0.76" for FR 0.76, "0.5" for FR 0.5)
    - app_id: ${appId}
    - Example: "reward_0.76_${appId}_app"
 
-4. Parse user prompt to extract:
+2. Parse user prompt to extract:
    - Product type (reward, interstitial, native, banner)
    - Floor price (FR) - USE THE EXACT VALUE, DO NOT MULTIPLY BY 100
    - Quantity of zones
@@ -78,24 +82,15 @@ IMPORTANT RULES:
    - interstitial_0.85_${appId}_app
    - interstitial_0.85_${appId}_app
 
-5. Default values for ALL zones (copy from sample):
-   - Inventory Type: "Mobile Optimized Web"
-   - Type of zone: "スタンダードバナー"
-   - width: 300
-   - height: 250
-   - Use RTB: "YES"
-   - Allow External Delivery: "YES"
-   - Category: "アート＆エンターテイメント"
-   - Category Detail: "ユーモア"
-   - Default Payout rate for zone: ${payoutRate}
-   - Zone position: "Under the article/column"
-   - RTB optimisation type: "Prioritise revenue"
-   - Floor Price(USD): LEAVE EMPTY (null or empty string)
+3. Return ONLY a simple JSON array with zone names and optional width/height:
+   {
+     "zones": [
+       { "name": "reward_0.76_${appId}_app", "width": 300, "height": 250 },
+       { "name": "interstitial_0.85_${appId}_app", "width": 300, "height": 250 }
+     ]
+   }
 
-6. Return JSON with "zones" array containing all zone objects.
-
-CSV Schema (34 columns):
-${JSON.stringify(CSV_SCHEMA, null, 2)}`
+4. DO NOT include other fields - they will be filled from template automatically.`
 }
 
 /**
@@ -171,13 +166,26 @@ export async function generateZoneCSV(
     })
 
     const result = JSON.parse(response.choices[0].message.content || '{}')
-    const zones: GeneratedZone[] = result.zones || []
+    const aiZones: Array<{ name: string; width?: number; height?: number }> = result.zones || []
 
-    if (zones.length === 0) {
+    if (aiZones.length === 0) {
       throw new Error('No zones generated. Please refine your prompt.')
     }
 
-    console.log(`[CSV Generator] Generated ${zones.length} zones`)
+    console.log(`[CSV Generator] AI generated ${aiZones.length} zone names`)
+
+    // Merge AI output into template (ensures all 34 columns exist)
+    const zones: GeneratedZone[] = aiZones.map((aiZone) => {
+      const template = createZoneTemplate(zoneUrl, payoutRate)
+      return {
+        ...template,
+        'Name of zone': aiZone.name,
+        width: aiZone.width || template.width,
+        height: aiZone.height || template.height,
+      }
+    })
+
+    console.log(`[CSV Generator] Created ${zones.length} complete zones with 34 columns`)
 
     // Convert JSON to Excel buffer
     const worksheet = XLSX.utils.json_to_sheet(zones)
