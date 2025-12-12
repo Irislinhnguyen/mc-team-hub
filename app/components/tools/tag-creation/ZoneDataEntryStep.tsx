@@ -18,6 +18,7 @@ import { HelpIcon } from './HelpIcon'
 
 interface ZoneWithMetadata extends ExtractedZone {
   // Common fields (same for all zones)
+  app_id?: string // Team App only
   appstore_url?: string
   pid?: string
   pubname?: string
@@ -25,7 +26,8 @@ interface ZoneWithMetadata extends ExtractedZone {
   media_name?: string
   child_network_code?: string
   pic?: string
-  company_name?: string
+  company_name?: string // Team Web only
+  content?: string // Team App only
 
   // Individual zone fields
   zone_type?: string
@@ -76,6 +78,8 @@ const ZONE_TYPES_WEB = [
   'Flexible sticky',
 ]
 
+const CONTENT_OPTIONS = ['Game', 'Non-game']
+
 export function ZoneDataEntryStep({
   teamType,
   zones,
@@ -86,6 +90,7 @@ export function ZoneDataEntryStep({
   onBack
 }: ZoneDataEntryStepProps) {
   // Common fields (apply to all zones) - auto-fill from Step 1 if available
+  const [appId, setAppId] = useState('') // Team App only
   const [appstoreUrl, setAppstoreUrl] = useState(initialAppstoreUrl)
   const [payoutRate, setPayoutRate] = useState(initialPayoutRate)
   const [pid, setPid] = useState('')
@@ -94,7 +99,8 @@ export function ZoneDataEntryStep({
   const [mediaName, setMediaName] = useState('')
   const [childNetworkCode, setChildNetworkCode] = useState('')
   const [pic, setPic] = useState('')
-  const [companyName, setCompanyName] = useState('')
+  const [companyName, setCompanyName] = useState('') // Team Web only
+  const [content, setContent] = useState('') // Team App only
 
   // Individual zone data
   const [zoneData, setZoneData] = useState<ZoneWithMetadata[]>([])
@@ -112,26 +118,116 @@ export function ZoneDataEntryStep({
   const [syncSuccess, setSyncSuccess] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
 
+  /**
+   * Extract Floor Price (FP) from zone name (Team App only)
+   * Expected format: {product}_{fp}_{app_id}_app
+   * Example: "reward_0.76_123456_app" → "0.76"
+   */
+  const extractFPFromZoneName = (zoneName: string): string => {
+    try {
+      const parts = zoneName.split('_')
+      if (parts.length >= 2) {
+        const fpCandidate = parts[1]
+        // Validate it's a number
+        if (!isNaN(parseFloat(fpCandidate))) {
+          return fpCandidate
+        }
+      }
+      return ''
+    } catch (error) {
+      console.error('Error extracting FP from zone name:', error)
+      return ''
+    }
+  }
+
+  /**
+   * Auto-detect Zone Type from zone name (Team App only)
+   * Expected format: {product}_{fp}_{app_id}_app
+   * Example: "reward_0.76_123456_app" → "Reward"
+   * Example: "banner300x250_0.90_123456_app" → "Banner_300x250"
+   * Example: "banner320x50_0.90_123456_app" → "Banner_320x50"
+   */
+  const detectZoneType = (zoneName: string): string => {
+    try {
+      const lowerZoneName = zoneName.toLowerCase()
+
+      // Mapping từ zone name prefix đến Zone Type
+      // Note: Banner sizes are written WITHOUT underscore (e.g., banner300x250, not banner_300x250)
+      const zoneTypeMap: Record<string, string> = {
+        'appopen': 'AppOpen',
+        'banneradaptive': 'Banner_adaptive',
+        'banner_adaptive': 'Banner_adaptive',
+        'bannerallsize': 'Banner_allsize',
+        'banner_allsize': 'Banner_allsize',
+        'banner320x50': 'Banner_320x50',
+        'banner300x250': 'Banner_300x250',
+        'bannercustom': 'Banner_custom',
+        'banner_custom': 'Banner_custom',
+        'interstitial': 'Interstitial',
+        'native': 'Native',
+        'reward': 'Reward',
+        'videoinstream': 'Video_instream',
+        'video_instream': 'Video_instream',
+        'videoctv': 'Video_CTV',
+        'video_ctv': 'Video_CTV',
+        'rewardinterstitial': 'Reward Interstitial',
+        'reward_interstitial': 'Reward Interstitial',
+      }
+
+      // Try exact matches first (with underscore after zone type)
+      for (const [prefix, zoneType] of Object.entries(zoneTypeMap)) {
+        if (lowerZoneName.startsWith(prefix + '_')) {
+          return zoneType
+        }
+      }
+
+      // Fallback: check if it starts with any key (without underscore requirement)
+      for (const [prefix, zoneType] of Object.entries(zoneTypeMap)) {
+        if (lowerZoneName.startsWith(prefix)) {
+          return zoneType
+        }
+      }
+
+      return ''
+    } catch (error) {
+      console.error('Error detecting zone type from zone name:', error)
+      return ''
+    }
+  }
+
   // Update zoneData when zones prop changes from Step 2
   useEffect(() => {
     if (zones && zones.length > 0) {
       console.log('[ZoneDataEntryStep] Auto-filling notes with PR:', payoutRate)
       setZoneData(
         zones.map((zone) => {
-          // Build auto-filled template - Team Web: only PR
-          const autoFilledNote = `PR: ${payoutRate || ''}`
+          let autoFilledNote = ''
+          let detectedZoneType = ''
 
-          console.log(`[ZoneDataEntryStep] Zone: ${zone.zone_name}, Note: ${autoFilledNote}`)
+          if (teamType === 'app') {
+            // Team App: PR + FP + GI act
+            const fp = extractFPFromZoneName(zone.zone_name)
+            autoFilledNote = `PR: ${payoutRate || ''}\nFP: ${fp}\nGI act `
+
+            // Auto-detect zone type from zone name
+            detectedZoneType = detectZoneType(zone.zone_name)
+
+            console.log(`[ZoneDataEntryStep] Team App - Zone: ${zone.zone_name} → FP: ${fp}, Type: ${detectedZoneType}`)
+          } else {
+            // Team Web: only PR
+            autoFilledNote = `PR: ${payoutRate || ''}`
+            console.log(`[ZoneDataEntryStep] Team Web - Zone: ${zone.zone_name}`)
+          }
 
           return {
             ...zone,
-            zone_type: '',
+            zone_type: detectedZoneType,
             cs_sales_note_type: autoFilledNote,
           }
         })
       )
     }
-  }, [zones, payoutRate])
+  }, [zones, payoutRate, teamType])
 
   const handleZoneFieldChange = (
     index: number,
@@ -163,28 +259,85 @@ export function ZoneDataEntryStep({
     if (zoneData.length > 0) {
       setZoneData(prevZoneData =>
         prevZoneData.map(zone => {
-          // Team Web: only PR
-          const autoFilledNote = `PR: ${payoutRate || ''}`
+          let autoFilledNote = ''
+          let updatedZoneType = zone.zone_type
+
+          if (teamType === 'app') {
+            // Team App: PR + FP + GI act
+            const fp = extractFPFromZoneName(zone.zone_name)
+            autoFilledNote = `PR: ${payoutRate || ''}\nFP: ${fp}\nGI act `
+
+            // Re-detect zone type if it's empty
+            if (!updatedZoneType) {
+              updatedZoneType = detectZoneType(zone.zone_name)
+            }
+          } else {
+            // Team Web: only PR
+            autoFilledNote = `PR: ${payoutRate || ''}`
+          }
+
           return {
             ...zone,
+            zone_type: updatedZoneType,
             cs_sales_note_type: autoFilledNote,
           }
         })
       )
     }
-  }, [payoutRate])
+  }, [payoutRate, teamType])
+
+  // Auto-extract App ID from Appstore URL (Team App only)
+  useEffect(() => {
+    if (teamType !== 'app') return
+
+    if (!appstoreUrl.trim()) {
+      setAppId('')
+      return
+    }
+
+    let extractedAppId = ''
+
+    // iOS App Store URL: https://apps.apple.com/.../app/app-name/id123456789
+    const iosMatch = appstoreUrl.match(/id(\d+)/)
+    if (iosMatch) {
+      extractedAppId = iosMatch[1]
+    }
+
+    // Android Play Store URL: https://play.google.com/store/apps/details?id=com.example.app
+    const androidMatch = appstoreUrl.match(/id=([a-zA-Z0-9._]+)/)
+    if (androidMatch) {
+      extractedAppId = androidMatch[1]
+    }
+
+    setAppId(extractedAppId)
+  }, [appstoreUrl, teamType])
 
   const validateAndSync = async () => {
     const validationErrors: string[] = []
 
-    // Validate common fields
-    if (!appstoreUrl.trim()) validationErrors.push('Domain is required')
-    if (!pid.trim()) validationErrors.push('PID is required')
-    if (!pubname.trim()) validationErrors.push('Publisher Name is required')
-    if (!mid.trim()) validationErrors.push('MID is required')
-    if (!mediaName.trim()) validationErrors.push('Media Name is required')
-    if (!pic.trim()) validationErrors.push('PIC is required')
-    if (!companyName.trim()) validationErrors.push('Company Name is required')
+    // Validate common fields (different for Team App vs Team Web)
+    if (teamType === 'app') {
+      // Team App validation
+      if (!appId.trim()) validationErrors.push('App ID is required')
+      if (!appstoreUrl.trim()) validationErrors.push('Zone URL is required')
+      if (!pid.trim()) validationErrors.push('PID is required')
+      if (!pubname.trim()) validationErrors.push('Publisher Name is required')
+      if (!mid.trim()) validationErrors.push('MID is required')
+      if (!mediaName.trim()) validationErrors.push('Media Name is required')
+      if (!childNetworkCode.trim()) validationErrors.push('Child Network Code is required')
+      if (!pic.trim()) validationErrors.push('PIC is required')
+      if (!content.trim()) validationErrors.push('Content is required')
+    } else {
+      // Team Web validation
+      if (!appstoreUrl.trim()) validationErrors.push('Domain is required')
+      if (!pid.trim()) validationErrors.push('PID is required')
+      if (!pubname.trim()) validationErrors.push('Publisher Name is required')
+      if (!mid.trim()) validationErrors.push('MID is required')
+      if (!mediaName.trim()) validationErrors.push('Media Name is required')
+      if (!pic.trim()) validationErrors.push('PIC is required')
+      if (!companyName.trim()) validationErrors.push('Company Name is required')
+      // GAM Network ID is optional for Team Web
+    }
 
     // Validate individual zone fields
     zoneData.forEach((zone, index) => {
@@ -201,18 +354,33 @@ export function ZoneDataEntryStep({
       return
     }
 
-    // Merge common fields into all zones
-    const finalData = zoneData.map((zone) => ({
-      ...zone,
-      appstore_url: appstoreUrl,
-      pid,
-      pubname,
-      mid,
-      media_name: mediaName,
-      child_network_code: childNetworkCode,
-      pic,
-      company_name: companyName,
-    }))
+    // Merge common fields into all zones (team-specific)
+    const finalData = zoneData.map((zone) => {
+      const baseData = {
+        ...zone,
+        appstore_url: appstoreUrl,
+        pid,
+        pubname,
+        mid,
+        media_name: mediaName,
+        pic,
+      }
+
+      if (teamType === 'app') {
+        return {
+          ...baseData,
+          app_id: appId,
+          child_network_code: childNetworkCode,
+          content,
+        }
+      } else {
+        return {
+          ...baseData,
+          child_network_code: childNetworkCode, // optional for web
+          company_name: companyName,
+        }
+      }
+    })
 
     // Sync to Google Sheets - dynamic sheet name based on team type
     const sheetName = teamType === 'app' ? 'Tag Creation_APP' : 'Tag Creation_WEB'
@@ -262,144 +430,305 @@ export function ZoneDataEntryStep({
             <CardTitle className="text-base text-[#1565C0]">Enter Zone Metadata</CardTitle>
             <HelpIcon
               title="What to fill in"
-              content={`1. Common Information (applies to all zones):
+              content={teamType === 'app' ? `1. Common Information (applies to all zones):
+   - App ID: Auto-extracted from Zone URL (read-only)
+   - Zone URL: URL to app store listing (iOS or Android)
+   - PIC: Person In Charge
+   - PID: Publisher ID
+   - Publisher Name: Name of the publisher
+   - Child Network Code: Ad network code
+   - MID: Media ID
+   - Media Name: Name of the media property
+   - Content: Game or Non-game
+
+2. Individual Zone Information (for each zone):
+   - Zone Type: AppOpen, Banner types, Interstitial, Native, Reward, Video types, etc.
+   - CS/Sales Note: Enter custom text (e.g., CS, Sales, or any note)` : `1. Common Information (applies to all zones):
    - Domain: Website domain
    - PIC: Person In Charge
    - PID: Publisher ID
    - Publisher Name: Name of the publisher
    - Company Name: Child pub name
-   - GAM Network ID: Ad network code
+   - GAM Network ID: Ad network code (optional)
    - MID: Media ID
    - Media Name: Name of the media property
 
 2. Individual Zone Information (for each zone):
-   - Zone Type: AppOpen, Banner types, Interstitial, Native, Reward, Video types, etc.
+   - Zone Type: Banner, Inpage, VAST, etc.
    - CS/Sales Note: Enter custom text (e.g., CS, Sales, or any note)`}
             />
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Common Fields Section */}
+        {/* Common Fields Section - Conditional based on team type */}
         <div className="space-y-4">
-          {/* Row 1: Domain, PIC, PID, Publisher Name */}
-          <div className="grid grid-cols-4 gap-3">
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-700 block">
-                Domain <span className="text-red-500">*</span>
-              </label>
-              <Input
-                value={appstoreUrl}
-                onChange={(e) => {
-                  setAppstoreUrl(e.target.value)
-                  if (errors.length > 0) setErrors([])
-                }}
-                className="h-8 text-xs"
-              />
-            </div>
+          {teamType === 'app' ? (
+            // Team App: 3 rows x 3 columns
+            <>
+              {/* Row 1: App ID, Zone URL, PIC */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-700 block">
+                    App ID <span className="text-xs text-gray-500 font-normal">(Auto)</span>
+                  </label>
+                  <Input
+                    value={appId}
+                    disabled
+                    placeholder="Auto-filled"
+                    className="h-8 text-xs bg-gray-50 text-gray-600 cursor-not-allowed"
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-700 block">
-                PIC <span className="text-red-500">*</span>
-              </label>
-              <Input
-                value={pic}
-                onChange={(e) => {
-                  setPic(e.target.value)
-                  if (errors.length > 0) setErrors([])
-                }}
-                className="h-8 text-xs"
-              />
-            </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-700 block">
+                    Zone URL <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    value={appstoreUrl}
+                    onChange={(e) => {
+                      setAppstoreUrl(e.target.value)
+                      if (errors.length > 0) setErrors([])
+                    }}
+                    className="h-8 text-xs"
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-700 block">
-                PID <span className="text-red-500">*</span>
-              </label>
-              <Input
-                value={pid}
-                onChange={(e) => {
-                  setPid(e.target.value)
-                  if (errors.length > 0) setErrors([])
-                }}
-                className="h-8 text-xs"
-              />
-            </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-700 block">
+                    PIC <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    value={pic}
+                    onChange={(e) => {
+                      setPic(e.target.value)
+                      if (errors.length > 0) setErrors([])
+                    }}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-700 block">
-                Publisher Name <span className="text-red-500">*</span>
-              </label>
-              <Input
-                value={pubname}
-                onChange={(e) => {
-                  setPubname(e.target.value)
-                  if (errors.length > 0) setErrors([])
-                }}
-                className="h-8 text-xs"
-              />
-            </div>
-          </div>
+              {/* Row 2: PID, Publisher Name, Child Network Code */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-700 block">
+                    PID <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    value={pid}
+                    onChange={(e) => {
+                      setPid(e.target.value)
+                      if (errors.length > 0) setErrors([])
+                    }}
+                    className="h-8 text-xs"
+                  />
+                </div>
 
-          {/* Row 2: Company Name, GAM Network ID, MID, Media Name */}
-          <div className="grid grid-cols-4 gap-3">
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-700 block">
-                Company Name <span className="text-red-500">*</span>
-              </label>
-              <Input
-                value={companyName}
-                onChange={(e) => {
-                  setCompanyName(e.target.value)
-                  if (errors.length > 0) setErrors([])
-                }}
-                placeholder="Child pub name"
-                className="h-8 text-xs"
-              />
-            </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-700 block">
+                    Publisher Name <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    value={pubname}
+                    onChange={(e) => {
+                      setPubname(e.target.value)
+                      if (errors.length > 0) setErrors([])
+                    }}
+                    className="h-8 text-xs"
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-700 block">
-                GAM Network ID
-              </label>
-              <Input
-                value={childNetworkCode}
-                onChange={(e) => {
-                  setChildNetworkCode(e.target.value)
-                  if (errors.length > 0) setErrors([])
-                }}
-                className="h-8 text-xs"
-              />
-            </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-700 block">
+                    Child Network Code <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    value={childNetworkCode}
+                    onChange={(e) => {
+                      setChildNetworkCode(e.target.value)
+                      if (errors.length > 0) setErrors([])
+                    }}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-700 block">
-                MID <span className="text-red-500">*</span>
-              </label>
-              <Input
-                value={mid}
-                onChange={(e) => {
-                  setMid(e.target.value)
-                  if (errors.length > 0) setErrors([])
-                }}
-                className="h-8 text-xs"
-              />
-            </div>
+              {/* Row 3: MID, Media Name, Content */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-700 block">
+                    MID <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    value={mid}
+                    onChange={(e) => {
+                      setMid(e.target.value)
+                      if (errors.length > 0) setErrors([])
+                    }}
+                    className="h-8 text-xs"
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-700 block">
-                Media Name <span className="text-red-500">*</span>
-              </label>
-              <Input
-                value={mediaName}
-                onChange={(e) => {
-                  setMediaName(e.target.value)
-                  if (errors.length > 0) setErrors([])
-                }}
-                className="h-8 text-xs"
-              />
-            </div>
-          </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-700 block">
+                    Media Name <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    value={mediaName}
+                    onChange={(e) => {
+                      setMediaName(e.target.value)
+                      if (errors.length > 0) setErrors([])
+                    }}
+                    className="h-8 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-700 block">
+                    Content <span className="text-red-500">*</span>
+                  </label>
+                  <Select value={content} onValueChange={(value) => {
+                    setContent(value)
+                    if (errors.length > 0) setErrors([])
+                  }}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent position="popper" sideOffset={4}>
+                      {CONTENT_OPTIONS.map((option) => (
+                        <SelectItem key={option} value={option} className="text-xs">
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </>
+          ) : (
+            // Team Web: 2 rows x 4 columns
+            <>
+              {/* Row 1: Domain, PIC, PID, Publisher Name */}
+              <div className="grid grid-cols-4 gap-3">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-700 block">
+                    Domain <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    value={appstoreUrl}
+                    onChange={(e) => {
+                      setAppstoreUrl(e.target.value)
+                      if (errors.length > 0) setErrors([])
+                    }}
+                    className="h-8 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-700 block">
+                    PIC <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    value={pic}
+                    onChange={(e) => {
+                      setPic(e.target.value)
+                      if (errors.length > 0) setErrors([])
+                    }}
+                    className="h-8 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-700 block">
+                    PID <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    value={pid}
+                    onChange={(e) => {
+                      setPid(e.target.value)
+                      if (errors.length > 0) setErrors([])
+                    }}
+                    className="h-8 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-700 block">
+                    Publisher Name <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    value={pubname}
+                    onChange={(e) => {
+                      setPubname(e.target.value)
+                      if (errors.length > 0) setErrors([])
+                    }}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Company Name, GAM Network ID, MID, Media Name */}
+              <div className="grid grid-cols-4 gap-3">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-700 block">
+                    Company Name <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    value={companyName}
+                    onChange={(e) => {
+                      setCompanyName(e.target.value)
+                      if (errors.length > 0) setErrors([])
+                    }}
+                    placeholder="Child pub name"
+                    className="h-8 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-700 block">
+                    GAM Network ID
+                  </label>
+                  <Input
+                    value={childNetworkCode}
+                    onChange={(e) => {
+                      setChildNetworkCode(e.target.value)
+                      if (errors.length > 0) setErrors([])
+                    }}
+                    className="h-8 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-700 block">
+                    MID <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    value={mid}
+                    onChange={(e) => {
+                      setMid(e.target.value)
+                      if (errors.length > 0) setErrors([])
+                    }}
+                    className="h-8 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-700 block">
+                    Media Name <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    value={mediaName}
+                    onChange={(e) => {
+                      setMediaName(e.target.value)
+                      if (errors.length > 0) setErrors([])
+                    }}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Individual Zone Data Table */}
