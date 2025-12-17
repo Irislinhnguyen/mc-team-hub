@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ToggleGroup, ToggleGroupItem } from '../../../../src/components/ui/toggle-group'
 import { MetadataFilterPanel } from '../../../components/performance-tracker/MetadataFilterPanel'
 import ChartSkeleton from '../../../components/performance-tracker/skeletons/ChartSkeleton'
 import { DataTableSkeleton } from '../../../components/performance-tracker/skeletons/DataTableSkeleton'
@@ -386,14 +386,24 @@ export default function NewSalesPage() {
         defaultDateRange={activeTab === 'details' ? initialDetailsFilters : undefined}
       />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
-          <TabsTrigger value="summary">Summary</TabsTrigger>
-          <TabsTrigger value="details">Details</TabsTrigger>
-        </TabsList>
+      {/* View Toggle */}
+      <div className="flex items-center gap-4 px-4 mb-6">
+        <ToggleGroup
+          type="single"
+          value={activeTab}
+          onValueChange={(value) => {
+            if (value) setActiveTab(value)
+          }}
+        >
+          <ToggleGroupItem value="summary">Summary</ToggleGroupItem>
+          <ToggleGroupItem value="details">Details</ToggleGroupItem>
+        </ToggleGroup>
+      </div>
 
+      <div className="w-full">
         {/* Tab 1: Summary */}
-        <TabsContent value="summary" className="space-y-6">
+        {activeTab === 'summary' && (
+          <div className="space-y-6">
           <DatePresetButtons
             selectedPreset={summaryPreset}
             onPresetChange={(preset) => handlePresetChange(preset, false)}
@@ -442,10 +452,12 @@ export default function NewSalesPage() {
                 </>
               ) : null}
             </div>
-          </TabsContent>
+          </div>
+        )}
 
         {/* Tab 2: Details */}
-        <TabsContent value="details" className="space-y-6">
+        {activeTab === 'details' && (
+          <div className="space-y-6">
           {/* Note */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-blue-800 text-sm">
@@ -484,8 +496,9 @@ export default function NewSalesPage() {
               groupByColumns={['pid']}
             />
           )}
-        </TabsContent>
-      </Tabs>
+          </div>
+        )}
+      </div>
     </AnalyticsPageLayout>
   )
 }

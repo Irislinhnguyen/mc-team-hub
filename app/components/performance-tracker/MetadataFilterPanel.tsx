@@ -6,7 +6,6 @@ import { FilterPresetManager } from './FilterPresetManager'
 import { MetadataErrorUI } from './MetadataErrorUI'
 import FilterPanelSkeleton from './skeletons/FilterPanelSkeleton'
 import { useAnalyticsMetadata } from '../../../lib/hooks/useAnalyticsMetadata'
-import { usePersistedFilters } from '../../../lib/hooks/usePersistedFilters'
 import { useCascadingFilters } from '../../../lib/hooks/useCascadingFilters'
 import { buildFilterConfig } from '../../../lib/config/filterConfigs'
 import { useCrossFilter } from '../../contexts/CrossFilterContext'
@@ -69,11 +68,8 @@ export function MetadataFilterPanel({
   // ✨ NEW: Cross-filter integration for filter presets
   const { exportCrossFilters, importCrossFilters } = useCrossFilter()
 
-  // ✨ NEW: Use persisted filters hook to remember last filters per tab
-  const [persistedFilters, setPersistedFilters] = usePersistedFilters(page, {})
-
   // ✨ NEW: Track current filter state internally for preset manager
-  const [internalFilters, setInternalFilters] = useState<Record<string, any>>(persistedFilters)
+  const [internalFilters, setInternalFilters] = useState<Record<string, any>>({})
 
   // ✨ CASCADING FILTERS: Extract selected values for cascading logic
   const selectedTeams = useMemo(
@@ -117,12 +113,6 @@ export function MetadataFilterPanel({
     selectedZids,
     enableCascading,
   })
-
-  // ✨ NEW: Persist filters to localStorage whenever they change
-  useEffect(() => {
-    console.log('[MetadataFilterPanel] 📝 Internal filters changed:', internalFilters)
-    setPersistedFilters(internalFilters)
-  }, [internalFilters, setPersistedFilters])
 
   // ✨ NEW: Sync internal filters with parent
   useEffect(() => {

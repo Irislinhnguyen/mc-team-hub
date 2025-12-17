@@ -1,16 +1,13 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 
 /**
- * usePersistedFilters - Hook to persist filter state per page in localStorage
+ * usePersistedFilters - Hook for managing filter state (no localStorage persistence)
  *
- * Enables "remember last filters per tab" functionality.
- * Each page maintains its own filter state that persists across:
- * - Tab switches
- * - Page refreshes
- * - Browser sessions
+ * Note: This hook no longer persists to localStorage. Use FilterPresetManager
+ * for saving/loading filter configurations to the database.
  *
- * @param page - Unique page identifier (e.g., 'business-health', 'daily-ops')
- * @param defaultFilters - Default filters to use if no saved state exists
+ * @param page - Unique page identifier (kept for API compatibility)
+ * @param defaultFilters - Default filters to use on initialization
  *
  * @example
  * const [filters, setFilters] = usePersistedFilters('business-health', {
@@ -22,45 +19,8 @@ export function usePersistedFilters<T extends Record<string, any>>(
   page: string,
   defaultFilters: T
 ): [T, (filters: T | ((prev: T) => T)) => void, () => void] {
-  const storageKey = `filters:${page}`
-
-  // Initialize state from localStorage or defaults
-  const [filters, setFiltersState] = useState<T>(() => {
-    if (typeof window === 'undefined') {
-      return defaultFilters
-    }
-
-    try {
-      const saved = localStorage.getItem(storageKey)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        // Merge with defaults to ensure all required fields exist
-        return { ...defaultFilters, ...parsed }
-      }
-    } catch (error) {
-      console.error(`Error loading persisted filters for ${page}:`, error)
-    }
-
-    return defaultFilters
-  })
-
-  // Save to localStorage whenever filters change (debounced)
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    // Debounce saves to avoid excessive localStorage writes
-    const timeoutId = setTimeout(() => {
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(filters))
-      } catch (error) {
-        console.error(`Error persisting filters for ${page}:`, error)
-      }
-    }, 500) // 500ms debounce
-
-    return () => clearTimeout(timeoutId)
-  }, [filters, page, storageKey])
+  // Simple state initialization (no localStorage)
+  const [filters, setFiltersState] = useState<T>(defaultFilters)
 
   // Wrapper to handle both direct values and updater functions
   const setFilters = useCallback((newFilters: T | ((prev: T) => T)) => {
@@ -70,12 +30,7 @@ export function usePersistedFilters<T extends Record<string, any>>(
   // Reset to default filters
   const resetFilters = useCallback(() => {
     setFiltersState(defaultFilters)
-    try {
-      localStorage.removeItem(storageKey)
-    } catch (error) {
-      console.error(`Error resetting filters for ${page}:`, error)
-    }
-  }, [defaultFilters, page, storageKey])
+  }, [defaultFilters])
 
   return [filters, setFilters, resetFilters]
 }

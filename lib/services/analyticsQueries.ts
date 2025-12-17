@@ -1,4 +1,4 @@
-import { buildTeamCondition, buildTeamConditions } from '../utils/teamMatcher'
+import { buildTeamCondition, buildTeamConditions, getTeamConfigurations } from '../utils/teamMatcher'
 import type { AdvancedFilters, AdvancedFilterClause, AdvancedFilterGroup, SimplifiedFilter, FilterDataType, FilterOperator, FilterField } from '../types/performanceTracker'
 
 // Helper function to escape SQL values to prevent injection
@@ -666,6 +666,9 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
     zoneMonitoringTimeSeries: `
       SELECT
         DATE as date,
+        pic,
+        pid,
+        mid,
         zid,
         zonename,
         product,
@@ -677,9 +680,9 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
         SUM(rev) - SUM(profit) as rev_to_pub
       FROM ${tableName}
       ${whereClause}
-      GROUP BY DATE, zid, zonename, product
-      ORDER BY DATE DESC, rev DESC
-      LIMIT ${limit} OFFSET ${offset}
+      GROUP BY DATE, pic, pid, mid, zid, zonename, product
+      ORDER BY DATE ASC, rev DESC
+      LIMIT 15000
     `,
 
     zoneMonitoringTimeSeriesCount: `
@@ -727,6 +730,7 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
     listOfPidByDate: `
       SELECT
         DATE as date,
+        pic,
         pid,
         pubname,
         SUM(rev) as rev,
@@ -734,9 +738,9 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
         SUM(rev) - SUM(profit) as rev_to_pub
       FROM ${tableName}
       ${whereClause}
-      GROUP BY DATE, pid, pubname
-      ORDER BY DATE DESC, rev DESC
-      LIMIT ${limit} OFFSET ${offset}
+      GROUP BY DATE, pic, pid, pubname
+      ORDER BY DATE ASC, rev DESC
+      LIMIT 10000
     `,
 
     listOfPidByDateCount: `
@@ -783,6 +787,8 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
     listOfMidByDate: `
       SELECT
         DATE as date,
+        pic,
+        pid,
         mid,
         medianame,
         SUM(rev) as rev,
@@ -790,9 +796,9 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
         SUM(rev) - SUM(profit) as rev_to_pub
       FROM ${tableName}
       ${whereClause}
-      GROUP BY DATE, mid, medianame
-      ORDER BY DATE DESC, rev DESC
-      LIMIT ${limit} OFFSET ${offset}
+      GROUP BY DATE, pic, pid, mid, medianame
+      ORDER BY DATE ASC, rev DESC
+      LIMIT 10000
     `,
 
     listOfMidByDateCount: `
@@ -1245,10 +1251,15 @@ export async function getNewSalesQueries(filters: Record<string, any>) {
 
   if (filters.team) {
     if (Array.isArray(filters.team) && filters.team.length > 0) {
-      const values = filters.team.map(v => `'${v}'`).join(', ')
-      monthlySummaryConditions.push(`team IN (${values})`)
+      const teamCondition = await buildTeamConditions(filters.team)
+      if (teamCondition) {
+        monthlySummaryConditions.push(teamCondition)
+      }
     } else if (filters.team !== '') {
-      monthlySummaryConditions.push(`team = '${filters.team}'`)
+      const teamCondition = await buildTeamCondition(filters.team)
+      if (teamCondition) {
+        monthlySummaryConditions.push(teamCondition)
+      }
     }
   }
 
@@ -1437,4 +1448,164 @@ export async function getNewSalesQueries(filters: Record<string, any>) {
       LIMIT 1000
     `
   }
+}
+
+/**
+ * Build team breakdown query with server-side aggregation
+ * Returns pre-aggregated team×date data using UNION ALL approach
+ *
+ * @param whereClause - WHERE clause built from buildWhereClause()
+ * @returns SQL query string that aggregates by team+date
+ */
+export async function buildTeamBreakdownQuery(whereClause: string): Promise<string> {
+  const tableName = '`gcpp-check.GI_publisher.agg_monthly_with_pic_table_6_month`'
+
+  // Fetch team configurations from Supabase (cached 5 min)
+  const { picMappings, teams } = await getTeamConfigurations()
+
+  console.log('[buildTeamBreakdownQuery] Building query for', teams.length, 'teams')
+
+  // Build separate SELECT for each team
+  const teamCases: string[] = []
+
+  // Process each configured team
+  teams.forEach(team => {
+    const teamPics = picMappings
+      .filter(m => m.team_id === team.team_id)
+      .map(m => m.pic_name)
+
+    if (teamPics.length > 0) {
+      // SQL escape: replace ' with ''
+      const escapedTeamId = team.team_id.replace(/'/g, "''")
+      const escapedTeamName = (team.team_name || team.team_id).replace(/'/g, "''")
+      const picList = teamPics
+        .map(pic => `'${pic.replace(/'/g, "''")}'`)
+        .join(', ')
+
+      teamCases.push(`
+    -- Team: ${escapedTeamName}
+    SELECT
+      DATE as date,
+      '${escapedTeamId}' as team_id,
+      '${escapedTeamName}' as team_name,
+      SUM(rev) as revenue,
+      SUM(profit) as profit,
+      SUM(req) as requests,
+      SUM(paid) as paid
+    FROM ${tableName}
+    ${whereClause}
+      AND pic IN (${picList})
+    GROUP BY DATE`.trim())
+    }
+  })
+
+  // Add "Unassigned" query for PICs not mapped to any team
+  const allAssignedPics = picMappings.map(m => m.pic_name)
+
+  if (allAssignedPics.length > 0) {
+    const assignedPicList = allAssignedPics
+      .map(pic => `'${pic.replace(/'/g, "''")}'`)
+      .join(', ')
+
+    teamCases.push(`
+    -- Unassigned (PICs not in any team mapping)
+    SELECT
+      DATE as date,
+      'unassigned' as team_id,
+      'Unassigned' as team_name,
+      SUM(rev) as revenue,
+      SUM(profit) as profit,
+      SUM(req) as requests,
+      SUM(paid) as paid
+    FROM ${tableName}
+    ${whereClause}
+      AND (pic NOT IN (${assignedPicList}) OR pic IS NULL OR TRIM(pic) = '')
+    GROUP BY DATE`.trim())
+  } else {
+    // No teams configured - everything is unassigned
+    teamCases.push(`
+    -- All Unassigned (no team configurations exist)
+    SELECT
+      DATE as date,
+      'unassigned' as team_id,
+      'Unassigned' as team_name,
+      SUM(rev) as revenue,
+      SUM(profit) as profit,
+      SUM(req) as requests,
+      SUM(paid) as paid
+    FROM ${tableName}
+    ${whereClause}
+    GROUP BY DATE`.trim())
+  }
+
+  // Combine all team queries with UNION ALL
+  const finalQuery = teamCases.join('\n\nUNION ALL\n\n') +
+    '\n\nORDER BY date ASC, team_name ASC'
+
+  console.log('[buildTeamBreakdownQuery] Generated SQL with', teamCases.length, 'team cases')
+
+  return finalQuery
+}
+
+/**
+ * Build PIC breakdown query for a specific team with server-side aggregation
+ * Returns pre-aggregated PIC×date data for PICs in the specified team
+ *
+ * @param team_id - Team ID to filter PICs
+ * @param whereClause - WHERE clause built from buildWhereClause()
+ * @returns SQL query string that aggregates by PIC+date for the team
+ */
+export async function buildPICBreakdownQuery(team_id: string, whereClause: string): Promise<string> {
+  const tableName = '`gcpp-check.GI_publisher.agg_monthly_with_pic_table_6_month`'
+
+  // Fetch team configurations from Supabase (cached 5 min)
+  const { picMappings } = await getTeamConfigurations()
+
+  console.log('[buildPICBreakdownQuery] Building query for team:', team_id)
+
+  // Get PICs for the specified team
+  const teamPics = picMappings
+    .filter(m => m.team_id === team_id)
+    .map(m => m.pic_name)
+
+  if (teamPics.length === 0) {
+    console.warn('[buildPICBreakdownQuery] No PICs found for team:', team_id)
+    // Return empty result query
+    return `
+      SELECT
+        DATE as date,
+        '' as pic_name,
+        0 as revenue,
+        0 as profit,
+        0 as requests,
+        0 as paid
+      FROM ${tableName}
+      WHERE FALSE
+    `.trim()
+  }
+
+  // SQL escape PICs
+  const picList = teamPics
+    .map(pic => `'${pic.replace(/'/g, "''")}'`)
+    .join(', ')
+
+  // Build query aggregating by PIC and DATE
+  const query = `
+    SELECT
+      DATE as date,
+      pic as pic_name,
+      SUM(rev) as revenue,
+      SUM(profit) as profit,
+      SUM(req) as requests,
+      SUM(paid) as paid
+    FROM ${tableName}
+    ${whereClause}
+      AND pic IN (${picList})
+    GROUP BY DATE, pic
+    ORDER BY DATE ASC, pic ASC
+  `.trim()
+
+  console.log('[buildPICBreakdownQuery] Generated query for', teamPics.length, 'PICs')
+
+  return query
 }
