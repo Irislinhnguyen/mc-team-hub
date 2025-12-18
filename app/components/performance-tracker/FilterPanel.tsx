@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { DateRangePicker } from '../forms/DateRangePicker'
 import { MultiSelectFilter } from './MultiSelectFilter'
 import { FilterChipsPortal } from './FilterChipsPortal'
+import { Skeleton } from '@/components/ui/skeleton'
 import { colors } from '../../../lib/colors'
 import { normalizeFilterValue } from '../../../lib/utils/filterHelpers'
 
@@ -121,7 +122,7 @@ export function FilterPanel({
 
       console.log('[FilterPanel] 🔍 Sending filters to parent:', allFilters)
       onFilterChange(allFilters)
-    }, 300)
+    }, 1000)  // 🟢 Increased from 300ms to 1000ms for better debouncing
 
     return () => clearTimeout(timeoutId)
   }, [filterValues, startDate, endDate, includeDateInFilters, onFilterChange])
@@ -198,8 +199,18 @@ export function FilterPanel({
     const onClearAllEvent = () => {
       // Use functional state updates to avoid stale closure issues
       setFilterValues(() => ({}))
-      setStartDate(() => null)
-      setEndDate(() => null)
+
+      // ✅ Reset to default date range instead of null to prevent blank page
+      if (defaultDateRange) {
+        setStartDate(() => new Date(defaultDateRange.startDate))
+        setEndDate(() => new Date(defaultDateRange.endDate))
+      } else {
+        // Fallback: calculate last 30 days if no default provided
+        const today = new Date()
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        setStartDate(() => thirtyDaysAgo.toISOString().split('T')[0])
+        setEndDate(() => today.toISOString().split('T')[0])
+      }
     }
 
     window.addEventListener('removeAppliedFilter', onRemoveFilterEvent as EventListener)
@@ -236,22 +247,18 @@ export function FilterPanel({
 
               return (
                 <div key={filter.name} className="flex-1" style={{ minWidth: '180px' }}>
-                  <MultiSelectFilter
-                    label={filter.label}
-                    options={filter.options || []}
-                    value={filterValues[filter.name] || []}
-                    onChange={(value) => handleFilterChange(filter.name, value)}
-                    disabled={isFilterLoading}
-                  />
-                  {/* ✨ CASCADING FILTERS: Show loading indicator */}
-                  {isFilterLoading && (
-                    <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                      <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Loading options...
+                  {isFilterLoading ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-10 w-full" />
                     </div>
+                  ) : (
+                    <MultiSelectFilter
+                      label={filter.label}
+                      options={filter.options || []}
+                      value={filterValues[filter.name] || []}
+                      onChange={(value) => handleFilterChange(filter.name, value)}
+                    />
                   )}
                 </div>
               )

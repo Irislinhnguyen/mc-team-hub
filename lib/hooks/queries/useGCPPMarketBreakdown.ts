@@ -52,6 +52,6 @@ export function useGCPPMarketBreakdown(filters: Record<string, any>) {
     staleTime: cacheConfig.dailyAnalytics.staleTime,
     gcTime: cacheConfig.dailyAnalytics.gcTime,
     retry: 2,
-    refetchOnMount: true,
+    // ✅ Use global refetchOnMount: false from queryClient config for better caching
   })
 }

@@ -1,10 +1,18 @@
 /**
- * Multi-Level Cascading Filters Hook
- * Handles cascading filter logic for Team → PIC → PID → MID → ZID
+ * Multi-Level Cascading Filters Hook (Looker Studio-style)
+ *
+ * Full bidirectional cascading using client-side relationship mapping.
+ * When ANY filter is selected, ALL other filters constrain automatically.
+ *
+ * Architecture:
+ * - Single API call on mount (fetches relationship map)
+ * - Zero API calls on filter changes (all client-side)
+ * - Intersection logic computes valid options at each level
+ * - Prevents invalid selections entirely (strict mode)
  */
 
 import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useRelationshipMap, intersect } from './useRelationshipMap'
 import type { MetadataOptions } from './useAnalyticsMetadata'
 
 interface CascadingFiltersConfig {
@@ -12,8 +20,12 @@ interface CascadingFiltersConfig {
   selectedTeams: string[]
   selectedPics: string[]
   selectedPids: string[]
+  selectedPubnames: string[]
   selectedMids: string[]
+  selectedMedianames: string[]
   selectedZids: string[]
+  selectedZonenames: string[]
+  selectedProducts: string[]
   enableCascading: boolean
 }
 
@@ -27,6 +39,7 @@ interface CascadingFiltersResult {
   availableMedianames: Array<{ label: string; value: string }>
   availableZids: Array<{ label: string; value: string }>
   availableZonenames: Array<{ label: string; value: string }>
+  availableProducts: Array<{ label: string; value: string }>
   loadingStates: {
     pics: boolean
     pids: boolean
@@ -35,6 +48,7 @@ interface CascadingFiltersResult {
     medianames: boolean
     zids: boolean
     zonenames: boolean
+    products: boolean
   }
   filterModes: {
     pics: FilterMode
@@ -44,396 +58,323 @@ interface CascadingFiltersResult {
     medianames: FilterMode
     zids: FilterMode
     zonenames: FilterMode
+    products: FilterMode
   }
 }
 
 /**
- * Custom hook to manage multi-level cascading filters
+ * useCascadingFilters - Full bidirectional cascading with intersection logic
  *
- * Level 1: Team → PIC (client-side, instant)
- * Level 2: PIC → PID (server-side, cached)
- * Level 3: PID → MID (server-side, cached)
- * Level 4: MID → ZID (server-side, cached)
+ * Example flow when user selects pubname "24h.com.vn":
+ * 1. pubname → PIDs (reverse lookup)
+ * 2. PIDs → PICs (reverse cascade up)
+ * 3. PIDs → MIDs (forward cascade down)
+ * 4. MIDs → ZIDs (forward cascade down)
+ * 5. ZIDs → Products (forward cascade down)
  *
- * @example
- * const {
- *   availablePics, availablePids, availableMids, availableZids,
- *   loadingStates, filterModes
- * } = useCascadingFilters({
- *   metadata,
- *   selectedTeams: ['WEB_GTI'],
- *   selectedPics: ['John'],
- *   selectedPids: ['123'],
- *   selectedMids: ['456'],
- *   enableCascading: true
- * })
+ * Result: All filters show only valid options for "24h.com.vn"
  */
 export function useCascadingFilters({
   metadata,
   selectedTeams,
   selectedPics,
   selectedPids,
+  selectedPubnames,
   selectedMids,
+  selectedMedianames,
   selectedZids,
+  selectedZonenames,
+  selectedProducts,
   enableCascading = true,
 }: CascadingFiltersConfig): CascadingFiltersResult {
 
-  // ===== Level 1: Team → PIC (Server-Side via API) =====
+  // Get relationship map with helper methods
+  const relationshipMap = useRelationshipMap(metadata)
 
-  const {
-    data: teamMappingsData,
-    isLoading: isLoadingTeamMappings,
-  } = useQuery({
-    queryKey: ['team-pic-mappings'],
-    queryFn: async () => {
-      console.log('[useCascadingFilters] 🔄 Fetching team→PIC mappings from API...')
-      const response = await fetch('/api/performance-tracker/metadata/team-pic-mappings')
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: Failed to fetch team-PIC mappings`)
+  /**
+   * CORE LOGIC: Compute valid IDs at each level based on ALL selections
+   *
+   * Uses intersection logic - starts with ALL possible values,
+   * then applies constraints from each active filter selection.
+   */
+  const computedIds = useMemo(() => {
+    // If cascading disabled or no relationship map, return all metadata values
+    if (!enableCascading || !relationshipMap || !metadata) {
+      return {
+        validPics: new Set(metadata?.pics?.map(p => p.value) || []),
+        validPids: new Set(metadata?.pids?.map(p => p.value) || []),
+        validMids: new Set(metadata?.mids?.map(m => m.value) || []),
+        validZids: new Set(metadata?.zids?.map(z => z.value) || []),
+        validProducts: new Set(metadata?.products?.map(p => p.value) || []),
       }
-
-      const result = await response.json()
-      if (result.status === 'ok') {
-        console.log('[useCascadingFilters] ✅ Team→PIC mappings loaded:', Object.keys(result.data).length, 'teams')
-
-        // Debug: Show what was loaded
-        Object.entries(result.data).forEach(([teamId, pics]: [string, any]) => {
-          console.log(`   - Team "${teamId}": ${pics.length} PICs`)
-        })
-
-        return result.data as Record<string, string[]>
-      }
-      throw new Error(result.message || 'Failed to fetch team-PIC mappings')
-    },
-    enabled: enableCascading,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  })
-
-  // Convert API response to Map
-  const teamPicMappings = useMemo(() => {
-    if (!teamMappingsData) return new Map<string, string[]>()
-    return new Map(Object.entries(teamMappingsData))
-  }, [teamMappingsData])
-
-  const teamMappingsLoaded = !isLoadingTeamMappings && teamPicMappings.size > 0
-
-  const availablePics = useMemo(() => {
-    if (!enableCascading || !metadata) return metadata?.pics ?? []
-    if (selectedTeams.length === 0) return metadata.pics ?? []
-
-    // Wait for team mappings to load
-    if (!teamMappingsLoaded || teamPicMappings.size === 0) {
-      console.log('[useCascadingFilters] ⏳ Team mappings not loaded yet, showing all PICs (loaded:', teamMappingsLoaded, ', size:', teamPicMappings.size, ')')
-      return metadata.pics ?? []
     }
 
-    // Union of PICs from all selected teams
-    const picSet = new Set<string>()
-    selectedTeams.forEach((teamId) => {
-      const teamPics = teamPicMappings.get(teamId) || []
-      console.log(`[useCascadingFilters] 🔍 Team "${teamId}" → ${teamPics.length} PICs: ${teamPics.slice(0, 3).join(', ')}${teamPics.length > 3 ? '...' : ''}`)
-      teamPics.forEach((pic) => picSet.add(pic))
+    // Start with ALL possible values at each level
+    let validPics = new Set(metadata.pics?.map(p => p.value) || [])
+    let validPids = new Set(metadata.pids?.map(p => p.value) || [])
+    let validMids = new Set(metadata.mids?.map(m => m.value) || [])
+    let validZids = new Set(metadata.zids?.map(z => z.value) || [])
+    let validProducts = new Set(metadata.products?.map(p => p.value) || [])
+
+    console.log('[useCascadingFilters] Starting intersection logic...')
+    console.log('[useCascadingFilters] Initial counts:', {
+      pics: validPics.size,
+      pids: validPids.size,
+      mids: validMids.size,
+      zids: validZids.size,
+      products: validProducts.size,
     })
 
-    // Filter metadata PICs to only include those in selected teams
-    const pics = metadata.pics ?? []
-    const filtered = pics.filter((pic) => picSet.has(pic.value))
-    console.log(`[useCascadingFilters] ✅ Team→PIC filter: ${selectedTeams.length} teams → ${filtered.length} PICs (from ${picSet.size} unique)`)
-
-    if (filtered.length === 0 && picSet.size > 0) {
-      console.warn('[useCascadingFilters] ⚠️ No PICs found in metadata matching team mappings!')
-      console.warn('[useCascadingFilters]    Team PICs:', Array.from(picSet).slice(0, 5))
-      console.warn('[useCascadingFilters]    Metadata PICs sample:', pics.slice(0, 5).map(p => p.value))
+    // CONSTRAINT 1: Team selection (top-level filter)
+    if (selectedTeams.length > 0) {
+      const picsFromTeams = relationshipMap.getPicsFromTeams(selectedTeams)
+      validPics = new Set(picsFromTeams)
+      console.log('[useCascadingFilters] Team constraint:', selectedTeams, '→', validPics.size, 'PICs')
     }
 
-    return filtered
-  }, [enableCascading, metadata, selectedTeams, teamPicMappings, teamMappingsLoaded])
+    // CONSTRAINT 2: Direct PIC selection (cascade down ENTIRE chain)
+    if (selectedPics.length > 0) {
+      // Don't self-constrain validPics - keep ALL PICs visible for multi-select
+      const pidsFromPics = relationshipMap.getPidsFromPics(selectedPics)
+      validPids = intersect(validPids, pidsFromPics)
 
-  // ===== Level 2: PIC → PID (Server-Side) =====
+      // Cascade down to MIDs
+      const midsFromPids = relationshipMap.getMidsFromPids(Array.from(validPids))
+      validMids = intersect(validMids, midsFromPids)
 
-  const shouldFetchPids = enableCascading && selectedPics.length > 0
+      // Cascade down to ZIDs
+      const zidsFromMids = relationshipMap.getZidsFromMids(Array.from(validMids))
+      validZids = intersect(validZids, zidsFromMids)
 
-  const {
-    data: fetchedPids,
-    isLoading: isLoadingPids,
-  } = useQuery({
-    queryKey: ['cascading-pids', selectedPics.sort().join('|')],
-    queryFn: async () => {
-      const picsParam = selectedPics.join(',')
-      const response = await fetch(
-        `/api/performance-tracker/metadata/pids-for-pics?pics=${encodeURIComponent(picsParam)}`
-      )
+      // Cascade down to Products
+      const productsFromZids = relationshipMap.getProductsFromZids(Array.from(validZids))
+      validProducts = intersect(validProducts, productsFromZids)
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: Failed to fetch PIDs`)
-      }
+      console.log('[useCascadingFilters] PIC constraint:', selectedPics.length, 'PICs selected →', validPids.size, 'PIDs,', validMids.size, 'MIDs,', validZids.size, 'ZIDs,', validProducts.size, 'Products')
+    }
 
-      const result = await response.json()
-      if (result.status === 'ok') {
-        console.log('[useCascadingFilters] PIC→PID:', selectedPics.length, 'PICs →', result.data.length, 'PIDs')
-        return result.data as Array<{ label: string; value: string }>
-      }
-      throw new Error(result.message || 'Failed to fetch PIDs')
-    },
-    enabled: shouldFetchPids,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  })
+    // CONSTRAINT 3: Pubname selection (reverse to PIDs, NO upstream cascade)
+    if (selectedPubnames.length > 0) {
+      const pidsFromPubnames = relationshipMap.getPidsFromPubnames(selectedPubnames)
+      validPids = intersect(validPids, pidsFromPubnames)
 
-  const availablePids = useMemo(() => {
-    if (!enableCascading || !metadata) return metadata?.pids ?? []
-    if (selectedPics.length === 0) return metadata.pids ?? []
-    if (isLoadingPids) return metadata.pids ?? []  // Keep showing all during load
-    return fetchedPids || []
-  }, [enableCascading, metadata, selectedPics.length, isLoadingPids, fetchedPids])
+      console.log('[useCascadingFilters] Pubname constraint:', selectedPubnames.length, '→', validPids.size, 'PIDs')
+    }
 
-  // ===== Level 3: PID → MID (Server-Side) =====
+    // CONSTRAINT 4: Direct PID selection (cascade down only - NO upstream)
+    if (selectedPids.length > 0) {
+      // Don't self-constrain validPids - keep ALL PIDs visible for multi-select
+      const midsFromPids = relationshipMap.getMidsFromPids(selectedPids)
+      validMids = intersect(validMids, midsFromPids)
 
-  const shouldFetchMids = enableCascading && selectedPids.length > 0
+      // Cascade down to ZIDs
+      const zidsFromMids = relationshipMap.getZidsFromMids(Array.from(validMids))
+      validZids = intersect(validZids, zidsFromMids)
 
-  const {
-    data: fetchedMids,
-    isLoading: isLoadingMids,
-  } = useQuery({
-    queryKey: ['cascading-mids', selectedPids.sort().join('|')],
-    queryFn: async () => {
-      const pidsParam = selectedPids.join(',')
-      const response = await fetch(
-        `/api/performance-tracker/metadata/mids-for-pids?pids=${encodeURIComponent(pidsParam)}`
-      )
+      // Cascade down to Products
+      const productsFromZids = relationshipMap.getProductsFromZids(Array.from(validZids))
+      validProducts = intersect(validProducts, productsFromZids)
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: Failed to fetch MIDs`)
-      }
+      console.log('[useCascadingFilters] PID constraint:', selectedPids.length, '→', validMids.size, 'MIDs,', validZids.size, 'ZIDs,', validProducts.size, 'Products')
+    }
 
-      const result = await response.json()
-      if (result.status === 'ok') {
-        console.log('[useCascadingFilters] PID→MID:', selectedPids.length, 'PIDs →', result.data.length, 'MIDs')
-        return result.data as Array<{ label: string; value: string }>
-      }
-      throw new Error(result.message || 'Failed to fetch MIDs')
-    },
-    enabled: shouldFetchMids,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  })
+    // CONSTRAINT 5: Medianame selection (reverse to MIDs, NO upstream cascade)
+    if (selectedMedianames.length > 0) {
+      const midsFromMedianames = relationshipMap.getMidsFromMedianames(selectedMedianames)
+      validMids = intersect(validMids, midsFromMedianames)
 
-  const availableMids = useMemo(() => {
-    if (!enableCascading || !metadata) return metadata?.mids ?? []
-    if (selectedPids.length === 0) return metadata.mids ?? []
-    if (isLoadingMids) return metadata.mids ?? []  // Keep showing all during load
-    return fetchedMids || []
-  }, [enableCascading, metadata, selectedPids.length, isLoadingMids, fetchedMids])
+      console.log('[useCascadingFilters] Medianame constraint:', selectedMedianames.length, '→', validMids.size, 'MIDs')
+    }
 
-  // ===== Level 4: MID → ZID (Server-Side) =====
+    // CONSTRAINT 6: Direct MID selection (cascade down only - NO upstream)
+    if (selectedMids.length > 0) {
+      // Don't self-constrain validMids - keep ALL MIDs visible for multi-select
+      const zidsFromMids = relationshipMap.getZidsFromMids(selectedMids)
+      validZids = intersect(validZids, zidsFromMids)
 
-  const shouldFetchZids = enableCascading && selectedMids.length > 0
+      // Cascade down to Products
+      const productsFromZids = relationshipMap.getProductsFromZids(Array.from(validZids))
+      validProducts = intersect(validProducts, productsFromZids)
 
-  const {
-    data: fetchedZids,
-    isLoading: isLoadingZids,
-  } = useQuery({
-    queryKey: ['cascading-zids', selectedMids.sort().join('|')],
-    queryFn: async () => {
-      const midsParam = selectedMids.join(',')
-      const response = await fetch(
-        `/api/performance-tracker/metadata/zids-for-mids?mids=${encodeURIComponent(midsParam)}`
-      )
+      console.log('[useCascadingFilters] MID constraint:', selectedMids.length, '→', validZids.size, 'ZIDs,', validProducts.size, 'Products')
+    }
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: Failed to fetch ZIDs`)
-      }
+    // CONSTRAINT 7: Zonename selection (reverse to ZIDs, NO upstream cascade)
+    if (selectedZonenames.length > 0) {
+      const zidsFromZonenames = relationshipMap.getZidsFromZonenames(selectedZonenames)
+      validZids = intersect(validZids, zidsFromZonenames)
 
-      const result = await response.json()
-      if (result.status === 'ok') {
-        console.log('[useCascadingFilters] MID→ZID:', selectedMids.length, 'MIDs →', result.data.length, 'ZIDs')
-        return result.data as Array<{ label: string; value: string }>
-      }
-      throw new Error(result.message || 'Failed to fetch ZIDs')
-    },
-    enabled: shouldFetchZids,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  })
+      console.log('[useCascadingFilters] Zonename constraint:', selectedZonenames.length, '→', validZids.size, 'ZIDs')
+    }
 
-  const availableZids = useMemo(() => {
-    if (!enableCascading || !metadata) return metadata?.zids ?? []
-    if (selectedMids.length === 0) return metadata.zids ?? []
-    if (isLoadingZids) return metadata.zids ?? []  // Keep showing all during load
-    return fetchedZids || []
-  }, [enableCascading, metadata, selectedMids.length, isLoadingZids, fetchedZids])
+    // CONSTRAINT 8: Direct ZID selection (cascade down only - NO upstream)
+    if (selectedZids.length > 0) {
+      // Don't self-constrain validZids - keep ALL ZIDs visible for multi-select
+      const productsFromZids = relationshipMap.getProductsFromZids(selectedZids)
+      validProducts = intersect(validProducts, productsFromZids)
 
-  // ===== Name Fields: PID → Pubname (Server-Side) =====
+      console.log('[useCascadingFilters] ZID constraint:', selectedZids.length, '→', validProducts.size, 'Products')
+    }
 
-  const shouldFetchPubnames = enableCascading && selectedPids.length > 0
+    // CONSTRAINT 9: Product selection (NO upstream cascade - bottom level)
+    if (selectedProducts.length > 0) {
+      // Don't self-constrain validProducts - keep ALL Products visible for multi-select
+      // No downstream cascade (Product is bottom level)
+      console.log('[useCascadingFilters] Product constraint:', selectedProducts.length, 'Products selected (no cascade)')
+    }
 
-  const {
-    data: fetchedPubnames,
-    isLoading: isLoadingPubnames,
-  } = useQuery({
-    queryKey: ['cascading-pubnames', selectedPids.sort().join('|')],
-    queryFn: async () => {
-      const pidsParam = selectedPids.join(',')
-      const response = await fetch(
-        `/api/performance-tracker/metadata/pubnames-for-pids?pids=${encodeURIComponent(pidsParam)}`
-      )
+    console.log('[useCascadingFilters] Final valid counts:', {
+      pics: validPics.size,
+      pids: validPids.size,
+      mids: validMids.size,
+      zids: validZids.size,
+      products: validProducts.size,
+    })
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: Failed to fetch pubnames`)
-      }
-
-      const result = await response.json()
-      if (result.status === 'ok') {
-        console.log('[useCascadingFilters] PID→pubname:', selectedPids.length, 'PIDs →', result.data.length, 'pubnames')
-        return result.data as Array<{ label: string; value: string }>
-      }
-      throw new Error(result.message || 'Failed to fetch pubnames')
-    },
-    enabled: shouldFetchPubnames,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  })
-
-  const availablePubnames = useMemo(() => {
-    if (!enableCascading || !metadata) return metadata?.pubnames ?? []
-    if (selectedPids.length === 0) return metadata.pubnames ?? []
-    if (isLoadingPubnames) return metadata.pubnames ?? []  // Keep showing all during load
-    return fetchedPubnames || []
-  }, [enableCascading, metadata, selectedPids.length, isLoadingPubnames, fetchedPubnames])
-
-  // ===== Name Fields: MID → Medianame (Server-Side) =====
-
-  const shouldFetchMedianames = enableCascading && selectedMids.length > 0
-
-  const {
-    data: fetchedMedianames,
-    isLoading: isLoadingMedianames,
-  } = useQuery({
-    queryKey: ['cascading-medianames', selectedMids.sort().join('|')],
-    queryFn: async () => {
-      const midsParam = selectedMids.join(',')
-      const response = await fetch(
-        `/api/performance-tracker/metadata/medianames-for-mids?mids=${encodeURIComponent(midsParam)}`
-      )
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: Failed to fetch medianames`)
-      }
-
-      const result = await response.json()
-      if (result.status === 'ok') {
-        console.log('[useCascadingFilters] MID→medianame:', selectedMids.length, 'MIDs →', result.data.length, 'medianames')
-        return result.data as Array<{ label: string; value: string }>
-      }
-      throw new Error(result.message || 'Failed to fetch medianames')
-    },
-    enabled: shouldFetchMedianames,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  })
-
-  const availableMedianames = useMemo(() => {
-    if (!enableCascading || !metadata) return metadata?.medianames ?? []
-    if (selectedMids.length === 0) return metadata.medianames ?? []
-    if (isLoadingMedianames) return metadata.medianames ?? []  // Keep showing all during load
-    return fetchedMedianames || []
-  }, [enableCascading, metadata, selectedMids.length, isLoadingMedianames, fetchedMedianames])
-
-  // ===== Name Fields: ZID → Zonename (Server-Side) =====
-
-  const shouldFetchZonenames = enableCascading && selectedZids.length > 0
-
-  const {
-    data: fetchedZonenames,
-    isLoading: isLoadingZonenames,
-  } = useQuery({
-    queryKey: ['cascading-zonenames', selectedZids.sort().join('|')],
-    queryFn: async () => {
-      const zidsParam = selectedZids.join(',')
-      const response = await fetch(
-        `/api/performance-tracker/metadata/zonenames-for-zids?zids=${encodeURIComponent(zidsParam)}`
-      )
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: Failed to fetch zonenames`)
-      }
-
-      const result = await response.json()
-      if (result.status === 'ok') {
-        console.log('[useCascadingFilters] ZID→zonename:', selectedZids.length, 'ZIDs →', result.data.length, 'zonenames')
-        return result.data as Array<{ label: string; value: string }>
-      }
-      throw new Error(result.message || 'Failed to fetch zonenames')
-    },
-    enabled: shouldFetchZonenames,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  })
-
-  const availableZonenames = useMemo(() => {
-    if (!enableCascading || !metadata) return metadata?.zonenames ?? []
-    if (selectedZids.length === 0) return metadata.zonenames ?? []
-    if (isLoadingZonenames) return metadata.zonenames ?? []  // Keep showing all during load
-    return fetchedZonenames || []
-  }, [enableCascading, metadata, selectedZids.length, isLoadingZonenames, fetchedZonenames])
-
-  // ===== Determine Filter Modes =====
-
-  const filterModes = useMemo(() => {
     return {
-      pics:
-        selectedTeams.length === 0 ? 'all' as FilterMode :
-        !teamMappingsLoaded ? 'loading' as FilterMode :
-        availablePics.length === 0 ? 'empty' as FilterMode : 'filtered' as FilterMode,
-      pids:
-        selectedPics.length === 0 ? 'all' as FilterMode :
-        isLoadingPids ? 'loading' as FilterMode :
-        availablePids.length === 0 ? 'empty' as FilterMode : 'filtered' as FilterMode,
-      pubnames:
-        selectedPids.length === 0 ? 'all' as FilterMode :
-        isLoadingPubnames ? 'loading' as FilterMode :
-        availablePubnames.length === 0 ? 'empty' as FilterMode : 'filtered' as FilterMode,
-      mids:
-        selectedPids.length === 0 ? 'all' as FilterMode :
-        isLoadingMids ? 'loading' as FilterMode :
-        availableMids.length === 0 ? 'empty' as FilterMode : 'filtered' as FilterMode,
-      medianames:
-        selectedMids.length === 0 ? 'all' as FilterMode :
-        isLoadingMedianames ? 'loading' as FilterMode :
-        availableMedianames.length === 0 ? 'empty' as FilterMode : 'filtered' as FilterMode,
-      zids:
-        selectedMids.length === 0 ? 'all' as FilterMode :
-        isLoadingZids ? 'loading' as FilterMode :
-        availableZids.length === 0 ? 'empty' as FilterMode : 'filtered' as FilterMode,
-      zonenames:
-        selectedZids.length === 0 ? 'all' as FilterMode :
-        isLoadingZonenames ? 'loading' as FilterMode :
-        availableZonenames.length === 0 ? 'empty' as FilterMode : 'filtered' as FilterMode,
+      validPics,
+      validPids,
+      validMids,
+      validZids,
+      validProducts,
     }
   }, [
-    selectedTeams.length, teamMappingsLoaded, availablePics.length,
-    selectedPics.length, isLoadingPids, availablePids.length,
-    selectedPids.length, isLoadingPubnames, availablePubnames.length,
-    isLoadingMids, availableMids.length,
-    selectedMids.length, isLoadingMedianames, availableMedianames.length,
-    isLoadingZids, availableZids.length,
-    selectedZids.length, isLoadingZonenames, availableZonenames.length,
+    enableCascading,
+    relationshipMap,
+    metadata,
+    selectedTeams,
+    selectedPics,
+    selectedPids,
+    selectedPubnames,
+    selectedMids,
+    selectedMedianames,
+    selectedZids,
+    selectedZonenames,
+    selectedProducts,
+  ])
+
+  /**
+   * Convert computed valid IDs to available options
+   * Simple filtering of metadata using computed sets
+   */
+
+  const availablePics = useMemo(() => {
+    if (!metadata?.pics) return []
+    return metadata.pics.filter(p => computedIds.validPics.has(p.value))
+  }, [metadata?.pics, computedIds.validPics])
+
+  const availablePids = useMemo(() => {
+    if (!metadata?.pids) return []
+    return metadata.pids.filter(p => computedIds.validPids.has(p.value))
+  }, [metadata?.pids, computedIds.validPids])
+
+  const availableMids = useMemo(() => {
+    if (!metadata?.mids) return []
+    return metadata.mids.filter(m => computedIds.validMids.has(m.value))
+  }, [metadata?.mids, computedIds.validMids])
+
+  const availableZids = useMemo(() => {
+    if (!metadata?.zids) return []
+    return metadata.zids.filter(z => computedIds.validZids.has(z.value))
+  }, [metadata?.zids, computedIds.validZids])
+
+  const availableProducts = useMemo(() => {
+    if (!metadata?.products) return []
+    return metadata.products.filter(p => computedIds.validProducts.has(p.value))
+  }, [metadata?.products, computedIds.validProducts])
+
+  /**
+   * Name field options - computed from valid IDs at each level
+   */
+
+  const availablePubnames = useMemo(() => {
+    if (!metadata?.pubnames || !relationshipMap) return metadata?.pubnames || []
+
+    // Show pubnames that exist in valid PIDs
+    const validPubnames = new Set<string>()
+    Array.from(computedIds.validPids).forEach(pid => {
+      const pubnames = relationshipMap.getPubnamesFromPids([pid])
+      pubnames.forEach(pn => validPubnames.add(pn))
+    })
+
+    return metadata.pubnames.filter(pn => validPubnames.has(pn.value))
+  }, [metadata?.pubnames, computedIds.validPids, relationshipMap])
+
+  const availableMedianames = useMemo(() => {
+    if (!metadata?.medianames || !relationshipMap) return metadata?.medianames || []
+
+    // Show medianames that exist in valid MIDs
+    const validMedianames = new Set<string>()
+    Array.from(computedIds.validMids).forEach(mid => {
+      const medianames = relationshipMap.getMedianamesFromMids([mid])
+      medianames.forEach(mn => validMedianames.add(mn))
+    })
+
+    return metadata.medianames.filter(mn => validMedianames.has(mn.value))
+  }, [metadata?.medianames, computedIds.validMids, relationshipMap])
+
+  const availableZonenames = useMemo(() => {
+    if (!metadata?.zonenames || !relationshipMap) return metadata?.zonenames || []
+
+    // Show zonenames that exist in valid ZIDs
+    const validZonenames = new Set<string>()
+    Array.from(computedIds.validZids).forEach(zid => {
+      const zonenames = relationshipMap.getZonenamesFromZids([zid])
+      zonenames.forEach(zn => validZonenames.add(zn))
+    })
+
+    return metadata.zonenames.filter(zn => validZonenames.has(zn.value))
+  }, [metadata?.zonenames, computedIds.validZids, relationshipMap])
+
+  /**
+   * Loading states - simplified (only metadata loading matters now)
+   */
+  const loadingStates = useMemo(() => {
+    const metadataLoading = !metadata || !relationshipMap
+    return {
+      pics: metadataLoading,
+      pids: metadataLoading,
+      pubnames: metadataLoading,
+      mids: metadataLoading,
+      medianames: metadataLoading,
+      zids: metadataLoading,
+      zonenames: metadataLoading,
+      products: metadataLoading,
+    }
+  }, [metadata, relationshipMap])
+
+  /**
+   * Filter modes - computed from available vs total counts
+   */
+  const filterModes = useMemo(() => {
+    const getMode = (available: number, total: number): FilterMode => {
+      if (loadingStates.pics) return 'loading'
+      if (available === 0) return 'empty'
+      if (available < total) return 'filtered'
+      return 'all'
+    }
+
+    return {
+      pics: getMode(availablePics.length, metadata?.pics?.length || 0),
+      pids: getMode(availablePids.length, metadata?.pids?.length || 0),
+      pubnames: getMode(availablePubnames.length, metadata?.pubnames?.length || 0),
+      mids: getMode(availableMids.length, metadata?.mids?.length || 0),
+      medianames: getMode(availableMedianames.length, metadata?.medianames?.length || 0),
+      zids: getMode(availableZids.length, metadata?.zids?.length || 0),
+      zonenames: getMode(availableZonenames.length, metadata?.zonenames?.length || 0),
+      products: getMode(availableProducts.length, metadata?.products?.length || 0),
+    }
+  }, [
+    availablePics.length,
+    availablePids.length,
+    availablePubnames.length,
+    availableMids.length,
+    availableMedianames.length,
+    availableZids.length,
+    availableZonenames.length,
+    availableProducts.length,
+    metadata,
+    loadingStates,
   ])
 
   return {
@@ -444,15 +385,8 @@ export function useCascadingFilters({
     availableMedianames,
     availableZids,
     availableZonenames,
-    loadingStates: {
-      pics: isLoadingTeamMappings, // Loading team mappings from API
-      pids: isLoadingPids,
-      pubnames: isLoadingPubnames,
-      mids: isLoadingMids,
-      medianames: isLoadingMedianames,
-      zids: isLoadingZids,
-      zonenames: isLoadingZonenames,
-    },
+    availableProducts,
+    loadingStates,
     filterModes,
   }
 }

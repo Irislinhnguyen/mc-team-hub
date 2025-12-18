@@ -4,6 +4,7 @@ import { useState, useRef, useMemo, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { MetricCard } from '../../../components/performance-tracker/MetricCard'
 import { TimeSeriesChart } from '../../../components/performance-tracker/TimeSeriesChart'
+import { DrillableTimeSeriesChart } from '../../../components/performance-tracker/DrillableTimeSeriesChart'
 import { BarChartComponent } from '../../../components/performance-tracker/BarChart'
 import { DataTable } from '../../../components/performance-tracker/DataTable'
 import { LazyDataTable } from '../../../components/performance-tracker/LazyDataTable'
@@ -14,12 +15,15 @@ import { LazyDataTableSkeleton } from '../../../components/performance-tracker/s
 import { colors } from '../../../../lib/colors'
 import { useCrossFilter } from '../../../contexts/CrossFilterContext'
 import { useBusinessHealth } from '../../../../lib/hooks/queries/useBusinessHealth'
+import { useTeamConfigurations } from '../../../../lib/hooks/queries/useTeamConfigurations'
+import { useTeamBreakdown } from '../../../../lib/hooks/queries/useTeamBreakdown'
+import { usePICBreakdown } from '../../../../lib/hooks/queries/usePICBreakdown'
 import { ToggleGroup, ToggleGroupItem } from '../../../../src/components/ui/toggle-group'
 import { AnalyticsPageLayout } from '../../../components/performance-tracker/AnalyticsPageLayout'
 import { MetadataFilterPanel } from '../../../components/performance-tracker/MetadataFilterPanel'
 import { useDefaultDateRange } from '../../../../lib/hooks/useDefaultDateRange'
 import { safeToFixed, safeNumber, formatDate } from '../../../../lib/utils/formatters'
-import { useClientSideFilterMulti } from '../../../../lib/hooks/useClientSideFilter'
+import { filterDataMulti } from '../../../../lib/hooks/useClientSideFilter'
 
 /**
  * REFACTORED VERSION - Business Health Dashboard
@@ -54,34 +58,39 @@ function BusinessHealthPageContent() {
   // ✨ Use React Query hook for data fetching with automatic caching
   const { data: rawData, isLoading: loading, error } = useBusinessHealth(currentFilters)
 
-  // Apply client-side filtering for cross-filters (instant, no API call)
-  const { filteredData: filteredZoneMonitoring } = useClientSideFilterMulti(
-    rawData?.zoneMonitoring,
-    crossFilters
-  )
-  const { filteredData: filteredZoneMonitoringTimeSeries } = useClientSideFilterMulti(
-    rawData?.zoneMonitoringTimeSeries,
-    crossFilters
-  )
-  const { filteredData: filteredListOfPid } = useClientSideFilterMulti(
-    rawData?.listOfPid,
-    crossFilters
-  )
-  const { filteredData: filteredListOfPidByDate } = useClientSideFilterMulti(
-    rawData?.listOfPidByDate,
-    crossFilters
-  )
-  const { filteredData: filteredListOfMid } = useClientSideFilterMulti(
-    rawData?.listOfMid,
-    crossFilters
-  )
-  const { filteredData: filteredListOfMidByDate } = useClientSideFilterMulti(
-    rawData?.listOfMidByDate,
-    crossFilters
-  )
+  // ✨ Fetch team configurations for drill-down chart
+  const { data: teamData, isLoading: teamLoading } = useTeamConfigurations()
+  const teamConfigs = teamData?.teams || []
+  const picMappings = teamData?.picMappings || []
 
-  // Combine filtered data
-  const data = useMemo(() => {
+  // ✨ NEW: State for on-demand PIC breakdown loading
+  const [selectedTeamForDrill, setSelectedTeamForDrill] = useState<string | null>(null)
+
+  // ✨ NEW: Fetch team breakdown (always loaded, small payload ~120 rows)
+  const { data: teamBreakdownResponse } = useTeamBreakdown(currentFilters)
+  const teamBreakdownData = teamBreakdownResponse?.teamBreakdown || []
+
+  // ✨ NEW: Fetch PIC breakdown on-demand (only when user clicks a team)
+  const { data: picBreakdownResponse } = usePICBreakdown(
+    selectedTeamForDrill,
+    currentFilters,
+    !!selectedTeamForDrill  // Only enabled when team selected
+  )
+  const picBreakdownData = picBreakdownResponse?.picBreakdown || []
+
+  // ✨ NEW: Callback to handle drilling from Team to PIC level
+  const handleDrillToPIC = useCallback((teamId: string | string[]) => {
+    // Normalize: Convert array to string (take first element)
+    const normalizedTeamId = Array.isArray(teamId) ? teamId[0] : teamId
+
+    console.log('[BusinessHealth] Drilling to PIC level for team:', normalizedTeamId)
+    setSelectedTeamForDrill(normalizedTeamId)
+    // This triggers usePICBreakdown to fetch data for this team
+  }, [])
+
+  // 🟢 PERFORMANCE OPTIMIZATION: Split memoization to reduce re-render scope
+  // baseData: Only re-memoizes when rawData changes (server-side filters)
+  const baseData = useMemo(() => {
     if (!rawData) return undefined
     return {
       metrics: rawData.metrics,
@@ -91,22 +100,28 @@ function BusinessHealthPageContent() {
       topMedia: rawData.topMedia,
       topZones: rawData.topZones,
       topEcpm: rawData.topEcpm,
-      zoneMonitoring: filteredZoneMonitoring,
-      zoneMonitoringTimeSeries: filteredZoneMonitoringTimeSeries,
-      listOfPid: filteredListOfPid,
-      listOfPidByDate: filteredListOfPidByDate,
-      listOfMid: filteredListOfMid,
-      listOfMidByDate: filteredListOfMidByDate,
     }
-  }, [
-    filteredZoneMonitoring,
-    filteredZoneMonitoringTimeSeries,
-    filteredListOfPid,
-    filteredListOfPidByDate,
-    filteredListOfMid,
-    filteredListOfMidByDate,
-    rawData
-  ])
+  }, [rawData])
+
+  // 🟢 filteredData: Only re-memoizes when rawData OR crossFilters change
+  // Smaller scope = faster re-renders when crossFilters change
+  const filteredData = useMemo(() => {
+    if (!rawData) return undefined
+    return {
+      zoneMonitoring: filterDataMulti(rawData.zoneMonitoring, crossFilters),
+      zoneMonitoringTimeSeries: filterDataMulti(rawData.zoneMonitoringTimeSeries, crossFilters),
+      listOfPid: filterDataMulti(rawData.listOfPid, crossFilters),
+      listOfPidByDate: filterDataMulti(rawData.listOfPidByDate, crossFilters),
+      listOfMid: filterDataMulti(rawData.listOfMid, crossFilters),
+      listOfMidByDate: filterDataMulti(rawData.listOfMidByDate, crossFilters),
+    }
+  }, [rawData, crossFilters])
+
+  // 🟢 Combine baseData and filteredData (cheap object spread)
+  const data = useMemo(() => {
+    if (!baseData || !filteredData) return undefined
+    return { ...baseData, ...filteredData }
+  }, [baseData, filteredData])
 
   // Column configurations for skeletons
   const listOfPidColumns = [
@@ -225,8 +240,8 @@ function BusinessHealthPageContent() {
 
   // Format zone monitoring time series - use lazy-loaded data (MEMOIZED)
   const zoneMonitoringTimeSeries = useMemo(() => {
-    if (!filteredZoneMonitoringTimeSeries) return []
-    return filteredZoneMonitoringTimeSeries.map((d: any) => {
+    if (!data?.zoneMonitoringTimeSeries) return []
+    return data.zoneMonitoringTimeSeries.map((d: any) => {
       const rawDate = d.date.value || d.date
       return {
         date: new Date(rawDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -241,7 +256,7 @@ function BusinessHealthPageContent() {
         profit: parseFloat(d.profit) || 0,
       }
     })
-  }, [filteredZoneMonitoringTimeSeries])
+  }, [data?.zoneMonitoringTimeSeries])
 
   return (
     <AnalyticsPageLayout title="Business Health Dashboard" showExport={true} contentRef={contentRef}>
@@ -288,18 +303,25 @@ function BusinessHealthPageContent() {
           </div>
         ) : null}
 
-        {/* Revenue & Profit Over Time */}
-        {loading && !data ? (
+        {/* Revenue & Profit Over Time - with Drill-Down */}
+        {(loading || teamLoading) && !data ? (
           <ChartSkeleton />
         ) : timeSeries.length > 0 ? (
-          <TimeSeriesChart
+          <DrillableTimeSeriesChart
+            totalTimeSeries={timeSeries}
+            pidByDateData={data?.listOfPidByDate || []}
+            midByDateData={data?.listOfMidByDate || []}
+            zoneTimeSeriesData={data?.zoneMonitoringTimeSeries || []}
+            teamConfigs={teamConfigs}
+            picMappings={picMappings}
+            currentFilters={currentFilters}
+            teamBreakdownData={teamBreakdownData}
+            picBreakdownData={picBreakdownData}
+            onDrillToPIC={handleDrillToPIC}
+            isLoading={loading || teamLoading}
             title="Revenue & Profit Over Time"
-            data={timeSeries}
-            lines={[
-              { dataKey: 'revenue', name: 'rev', color: colors.main },
-              { dataKey: 'profit', name: 'profit', color: colors.accent },
-            ]}
             height={300}
+            topN={15}
           />
         ) : null}
 

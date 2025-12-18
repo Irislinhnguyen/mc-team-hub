@@ -113,3 +113,39 @@ export const categoryColors: Record<string, string> = {
 export function getCategoryColor(category: string): string {
   return categoryColors[category] || '#9CA3AF'
 }
+
+/**
+ * Create entity color map for dynamic entities (Teams, PICs, PIDs, etc.)
+ * Generates consistent colors for any list of entity names
+ */
+export function createEntityColorMap(entityNames: string[]): Record<string, string> {
+  const predefinedColors = [
+    '#8B5CF6', // Purple
+    '#EC4899', // Pink
+    '#3B82F6', // Blue
+    '#F97316', // Orange
+    '#F59E0B', // Amber
+    '#10B981', // Green
+    '#06B6D4', // Cyan
+    '#8B5CF6', // Purple 2
+    '#A855F7', // Purple 3
+    '#D946EF', // Fuchsia
+    '#F43F5E', // Rose
+    '#FB923C', // Orange 2
+    '#FBBF24', // Yellow
+    '#84CC16', // Lime
+    '#22C55E', // Green 2
+    '#14B8A6', // Teal
+    '#0EA5E9', // Sky
+    '#6366F1', // Indigo
+    '#A78BFA', // Violet
+    '#C084FC', // Purple 4
+  ]
+
+  const colorMap: Record<string, string> = {}
+  entityNames.forEach((name, index) => {
+    colorMap[name] = predefinedColors[index % predefinedColors.length]
+  })
+
+  return colorMap
+}

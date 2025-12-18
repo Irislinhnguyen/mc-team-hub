@@ -59,7 +59,6 @@ export function useGCPPMarketOverview(filters: Record<string, any>) {
     staleTime: cacheConfig.dailyAnalytics.staleTime,
     gcTime: cacheConfig.dailyAnalytics.gcTime,
     retry: 2,
-    // ✅ FIX: Override global refetchOnMount setting to allow initial fetch
-    refetchOnMount: true,
+    // ✅ Use global refetchOnMount: false from queryClient config for better caching
   })
 }

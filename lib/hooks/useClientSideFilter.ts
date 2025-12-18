@@ -2,6 +2,57 @@ import { useMemo } from 'react';
 import type { CrossFilter } from '../../app/contexts/CrossFilterContext';
 
 /**
+ * Pure filtering function (no React hooks) for use in custom memoization
+ * PERFORMANCE: Use this directly in useMemo to batch multiple filtering operations
+ *
+ * @param data - The dataset to filter
+ * @param crossFilters - Active cross-filters from context
+ * @returns Filtered data array
+ */
+export function filterDataMulti<T extends Record<string, any>>(
+  data: T[] | undefined,
+  crossFilters: CrossFilter[]
+): T[] {
+  if (!data || data.length === 0) {
+    return [];
+  }
+
+  if (!crossFilters || crossFilters.length === 0) {
+    return data;
+  }
+
+  // Group filters by field
+  const filtersByField = crossFilters.reduce((acc, filter) => {
+    if (!acc[filter.field]) {
+      acc[filter.field] = [];
+    }
+    acc[filter.field].push(filter.value);
+    return acc;
+  }, {} as Record<string, string[]>);
+
+  // Apply filters: OR within same field, AND across different fields
+  return data.filter((row) => {
+    return Object.entries(filtersByField).every(([field, values]) => {
+      // Skip filter if field doesn't exist in this dataset
+      if (!(field in row)) {
+        return true;
+      }
+
+      const fieldValue = row[field];
+
+      if (fieldValue == null) {
+        return values.some(v => v === '' || v === 'null');
+      }
+
+      const rowValue = String(fieldValue).trim();
+      return values.some(filterValue =>
+        rowValue === String(filterValue).trim()
+      );
+    });
+  });
+}
+
+/**
  * Client-side filtering hook for cross-filters
  * Filters data locally without API calls for instant UX
  *

@@ -67,6 +67,13 @@ export const queryKeys = {
   // GCPP metadata
   gcppAvailableDates: () => ['gcpp', 'available-dates'] as const,
   gcppLatestDate: () => ['gcpp', 'latest-date'] as const,
+
+  // Pipelines
+  pipelines: {
+    list: (group?: string) => ['pipelines', { group }] as const,
+    lists: () => ['pipelines'] as const,
+    activities: (pipelineId: string) => ['pipelines', pipelineId, 'activities'] as const,
+  },
 }
 
 /**
@@ -95,5 +102,11 @@ export const cacheConfig = {
   latestDate: {
     staleTime: 10 * 60 * 1000,       // 10 minutes
     gcTime: 30 * 60 * 1000,          // 30 minutes
+  },
+
+  // Pipelines - updates frequently, moderate caching
+  pipelines: {
+    staleTime: 2 * 60 * 1000,        // 2 minutes
+    gcTime: 5 * 60 * 1000,           // 5 minutes
   },
 }

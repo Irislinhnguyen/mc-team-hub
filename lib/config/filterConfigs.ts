@@ -19,6 +19,7 @@ export interface DynamicFilterOptions {
   medianames?: Array<{ label: string; value: string }>
   zids?: Array<{ label: string; value: string }>
   zonenames?: Array<{ label: string; value: string }>
+  products?: Array<{ label: string; value: string }>
 }
 
 /**
@@ -79,7 +80,7 @@ export function buildFilterConfig(
       name: 'product',
       label: 'product',
       type: 'select',
-      options: metadata?.products || [],
+      options: dynamicOptions?.products || metadata?.products || [],
     },
     pid: {
       name: 'pid',

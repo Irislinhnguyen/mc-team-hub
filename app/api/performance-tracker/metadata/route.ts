@@ -42,7 +42,9 @@ export async function GET(request: NextRequest) {
     const mediaTable = '`gcpp-check.GI_publisher.media_summary_dashboard`'
     const closeWonTable = '`gcpp-check.GI_publisher.close_won_cases`'
 
-    const [pics, products, pids, mids, pubnames, medianames, zids, zonenames, revFlags, revenueTiers, months, years, teamConfig] = await Promise.all([
+    const [pics, products, pids, mids, pubnames, medianames, zids, zonenames, revFlags, revenueTiers, months, years, teamConfig,
+      picToPid, pidToMid, midToZid, zidToProduct, pidToPubname, midToMedianame, zidToZonename] = await Promise.all([
+      // Original distinct queries
       executeQueryWithTimeout(`SELECT DISTINCT pic FROM ${tableName} WHERE pic IS NOT NULL ORDER BY pic`, 15000),
       executeQueryWithTimeout(`SELECT DISTINCT product FROM ${tableName} WHERE product IS NOT NULL ORDER BY product`, 15000),
       executeQueryWithTimeout(`SELECT DISTINCT pid FROM ${tableName} WHERE pid IS NOT NULL ORDER BY pid`, 15000),
@@ -56,10 +58,160 @@ export async function GET(request: NextRequest) {
       executeQueryWithTimeout(`SELECT DISTINCT month FROM ${closeWonTable} WHERE month IS NOT NULL ORDER BY month ASC`, 15000),
       executeQueryWithTimeout(`SELECT DISTINCT year FROM ${closeWonTable} WHERE year IS NOT NULL ORDER BY year DESC`, 15000),
       getTeamConfigurations(),
+
+      // NEW: Relationship map queries
+      executeQueryWithTimeout(`
+        SELECT pic, ARRAY_AGG(DISTINCT pid IGNORE NULLS) as pids
+        FROM ${tableName}
+        WHERE pic IS NOT NULL AND pid IS NOT NULL
+        GROUP BY pic
+      `, 20000),
+
+      executeQueryWithTimeout(`
+        SELECT pid, ARRAY_AGG(DISTINCT mid IGNORE NULLS) as mids
+        FROM ${tableName}
+        WHERE pid IS NOT NULL AND mid IS NOT NULL
+        GROUP BY pid
+      `, 20000),
+
+      executeQueryWithTimeout(`
+        SELECT mid, ARRAY_AGG(DISTINCT zid IGNORE NULLS) as zids
+        FROM ${tableName}
+        WHERE mid IS NOT NULL AND zid IS NOT NULL
+        GROUP BY mid
+      `, 20000),
+
+      executeQueryWithTimeout(`
+        SELECT zid, ARRAY_AGG(DISTINCT product IGNORE NULLS) as products
+        FROM ${tableName}
+        WHERE zid IS NOT NULL AND product IS NOT NULL
+        GROUP BY zid
+      `, 20000),
+
+      executeQueryWithTimeout(`
+        SELECT pid, ARRAY_AGG(DISTINCT pubname IGNORE NULLS) as pubnames
+        FROM ${tableName}
+        WHERE pid IS NOT NULL AND pubname IS NOT NULL
+        GROUP BY pid
+      `, 20000),
+
+      executeQueryWithTimeout(`
+        SELECT mid, ARRAY_AGG(DISTINCT medianame IGNORE NULLS) as medianames
+        FROM ${tableName}
+        WHERE mid IS NOT NULL AND medianame IS NOT NULL
+        GROUP BY mid
+      `, 20000),
+
+      executeQueryWithTimeout(`
+        SELECT zid, ARRAY_AGG(DISTINCT zonename IGNORE NULLS) as zonenames
+        FROM ${tableName}
+        WHERE zid IS NOT NULL AND zonename IS NOT NULL
+        GROUP BY zid
+      `, 20000),
     ])
 
     // Format the metadata
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+    // Build relationship maps (forward mappings)
+    const picToPidMap: Record<string, string[]> = {}
+    picToPid.forEach((row: any) => {
+      picToPidMap[row.pic] = (row.pids || []).map(String)
+    })
+
+    const pidToMidMap: Record<string, string[]> = {}
+    pidToMid.forEach((row: any) => {
+      pidToMidMap[String(row.pid)] = row.mids?.map(String) || []
+    })
+
+    const midToZidMap: Record<string, string[]> = {}
+    midToZid.forEach((row: any) => {
+      midToZidMap[String(row.mid)] = row.zids?.map(String) || []
+    })
+
+    const zidToProductMap: Record<string, string[]> = {}
+    zidToProduct.forEach((row: any) => {
+      zidToProductMap[String(row.zid)] = (row.products || []).map(String)
+    })
+
+    const pidToPubnameMap: Record<string, string[]> = {}
+    pidToPubname.forEach((row: any) => {
+      pidToPubnameMap[String(row.pid)] = (row.pubnames || []).map(String)
+    })
+
+    const midToMedianameMap: Record<string, string[]> = {}
+    midToMedianame.forEach((row: any) => {
+      midToMedianameMap[String(row.mid)] = (row.medianames || []).map(String)
+    })
+
+    const zidToZonenameMap: Record<string, string[]> = {}
+    zidToZonename.forEach((row: any) => {
+      zidToZonenameMap[String(row.zid)] = (row.zonenames || []).map(String)
+    })
+
+    // Build reverse mappings (for efficient lookups)
+    const pubnameToPidMap: Record<string, string[]> = {}
+    Object.entries(pidToPubnameMap).forEach(([pid, pubnames]) => {
+      pubnames.forEach((pubname) => {
+        if (!pubnameToPidMap[pubname]) pubnameToPidMap[pubname] = []
+        pubnameToPidMap[pubname].push(pid)
+      })
+    })
+
+    const medianameToMidMap: Record<string, string[]> = {}
+    Object.entries(midToMedianameMap).forEach(([mid, medianames]) => {
+      medianames.forEach((medianame) => {
+        if (!medianameToMidMap[medianame]) medianameToMidMap[medianame] = []
+        medianameToMidMap[medianame].push(mid)
+      })
+    })
+
+    const zonenameToZidMap: Record<string, string[]> = {}
+    Object.entries(zidToZonenameMap).forEach(([zid, zonenames]) => {
+      zonenames.forEach((zonename) => {
+        if (!zonenameToZidMap[zonename]) zonenameToZidMap[zonename] = []
+        zonenameToZidMap[zonename].push(zid)
+      })
+    })
+
+    const productToZidMap: Record<string, string[]> = {}
+    Object.entries(zidToProductMap).forEach(([zid, products]) => {
+      products.forEach((product) => {
+        if (!productToZidMap[product]) productToZidMap[product] = []
+        productToZidMap[product].push(zid)
+      })
+    })
+
+    // Build reverse ID mappings
+    const pidToPicMap: Record<string, string[]> = {}
+    Object.entries(picToPidMap).forEach(([pic, pids]) => {
+      pids.forEach((pid) => {
+        if (!pidToPicMap[pid]) pidToPicMap[pid] = []
+        pidToPicMap[pid].push(pic)
+      })
+    })
+
+    const midToPidMap: Record<string, string[]> = {}
+    Object.entries(pidToMidMap).forEach(([pid, mids]) => {
+      mids.forEach((mid) => {
+        if (!midToPidMap[mid]) midToPidMap[mid] = []
+        midToPidMap[mid].push(pid)
+      })
+    })
+
+    const zidToMidMap: Record<string, string[]> = {}
+    Object.entries(midToZidMap).forEach(([mid, zids]) => {
+      zids.forEach((zid) => {
+        if (!zidToMidMap[zid]) zidToMidMap[zid] = []
+        zidToMidMap[zid].push(mid)
+      })
+    })
+
+    // Build team to PIC mapping
+    const teamToPicMap: Record<string, string[]> = {}
+    teamConfig.teams.forEach((team: any) => {
+      teamToPicMap[team.team_id] = team.pic_ids || []
+    })
 
     const formattedData = {
       pics: pics.map((p: any) => ({ label: p.pic || '', value: p.pic || '' })),
@@ -75,6 +227,34 @@ export async function GET(request: NextRequest) {
       months: months.map((m: any) => ({ label: monthNames[m.month - 1] || String(m.month), value: String(m.month || '') })),
       years: years.map((y: any) => ({ label: String(y.year || ''), value: String(y.year || '') })),
       teams: teamConfig.teams.map((t: any) => ({ label: t.team_name, value: t.team_id })),
+
+      // Relationship maps for Looker Studio-style cascading
+      relationships: {
+        // Forward ID mappings
+        picToPid: picToPidMap,
+        pidToMid: pidToMidMap,
+        midToZid: midToZidMap,
+        zidToProduct: zidToProductMap,
+
+        // Name field mappings
+        pidToPubname: pidToPubnameMap,
+        midToMedianame: midToMedianameMap,
+        zidToZonename: zidToZonenameMap,
+
+        // Reverse name → ID mappings
+        pubnameToPid: pubnameToPidMap,
+        medianameToMid: medianameToMidMap,
+        zonenameToZid: zonenameToZidMap,
+        productToZid: productToZidMap,
+
+        // Reverse ID mappings
+        pidToPic: pidToPicMap,
+        midToPid: midToPidMap,
+        zidToMid: zidToMidMap,
+
+        // Team mappings
+        teamToPic: teamToPicMap,
+      },
     }
 
     // Cache the metadata

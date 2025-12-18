@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { queryKeys, cacheConfig } from '../config/queryClient'
+import type { RelationshipMap } from './useRelationshipMap'
 
 export interface MetadataOptions {
   pics: Array<{ label: string; value: string }>
@@ -25,6 +26,8 @@ export interface MetadataOptions {
   categories?: Array<{ label: string; value: string }>
   scenarios?: Array<{ label: string; value: string }>
   performances?: Array<{ label: string; value: string }>
+  // Looker Studio-style relationship maps (optional)
+  relationships?: RelationshipMap
 }
 
 interface UseAnalyticsMetadataReturn {

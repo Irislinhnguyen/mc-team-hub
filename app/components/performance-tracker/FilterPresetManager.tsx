@@ -208,18 +208,11 @@ export function FilterPresetManager({
     }
   }, [ownPresets, loadedPreset, isLoading, toast]);
 
-  // Auto-load default preset on mount (only if no URL preset)
-  // Use ref pattern to avoid infinite loop from unstable onLoadPreset callback
-  const onLoadPresetRef = useRef(onLoadPreset);
-  onLoadPresetRef.current = onLoadPreset;
-
-  useEffect(() => {
-    if (!loadedPreset && !presetIdFromUrl && defaultPreset && !isLoading) {
-      console.log('[FilterPresetManager] Auto-loading default preset:', defaultPreset.name);
-      setLoadedPreset(defaultPreset);
-      onLoadPresetRef.current(defaultPreset.filters, defaultPreset.cross_filters, defaultPreset.simplified_filter);
-    }
-  }, [defaultPreset, loadedPreset, presetIdFromUrl, isLoading]);
+  // ✅ AUTO-LOAD DISABLED: No auto-loading of default preset
+  // Presets only load via:
+  // 1. URL parameter (?preset=id) - handled in separate effect below
+  // 2. Manual selection from dropdown - handled by user interaction
+  // This prevents unwanted filter persistence on page refresh
 
   // Check if user owns the currently loaded preset
   const canEditLoadedPreset = useMemo(() => {

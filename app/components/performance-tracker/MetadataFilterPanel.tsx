@@ -84,13 +84,29 @@ export function MetadataFilterPanel({
     () => (Array.isArray(internalFilters.pid) ? internalFilters.pid : []),
     [internalFilters.pid]
   )
+  const selectedPubnames = useMemo(
+    () => (Array.isArray(internalFilters.pubname) ? internalFilters.pubname : []),
+    [internalFilters.pubname]
+  )
   const selectedMids = useMemo(
     () => (Array.isArray(internalFilters.mid) ? internalFilters.mid : []),
     [internalFilters.mid]
   )
+  const selectedMedianames = useMemo(
+    () => (Array.isArray(internalFilters.medianame) ? internalFilters.medianame : []),
+    [internalFilters.medianame]
+  )
   const selectedZids = useMemo(
     () => (Array.isArray(internalFilters.zid) ? internalFilters.zid : []),
     [internalFilters.zid]
+  )
+  const selectedZonenames = useMemo(
+    () => (Array.isArray(internalFilters.zonename) ? internalFilters.zonename : []),
+    [internalFilters.zonename]
+  )
+  const selectedProducts = useMemo(
+    () => (Array.isArray(internalFilters.product) ? internalFilters.product : []),
+    [internalFilters.product]
   )
 
   // ✨ CASCADING FILTERS: Use multi-level cascading hook
@@ -102,6 +118,7 @@ export function MetadataFilterPanel({
     availableMedianames,
     availableZids,
     availableZonenames,
+    availableProducts,
     loadingStates,
     filterModes,
   } = useCascadingFilters({
@@ -109,28 +126,35 @@ export function MetadataFilterPanel({
     selectedTeams,
     selectedPics,
     selectedPids,
+    selectedPubnames,
     selectedMids,
+    selectedMedianames,
     selectedZids,
+    selectedZonenames,
+    selectedProducts,
     enableCascading,
   })
 
-  // ✨ NEW: Sync internal filters with parent
+  // ✨ NEW: Sync internal filters with parent (with debounce)
   useEffect(() => {
-    // Filter out empty arrays and empty strings before sending to parent
-    const cleanedFilters = Object.fromEntries(
-      Object.entries(internalFilters).filter(([key, value]) => {
-        // Remove empty arrays (e.g., pic: [])
-        if (Array.isArray(value) && value.length === 0) return false
-        // Remove empty strings
-        if (value === '') return false
-        return true
-      })
-    )
+    const timeoutId = setTimeout(() => {
+      // Filter out empty arrays and empty strings before sending to parent
+      const cleanedFilters = Object.fromEntries(
+        Object.entries(internalFilters).filter(([key, value]) => {
+          // Remove empty arrays (e.g., pic: [])
+          if (Array.isArray(value) && value.length === 0) return false
+          // Remove empty strings
+          if (value === '') return false
+          return true
+        })
+      )
 
-    // Always propagate filter changes to parent
-    // Let React Query handle deduplication via queryKey comparison
-    console.log('[MetadataFilterPanel] 📤 Propagating filters to parent:', cleanedFilters)
-    onFilterChange(cleanedFilters)
+      // Propagate filter changes to parent (debounced to reduce refetches)
+      console.log('[MetadataFilterPanel] 📤 Propagating filters to parent:', cleanedFilters)
+      onFilterChange(cleanedFilters)
+    }, 500)  // 🟢 Debounce 500ms to reduce unnecessary refetches
+
+    return () => clearTimeout(timeoutId)
     // Intentionally omit onFilterChange from deps - we use stable callback from parent
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [internalFilters])
@@ -169,8 +193,8 @@ export function MetadataFilterPanel({
       }
     }
 
-    // Cleanup PIDs not in available options (only when not loading)
-    if (currentPids.length > 0 && !loadingStates.pids) {
+    // 🟢 Cleanup PIDs not in available options (aggressive - runs immediately)
+    if (currentPids.length > 0) {
       const validPids = currentPids.filter((pid) => availablePids.some((opt) => opt.value === pid))
       if (validPids.length !== currentPids.length) {
         updatedFilters.pid = validPids
@@ -179,8 +203,8 @@ export function MetadataFilterPanel({
       }
     }
 
-    // Cleanup MIDs not in available options (only when not loading)
-    if (currentMids.length > 0 && !loadingStates.mids) {
+    // 🟢 Cleanup MIDs not in available options (aggressive - runs immediately)
+    if (currentMids.length > 0) {
       const validMids = currentMids.filter((mid) => availableMids.some((opt) => opt.value === mid))
       if (validMids.length !== currentMids.length) {
         updatedFilters.mid = validMids
@@ -189,13 +213,65 @@ export function MetadataFilterPanel({
       }
     }
 
-    // Cleanup ZIDs not in available options (only when not loading)
-    if (currentZids.length > 0 && !loadingStates.zids) {
+    // 🟢 Cleanup ZIDs not in available options (aggressive - runs immediately)
+    if (currentZids.length > 0) {
       const validZids = currentZids.filter((zid) => availableZids.some((opt) => opt.value === zid))
       if (validZids.length !== currentZids.length) {
         updatedFilters.zid = validZids
         needsUpdate = true
         console.log('[MetadataFilterPanel] 🧹 Cleaned up ZIDs:', currentZids.length, '→', validZids.length)
+      }
+    }
+
+    // 🟢 Cleanup PUBNAMEs not in available options
+    const currentPubnames = Array.isArray(internalFilters.pubname) ? internalFilters.pubname : []
+    if (currentPubnames.length > 0) {
+      const validPubnames = currentPubnames.filter((pubname) =>
+        availablePubnames.some((opt) => opt.value === pubname)
+      )
+      if (validPubnames.length !== currentPubnames.length) {
+        updatedFilters.pubname = validPubnames
+        needsUpdate = true
+        console.log('[MetadataFilterPanel] 🧹 Cleaned up PUBNAMEs:', currentPubnames.length, '→', validPubnames.length)
+      }
+    }
+
+    // 🟢 Cleanup MEDIANAMEs not in available options
+    const currentMedianames = Array.isArray(internalFilters.medianame) ? internalFilters.medianame : []
+    if (currentMedianames.length > 0) {
+      const validMedianames = currentMedianames.filter((medianame) =>
+        availableMedianames.some((opt) => opt.value === medianame)
+      )
+      if (validMedianames.length !== currentMedianames.length) {
+        updatedFilters.medianame = validMedianames
+        needsUpdate = true
+        console.log('[MetadataFilterPanel] 🧹 Cleaned up MEDIANAMEs:', currentMedianames.length, '→', validMedianames.length)
+      }
+    }
+
+    // 🟢 Cleanup ZONENAMEs not in available options
+    const currentZonenames = Array.isArray(internalFilters.zonename) ? internalFilters.zonename : []
+    if (currentZonenames.length > 0) {
+      const validZonenames = currentZonenames.filter((zonename) =>
+        availableZonenames.some((opt) => opt.value === zonename)
+      )
+      if (validZonenames.length !== currentZonenames.length) {
+        updatedFilters.zonename = validZonenames
+        needsUpdate = true
+        console.log('[MetadataFilterPanel] 🧹 Cleaned up ZONENAMEs:', currentZonenames.length, '→', validZonenames.length)
+      }
+    }
+
+    // 🟢 Cleanup PRODUCTs not in available options
+    const currentProducts = Array.isArray(internalFilters.product) ? internalFilters.product : []
+    if (currentProducts.length > 0) {
+      const validProducts = currentProducts.filter((product) =>
+        availableProducts.some((opt) => opt.value === product)
+      )
+      if (validProducts.length !== currentProducts.length) {
+        updatedFilters.product = validProducts
+        needsUpdate = true
+        console.log('[MetadataFilterPanel] 🧹 Cleaned up PRODUCTs:', currentProducts.length, '→', validProducts.length)
       }
     }
 
@@ -207,11 +283,13 @@ export function MetadataFilterPanel({
     enableCascading,
     availablePics,
     availablePids,
+    availablePubnames,
     availableMids,
+    availableMedianames,
     availableZids,
-    loadingStates.pids,
-    loadingStates.mids,
-    loadingStates.zids,
+    availableZonenames,
+    availableProducts,
+    // 🟢 Removed loadingStates from deps - cleanup runs immediately
     internalFilters,
   ])
 
@@ -236,6 +314,7 @@ export function MetadataFilterPanel({
               medianames: availableMedianames,
               zids: availableZids,
               zonenames: availableZonenames,
+              products: availableProducts,
             }
           : undefined
       )
@@ -280,8 +359,11 @@ export function MetadataFilterPanel({
           filterLoadingStates={{
             pic: loadingStates.pics,
             pid: loadingStates.pids,
+            pubname: loadingStates.pubnames,
             mid: loadingStates.mids,
+            medianame: loadingStates.medianames,
             zid: loadingStates.zids,
+            zonename: loadingStates.zonenames,
           }}
         />
       )}

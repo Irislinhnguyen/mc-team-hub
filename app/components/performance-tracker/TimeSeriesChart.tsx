@@ -23,6 +23,8 @@ interface TimeSeriesChartProps {
   crossFilterField?: string
   customYAxisFormatter?: (value: any) => string
   customTooltipFormatter?: (value: any, name: string) => [string, string]
+  hideTitle?: boolean
+  onEntityClick?: (entityName: string) => void
 }
 
 function TimeSeriesChartBase({
@@ -34,7 +36,9 @@ function TimeSeriesChartBase({
   dateKey = 'date',
   crossFilterField,
   customYAxisFormatter,
-  customTooltipFormatter: customTooltipFormatterProp
+  customTooltipFormatter: customTooltipFormatterProp,
+  hideTitle = false,
+  onEntityClick
 }: TimeSeriesChartProps) {
   const { addCrossFilter, autoEnable, crossFilters } = useCrossFilter()
   const isEnabled = enableCrossFilter || autoEnable
@@ -92,16 +96,24 @@ function TimeSeriesChartBase({
   }
 
   const handleLegendClick = (legendItem: any) => {
-    if (!isEnabled || !crossFilterField) return
+    const entityName = legendItem.dataKey || legendItem.value
+    if (!entityName) return
 
-    const partnerName = legendItem.dataKey || legendItem.value
-    if (!partnerName) return
+    // Priority 1: If onEntityClick is provided (drill-down mode), use that
+    if (onEntityClick) {
+      console.log('[TimeSeriesChart] Legend clicked for drill-down:', entityName)
+      onEntityClick(entityName)
+      return
+    }
 
-    addCrossFilter({
-      field: crossFilterField,
-      value: String(partnerName),
-      label: `${crossFilterField}: ${partnerName}`,
-    }, isCtrlPressed)
+    // Priority 2: Otherwise use cross-filter if enabled
+    if (isEnabled && crossFilterField) {
+      addCrossFilter({
+        field: crossFilterField,
+        value: String(entityName),
+        label: `${crossFilterField}: ${entityName}`,
+      }, isCtrlPressed)
+    }
   }
 
   // Custom tooltip formatter with metric type detection
@@ -135,22 +147,28 @@ function TimeSeriesChartBase({
         border: `1px solid ${colors.neutralLight}`,
         borderRadius: '4px',
         boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-        height: '480px',
+        minHeight: '320px',
       }}
     >
-      <CardHeader className="pb-3">
-        <h3
-          className={composedStyles.sectionTitle}
-          style={{
-            fontSize: typography.sizes.sectionTitle,
-            color: colors.main
-          }}
-        >
-          {title}
-        </h3>
-      </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={height}>
+      {!hideTitle && (
+        <CardHeader className="pb-3">
+          <h3
+            className={composedStyles.sectionTitle}
+            style={{
+              fontSize: typography.sizes.sectionTitle,
+              color: colors.main
+            }}
+          >
+            {title}
+          </h3>
+        </CardHeader>
+      )}
+      <CardContent style={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '240px'
+      }}>
+        <ResponsiveContainer width="100%" aspect={3}>
           <LineChart
             data={data}
             onClick={isEnabled ? handlePointClick : undefined}
@@ -161,7 +179,10 @@ function TimeSeriesChartBase({
             <XAxis dataKey={dateKey} tick={axisStyle} />
             <YAxis tick={axisStyle} tickFormatter={yAxisFormatter} />
             <Tooltip formatter={customTooltipFormatter} contentStyle={{ fontSize: '12px' }} />
-            <Legend wrapperStyle={{ fontSize: '12px', cursor: isEnabled ? 'pointer' : 'default' }} onClick={isEnabled ? handleLegendClick : undefined} />
+            <Legend
+              wrapperStyle={{ fontSize: '12px', cursor: (isEnabled || onEntityClick) ? 'pointer' : 'default' }}
+              onClick={(isEnabled || onEntityClick) ? handleLegendClick : undefined}
+            />
             {lines.filter(line => line && line.dataKey && line.dataKey.trim() !== '').map((line) => {
               // Check for active filters on BOTH date and line field
               const hasDateFilters = crossFilters.some(f => f.field === 'date')
