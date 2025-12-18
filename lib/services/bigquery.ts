@@ -29,14 +29,23 @@ class BigQueryService {
       }
 
       const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+      const credentialsBase64 = process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64
 
-      if (!credentialsJson) {
-        throw new Error('GOOGLE_APPLICATION_CREDENTIALS_JSON is not set')
+      if (!credentialsJson && !credentialsBase64) {
+        throw new Error('Either GOOGLE_APPLICATION_CREDENTIALS_JSON or GOOGLE_APPLICATION_CREDENTIALS_BASE64 must be set')
       }
 
       try {
-        // Parse credentials and fix private key newlines
-        const credentials = JSON.parse(credentialsJson)
+        // Parse credentials from either JSON or base64
+        let credentials
+        if (credentialsBase64) {
+          // Decode from base64 (preferred for Vercel to avoid newline issues)
+          const decoded = Buffer.from(credentialsBase64, 'base64').toString('utf-8')
+          credentials = JSON.parse(decoded)
+        } else {
+          // Parse from JSON string (fallback)
+          credentials = JSON.parse(credentialsJson!)
+        }
 
         // 🔥 FIX: Handle multiple private key encoding scenarios
         if (credentials.private_key) {
