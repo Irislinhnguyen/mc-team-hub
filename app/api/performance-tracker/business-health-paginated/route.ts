@@ -1,16 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { BigQuery } from '@google-cloud/bigquery'
+import { getBigQueryClient } from '../../../../lib/services/bigquery'
 import { buildWhereClause, getBusinessHealthQueries } from '../../../../lib/services/analyticsQueries'
-
-// Initialize BigQuery with correct environment variables
-const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
-  ? JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON)
-  : undefined
-
-const bigquery = new BigQuery({
-  projectId: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_PROJECT,
-  credentials,
-})
 
 export async function POST(request: NextRequest) {
   let body: any
@@ -51,6 +41,7 @@ export async function POST(request: NextRequest) {
     console.log('Count query:', countQuery)
 
     // Execute both queries in parallel
+    const bigquery = getBigQueryClient()
     const [dataResult, countResult] = await Promise.all([
       bigquery.query({ query: dataQuery as string }),
       bigquery.query({ query: countQuery as string })

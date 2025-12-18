@@ -253,4 +253,13 @@ class BigQueryService {
   }
 }
 
+/**
+ * Helper function to get BigQuery client instance
+ * Use this instead of creating new BigQuery() to ensure singleton pattern
+ * and avoid parsing credentials at top-level (which causes Vercel build errors)
+ */
+export function getBigQueryClient(): BigQuery {
+  return BigQueryService.getInstance()
+}
+
 export default BigQueryService
