@@ -35,7 +35,54 @@ class BigQueryService {
       }
 
       try {
+        // Parse credentials and fix private key newlines
         const credentials = JSON.parse(credentialsJson)
+
+        // 🔥 FIX: Handle multiple private key encoding scenarios
+        if (credentials.private_key) {
+          let privateKey = credentials.private_key
+
+          // Case 1: Double-escaped newlines (\\n -> \n)
+          if (privateKey.includes('\\n')) {
+            privateKey = privateKey.replace(/\\n/g, '\n')
+          }
+
+          // Case 2: Missing newlines in key blocks
+          // Ensure proper PEM format with newlines after header/footer
+          if (!privateKey.includes('\n')) {
+            // If there are no newlines at all, the key is likely malformed
+            console.warn('[BigQuery] ⚠️ Private key appears to be on a single line - attempting to fix...')
+
+            // Add newlines after BEGIN/END markers
+            privateKey = privateKey
+              .replace(/-----BEGIN PRIVATE KEY-----/, '-----BEGIN PRIVATE KEY-----\n')
+              .replace(/-----END PRIVATE KEY-----/, '\n-----END PRIVATE KEY-----')
+
+            // Add newlines every 64 characters in the key body (standard PEM line length)
+            const beginMarker = '-----BEGIN PRIVATE KEY-----\n'
+            const endMarker = '\n-----END PRIVATE KEY-----'
+            const beginIndex = privateKey.indexOf(beginMarker)
+            const endIndex = privateKey.indexOf(endMarker)
+
+            if (beginIndex !== -1 && endIndex !== -1) {
+              const keyBody = privateKey.substring(beginIndex + beginMarker.length, endIndex)
+              const formattedBody = keyBody.match(/.{1,64}/g)?.join('\n') || keyBody
+              privateKey = beginMarker + formattedBody + endMarker
+            }
+          }
+
+          // Case 3: URL-encoded newlines (%0A -> \n)
+          if (privateKey.includes('%0A')) {
+            privateKey = decodeURIComponent(privateKey)
+          }
+
+          credentials.private_key = privateKey
+
+          // Debug: Log first/last 50 chars to verify format without exposing full key
+          console.log('[BigQuery] Private key format check:')
+          console.log('  Start:', privateKey.substring(0, 50))
+          console.log('  End:', privateKey.substring(privateKey.length - 50))
+        }
 
         this.instance = new BigQuery({
           projectId: settings.googleCloudProject,
@@ -45,6 +92,19 @@ class BigQueryService {
         console.log(`[BigQuery] Client initialized for project: ${settings.googleCloudProject}`)
       } catch (error) {
         console.error('[BigQuery] Failed to initialize client:', error)
+
+        // Provide more specific error messages
+        if (error instanceof Error) {
+          if (error.message.includes('DECODER routines')) {
+            console.error('[BigQuery] 💥 OpenSSL decoder error - private key format is invalid')
+            console.error('[BigQuery] 🔍 Troubleshooting steps:')
+            console.error('   1. Verify GOOGLE_APPLICATION_CREDENTIALS_JSON has valid JSON format')
+            console.error('   2. Check that private_key field starts with "-----BEGIN PRIVATE KEY-----"')
+            console.error('   3. Ensure newlines in private key are properly escaped as \\n in .env file')
+            console.error('   4. Try regenerating service account key from Google Cloud Console')
+          }
+        }
+
         throw error
       }
     }

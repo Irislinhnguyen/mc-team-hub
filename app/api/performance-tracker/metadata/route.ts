@@ -42,10 +42,11 @@ export async function GET(request: NextRequest) {
     const mediaTable = '`gcpp-check.GI_publisher.media_summary_dashboard`'
     const closeWonTable = '`gcpp-check.GI_publisher.close_won_cases`'
 
-    const [pics, products, pids, mids, pubnames, medianames, zids, zonenames, revFlags, revenueTiers, months, years, teamConfig,
+    const [pics, h5Values, products, pids, mids, pubnames, medianames, zids, zonenames, revFlags, revenueTiers, months, years, teamConfig,
       picToPid, pidToMid, midToZid, zidToProduct, pidToPubname, midToMedianame, zidToZonename] = await Promise.all([
       // Original distinct queries
       executeQueryWithTimeout(`SELECT DISTINCT pic FROM ${tableName} WHERE pic IS NOT NULL ORDER BY pic`, 15000),
+      executeQueryWithTimeout(`SELECT DISTINCT h5 FROM ${tableName} ORDER BY h5`, 15000),
       executeQueryWithTimeout(`SELECT DISTINCT product FROM ${tableName} WHERE product IS NOT NULL ORDER BY product`, 15000),
       executeQueryWithTimeout(`SELECT DISTINCT pid FROM ${tableName} WHERE pid IS NOT NULL ORDER BY pid`, 15000),
       executeQueryWithTimeout(`SELECT DISTINCT mid FROM ${tableName} WHERE mid IS NOT NULL ORDER BY mid`, 15000),
@@ -213,8 +214,17 @@ export async function GET(request: NextRequest) {
       teamToPicMap[team.team_id] = team.pic_ids || []
     })
 
+    // Map h5 boolean values to Yes/No/NA
+    const h5Options = h5Values.map((h: any) => {
+      const value = h.h5
+      if (value === true) return { label: 'Yes', value: 'true' }
+      if (value === false) return { label: 'No', value: 'false' }
+      return { label: 'NA', value: 'null' }
+    })
+
     const formattedData = {
       pics: pics.map((p: any) => ({ label: p.pic || '', value: p.pic || '' })),
+      h5: h5Options,
       products: products.map((p: any) => ({ label: p.product || '', value: p.product || '' })),
       pids: pids.map((p: any) => ({ label: String(p.pid || ''), value: String(p.pid || '') })),
       mids: mids.map((m: any) => ({ label: String(m.mid || ''), value: String(m.mid || '') })),

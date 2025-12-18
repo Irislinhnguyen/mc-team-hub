@@ -4,6 +4,7 @@ import type { RelationshipMap } from './useRelationshipMap'
 
 export interface MetadataOptions {
   pics: Array<{ label: string; value: string }>
+  h5: Array<{ label: string; value: string }>
   products: Array<{ label: string; value: string }>
   pids: Array<{ label: string; value: string }>
   mids: Array<{ label: string; value: string }>

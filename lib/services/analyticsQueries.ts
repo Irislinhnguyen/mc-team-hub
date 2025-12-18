@@ -494,6 +494,33 @@ export async function buildWhereClause(
     }
   }
 
+  // Handle h5 filter (boolean field: Yes/No/NA mapped to true/false/null)
+  if (filters.h5) {
+    if (Array.isArray(filters.h5) && filters.h5.length > 0) {
+      const h5Conditions: string[] = []
+      filters.h5.forEach((value: string) => {
+        if (value === 'true') {
+          h5Conditions.push('h5 = TRUE')
+        } else if (value === 'false') {
+          h5Conditions.push('h5 = FALSE')
+        } else if (value === 'null') {
+          h5Conditions.push('h5 IS NULL')
+        }
+      })
+      if (h5Conditions.length > 0) {
+        conditions.push(`(${h5Conditions.join(' OR ')})`)
+      }
+    } else if (filters.h5 !== '') {
+      if (filters.h5 === 'true') {
+        conditions.push('h5 = TRUE')
+      } else if (filters.h5 === 'false') {
+        conditions.push('h5 = FALSE')
+      } else if (filters.h5 === 'null') {
+        conditions.push('h5 IS NULL')
+      }
+    }
+  }
+
   if (filters.product) {
     if (Array.isArray(filters.product) && filters.product.length > 0) {
       const values = filters.product.map(v => `'${v}'`).join(', ')
@@ -557,14 +584,8 @@ export async function buildWhereClause(
     }
   }
 
-  if (filters.h5) {
-    if (Array.isArray(filters.h5) && filters.h5.length > 0) {
-      const values = filters.h5.map(v => `'${v}'`).join(', ')
-      conditions.push(`h5 IN (${values})`)
-    } else if (filters.h5 !== '') {
-      conditions.push(`h5 = '${filters.h5}'`)
-    }
-  }
+  // Note: h5 filter is handled above (lines 497-522) with proper boolean logic
+  // Do NOT add a generic string handler here - h5 is a BOOLEAN column
 
   // Skip rev_flag filter for tables without rev_flag column (e.g., agg_monthly_with_pic_table_6_month)
   if (filters.rev_flag && !options?.skipRevFlagFilter) {

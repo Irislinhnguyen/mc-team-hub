@@ -74,7 +74,7 @@ export function buildFilterConfig(
       name: 'h5',
       label: 'h5',
       type: 'select',
-      options: metadata?.products || [],
+      options: metadata?.h5 || [],
     },
     product: {
       name: 'product',

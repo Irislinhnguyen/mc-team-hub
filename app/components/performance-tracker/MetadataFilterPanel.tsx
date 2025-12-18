@@ -293,11 +293,6 @@ export function MetadataFilterPanel({
     internalFilters,
   ])
 
-  // Show error UI if metadata failed to load
-  if (metadataError && !metadataLoading) {
-    return <MetadataErrorUI error={metadataError} onRetry={refetch} />
-  }
-
   // Build filter configuration from metadata (or empty if still loading)
   // ✨ CASCADING FILTERS: Pass dynamic options to buildFilterConfig
   const { filters } = metadataLoading
@@ -332,6 +327,11 @@ export function MetadataFilterPanel({
 
   // Auto-detect: if no daterange in filterFields, don't include dates
   const shouldIncludeDates = includeDateInFilters ?? filterFields.includes('daterange')
+
+  // 🔥 FIX: Show error UI if metadata failed to load (moved AFTER all hooks)
+  if (metadataError && !metadataLoading) {
+    return <MetadataErrorUI error={metadataError} onRetry={refetch} />
+  }
 
   return (
     <div className="space-y-4">
