@@ -6,6 +6,7 @@
  */
 
 import { PerspectiveConfig } from '../config/perspectiveConfigs'
+import { FIELD_DATA_TYPES, type FilterField } from '../types/performanceTracker'
 
 /**
  * Escape SQL value to prevent injection attacks
@@ -25,6 +26,40 @@ function escapeSqlValue(value: any, dataType: 'string' | 'number'): string {
 
   // String: escape single quotes
   return `'${String(value).replace(/'/g, "''")}'`
+}
+
+/**
+ * Determine the correct data type for a field and coerce the value accordingly
+ * Uses FIELD_DATA_TYPES mapping to ensure type correctness for BigQuery
+ */
+function getFieldDataTypeAndCoerceValue(
+  fieldName: string,
+  value: any
+): { dataType: 'string' | 'number'; coercedValue: any } {
+  // Look up the field type from FIELD_DATA_TYPES
+  const fieldType = FIELD_DATA_TYPES[fieldName as FilterField]
+
+  // If field is not in mapping, throw a clear error
+  if (!fieldType) {
+    throw new Error(
+      `Unknown field type for '${fieldName}'. ` +
+      `Please add it to FIELD_DATA_TYPES in lib/types/performanceTracker.ts`
+    )
+  }
+
+  // Coerce value to the correct type
+  if (fieldType === 'number') {
+    const num = Number(value)
+    if (isNaN(num)) {
+      throw new Error(
+        `Field '${fieldName}' expects a number but received invalid value: ${value}`
+      )
+    }
+    return { dataType: 'number', coercedValue: num }
+  }
+
+  // For string and date types, convert to string
+  return { dataType: 'string', coercedValue: String(value) }
 }
 
 export interface Period {
@@ -54,8 +89,11 @@ export function buildMetricsCTE(
   // Parent filter (for drill-down) - properly escaped to prevent SQL injection
   let parentFilter = ''
   if (parentId !== undefined && parentId !== null) {
-    const dataType = typeof parentId === 'string' ? 'string' : 'number'
-    const escapedValue = escapeSqlValue(parentId, dataType)
+    const { dataType, coercedValue } = getFieldDataTypeAndCoerceValue(
+      config.idField,
+      parentId
+    )
+    const escapedValue = escapeSqlValue(coercedValue, dataType)
     parentFilter = `AND ${config.idField} = ${escapedValue}`
   }
 
@@ -197,8 +235,11 @@ export function buildMonthlyAverageCTE(
   // Parent filter (for drill-down) - properly escaped to prevent SQL injection
   let parentFilter = ''
   if (parentId !== undefined && parentId !== null) {
-    const dataType = typeof parentId === 'string' ? 'string' : 'number'
-    const escapedValue = escapeSqlValue(parentId, dataType)
+    const { dataType, coercedValue } = getFieldDataTypeAndCoerceValue(
+      config.idField,
+      parentId
+    )
+    const escapedValue = escapeSqlValue(coercedValue, dataType)
     parentFilter = `AND ${config.idField} = ${escapedValue}`
   }
 

@@ -1,5 +1,6 @@
 import { buildTeamCondition, buildTeamConditions, getTeamConfigurations } from '../utils/teamMatcher'
 import type { AdvancedFilters, AdvancedFilterClause, AdvancedFilterGroup, SimplifiedFilter, FilterDataType, FilterOperator, FilterField } from '../types/performanceTracker'
+import { FIELD_DATA_TYPES } from '../types/performanceTracker'
 
 // Helper function to escape SQL values to prevent injection
 function escapeSqlValue(value: any, dataType: FilterDataType): string {
@@ -22,6 +23,32 @@ function escapeSqlValue(value: any, dataType: FilterDataType): string {
   }
 
   return `'${value}'`
+}
+
+/**
+ * Format filter value based on field data type from FIELD_DATA_TYPES
+ * Numeric fields (pid, mid, zid) -> no quotes: 12345
+ * String fields (pic, product, etc.) -> with quotes: '12345'
+ */
+function formatFilterValue(fieldName: string, value: any): string {
+  const fieldType = FIELD_DATA_TYPES[fieldName as FilterField]
+
+  if (!fieldType) {
+    // Default to string if not in mapping (backward compatible)
+    console.warn(`Field '${fieldName}' not in FIELD_DATA_TYPES, defaulting to string`)
+    return `'${String(value).replace(/'/g, "''")}'`
+  }
+
+  if (fieldType === 'number') {
+    const num = Number(value)
+    if (isNaN(num)) {
+      throw new Error(`Field '${fieldName}' expects a number but got: ${value}`)
+    }
+    return String(num)  // No quotes for numeric fields
+  }
+
+  // String and date types: escape single quotes and wrap in quotes
+  return `'${String(value).replace(/'/g, "''")}'`
 }
 
 // Determine entity field for entity-level filtering
@@ -478,19 +505,19 @@ export async function buildWhereClause(
 
   if (filters.pid) {
     if (Array.isArray(filters.pid) && filters.pid.length > 0) {
-      const values = filters.pid.map(v => `'${v}'`).join(', ')
+      const values = filters.pid.map(v => formatFilterValue('pid', v)).join(', ')
       conditions.push(`pid IN (${values})`)
     } else if (filters.pid !== '') {
-      conditions.push(`pid = '${filters.pid}'`)
+      conditions.push(`pid = ${formatFilterValue('pid', filters.pid)}`)
     }
   }
 
   if (filters.mid) {
     if (Array.isArray(filters.mid) && filters.mid.length > 0) {
-      const values = filters.mid.map(v => `'${v}'`).join(', ')
+      const values = filters.mid.map(v => formatFilterValue('mid', v)).join(', ')
       conditions.push(`mid IN (${values})`)
     } else if (filters.mid !== '') {
-      conditions.push(`mid = '${filters.mid}'`)
+      conditions.push(`mid = ${formatFilterValue('mid', filters.mid)}`)
     }
   }
 
@@ -514,10 +541,10 @@ export async function buildWhereClause(
 
   if (filters.zid) {
     if (Array.isArray(filters.zid) && filters.zid.length > 0) {
-      const values = filters.zid.map(v => `'${v}'`).join(', ')
+      const values = filters.zid.map(v => formatFilterValue('zid', v)).join(', ')
       conditions.push(`zid IN (${values})`)
     } else if (filters.zid !== '') {
-      conditions.push(`zid = '${filters.zid}'`)
+      conditions.push(`zid = ${formatFilterValue('zid', filters.zid)}`)
     }
   }
 
@@ -664,25 +691,28 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
     `,
 
     zoneMonitoringTimeSeries: `
-      SELECT
-        DATE as date,
-        pic,
-        pid,
-        mid,
-        zid,
-        zonename,
-        product,
-        SUM(req) as req,
-        ROUND(SUM(paid) / NULLIF(SUM(req), 0), 2) as fill_rate,
-        AVG(CAST(request_CPM as FLOAT64)) as request_CPM,
-        SUM(rev) as rev,
-        SUM(profit) as profit,
-        SUM(rev) - SUM(profit) as rev_to_pub
-      FROM ${tableName}
-      ${whereClause}
-      GROUP BY DATE, pic, pid, mid, zid, zonename, product
-      ORDER BY DATE ASC, rev DESC
-      LIMIT 15000
+      SELECT * FROM (
+        SELECT
+          DATE as date,
+          pic,
+          pid,
+          mid,
+          zid,
+          zonename,
+          product,
+          SUM(req) as req,
+          ROUND(SUM(paid) / NULLIF(SUM(req), 0), 2) as fill_rate,
+          AVG(CAST(request_CPM as FLOAT64)) as request_CPM,
+          SUM(rev) as rev,
+          SUM(profit) as profit,
+          SUM(rev) - SUM(profit) as rev_to_pub,
+          ROW_NUMBER() OVER (PARTITION BY DATE ORDER BY SUM(rev) DESC) as rn
+        FROM ${tableName}
+        ${whereClause}
+        GROUP BY DATE, pic, pid, mid, zid, zonename, product
+      ) ranked
+      WHERE rn <= 150
+      ORDER BY date ASC, rev DESC
     `,
 
     zoneMonitoringTimeSeriesCount: `
@@ -728,19 +758,22 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
     `,
 
     listOfPidByDate: `
-      SELECT
-        DATE as date,
-        pic,
-        pid,
-        pubname,
-        SUM(rev) as rev,
-        SUM(profit) as profit,
-        SUM(rev) - SUM(profit) as rev_to_pub
-      FROM ${tableName}
-      ${whereClause}
-      GROUP BY DATE, pic, pid, pubname
-      ORDER BY DATE ASC, rev DESC
-      LIMIT 10000
+      SELECT * FROM (
+        SELECT
+          DATE as date,
+          pic,
+          pid,
+          pubname,
+          SUM(rev) as rev,
+          SUM(profit) as profit,
+          SUM(rev) - SUM(profit) as rev_to_pub,
+          ROW_NUMBER() OVER (PARTITION BY DATE ORDER BY SUM(rev) DESC) as rn
+        FROM ${tableName}
+        ${whereClause}
+        GROUP BY DATE, pic, pid, pubname
+      ) ranked
+      WHERE rn <= 100
+      ORDER BY date ASC, rev DESC
     `,
 
     listOfPidByDateCount: `
@@ -785,20 +818,23 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
     `,
 
     listOfMidByDate: `
-      SELECT
-        DATE as date,
-        pic,
-        pid,
-        mid,
-        medianame,
-        SUM(rev) as rev,
-        SUM(profit) as profit,
-        SUM(rev) - SUM(profit) as rev_to_pub
-      FROM ${tableName}
-      ${whereClause}
-      GROUP BY DATE, pic, pid, mid, medianame
-      ORDER BY DATE ASC, rev DESC
-      LIMIT 10000
+      SELECT * FROM (
+        SELECT
+          DATE as date,
+          pic,
+          pid,
+          mid,
+          medianame,
+          SUM(rev) as rev,
+          SUM(profit) as profit,
+          SUM(rev) - SUM(profit) as rev_to_pub,
+          ROW_NUMBER() OVER (PARTITION BY DATE ORDER BY SUM(rev) DESC) as rn
+        FROM ${tableName}
+        ${whereClause}
+        GROUP BY DATE, pic, pid, mid, medianame
+      ) ranked
+      WHERE rn <= 100
+      ORDER BY date ASC, rev DESC
     `,
 
     listOfMidByDateCount: `
@@ -1493,8 +1529,7 @@ export async function buildTeamBreakdownQuery(whereClause: string): Promise<stri
       SUM(req) as requests,
       SUM(paid) as paid
     FROM ${tableName}
-    ${whereClause}
-      AND pic IN (${picList})
+    ${whereClause ? `${whereClause} AND` : 'WHERE'} pic IN (${picList})
     GROUP BY DATE`.trim())
     }
   })
@@ -1518,8 +1553,7 @@ export async function buildTeamBreakdownQuery(whereClause: string): Promise<stri
       SUM(req) as requests,
       SUM(paid) as paid
     FROM ${tableName}
-    ${whereClause}
-      AND (pic NOT IN (${assignedPicList}) OR pic IS NULL OR TRIM(pic) = '')
+    ${whereClause ? `${whereClause} AND` : 'WHERE'} (pic NOT IN (${assignedPicList}) OR pic IS NULL OR TRIM(pic) = '')
     GROUP BY DATE`.trim())
   } else {
     // No teams configured - everything is unassigned
@@ -1599,8 +1633,7 @@ export async function buildPICBreakdownQuery(team_id: string, whereClause: strin
       SUM(req) as requests,
       SUM(paid) as paid
     FROM ${tableName}
-    ${whereClause}
-      AND pic IN (${picList})
+    ${whereClause ? `${whereClause} AND` : 'WHERE'} pic IN (${picList})
     GROUP BY DATE, pic
     ORDER BY DATE ASC, pic ASC
   `.trim()
