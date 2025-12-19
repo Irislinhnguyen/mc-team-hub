@@ -7,12 +7,14 @@ import { Target, Layers, Users, UsersRound, Eye, Home, LogOut } from 'lucide-rea
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '../../../app/contexts/AuthContext'
+import { useIsMobile } from '../../../app/hooks/use-mobile'
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarTrigger,
+  useSidebar,
 } from '@/components/ui/sidebar'
 
 interface PageItem {
@@ -52,9 +54,17 @@ const GCPP_CHECK_PAGES: PageItem[] = [
 export function GCPPCheckSidebar() {
   const pathname = usePathname()
   const { user, logout } = useAuth()
+  const { setOpenMobile } = useSidebar()
+  const isMobile = useIsMobile()
 
   const handleLogout = async () => {
     await logout()
+  }
+
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false)
+    }
   }
 
   return (
@@ -75,6 +85,7 @@ export function GCPPCheckSidebar() {
             <li>
               <Link
                 href="/"
+                onClick={handleLinkClick}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
               >
                 <Home size={18} />
@@ -93,6 +104,7 @@ export function GCPPCheckSidebar() {
                 <li key={page.href}>
                   <Link
                     href={page.href}
+                    onClick={handleLinkClick}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       isActive
                         ? 'bg-[#1565C0] text-white'
@@ -137,6 +149,7 @@ export function GCPPCheckSidebar() {
             {(user.role === 'admin' || user.role === 'manager') && (
               <Link
                 href="/admin/ai-usage"
+                onClick={handleLinkClick}
                 className="flex items-center gap-2 px-3 py-2 text-xs text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
