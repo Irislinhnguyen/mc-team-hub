@@ -32,6 +32,7 @@ interface ZoneWithMetadata extends ExtractedZone {
   // Individual zone fields
   zone_type?: string
   cs_sales_note_type?: string
+  // account field already in ExtractedZone (inherited)
 }
 
 interface ZoneDataEntryStepProps {
@@ -203,16 +204,17 @@ export function ZoneDataEntryStep({
         zones.map((zone) => {
           let autoFilledNote = ''
           let detectedZoneType = ''
+          let extractedFP = ''
 
           if (teamType === 'app') {
             // Team App: PR + FP + GI act
-            const fp = extractFPFromZoneName(zone.zone_name)
-            autoFilledNote = `PR: ${payoutRate || ''}\nFP: ${fp}\nGI act `
+            extractedFP = extractFPFromZoneName(zone.zone_name)
+            autoFilledNote = `PR: ${payoutRate || ''}\nFP: ${extractedFP}\nGI act `
 
             // Auto-detect zone type from zone name
             detectedZoneType = detectZoneType(zone.zone_name)
 
-            console.log(`[ZoneDataEntryStep] Team App - Zone: ${zone.zone_name} → FP: ${fp}, Type: ${detectedZoneType}`)
+            console.log(`[ZoneDataEntryStep] Team App - Zone: ${zone.zone_name} → FP: ${extractedFP}, Type: ${detectedZoneType}`)
           } else {
             // Team Web: only PR
             autoFilledNote = `PR: ${payoutRate || ''}`
@@ -223,6 +225,10 @@ export function ZoneDataEntryStep({
             ...zone,
             zone_type: detectedZoneType,
             cs_sales_note_type: autoFilledNote,
+            // Team App: auto-fill new columns M, N, O
+            payout_rate: teamType === 'app' ? payoutRate : undefined,
+            floor_price: teamType === 'app' ? extractedFP : undefined,
+            account: teamType === 'app' ? 'GI' : undefined,
           }
         })
       )
@@ -261,11 +267,12 @@ export function ZoneDataEntryStep({
         prevZoneData.map(zone => {
           let autoFilledNote = ''
           let updatedZoneType = zone.zone_type
+          let extractedFP = ''
 
           if (teamType === 'app') {
             // Team App: PR + FP + GI act
-            const fp = extractFPFromZoneName(zone.zone_name)
-            autoFilledNote = `PR: ${payoutRate || ''}\nFP: ${fp}\nGI act `
+            extractedFP = extractFPFromZoneName(zone.zone_name)
+            autoFilledNote = `PR: ${payoutRate || ''}\nFP: ${extractedFP}\nGI act `
 
             // Re-detect zone type if it's empty
             if (!updatedZoneType) {
@@ -280,6 +287,10 @@ export function ZoneDataEntryStep({
             ...zone,
             zone_type: updatedZoneType,
             cs_sales_note_type: autoFilledNote,
+            // Team App: update PR and FP when payoutRate changes
+            payout_rate: teamType === 'app' ? payoutRate : zone.payout_rate,
+            floor_price: teamType === 'app' ? extractedFP : zone.floor_price,
+            account: zone.account || (teamType === 'app' ? 'GI' : undefined),
           }
         })
       )
@@ -346,6 +357,10 @@ export function ZoneDataEntryStep({
       }
       if (!zone.cs_sales_note_type?.trim()) {
         validationErrors.push(`Zone ${index + 1}: CS/Sales Note is required`)
+      }
+      // Team App: validate Account field
+      if (teamType === 'app' && !zone.account?.trim()) {
+        validationErrors.push(`Zone ${index + 1}: Account is required`)
       }
     })
 
@@ -443,7 +458,8 @@ export function ZoneDataEntryStep({
 
 2. Individual Zone Information (for each zone):
    - Zone Type: AppOpen, Banner types, Interstitial, Native, Reward, Video types, etc.
-   - CS/Sales Note: Enter custom text (e.g., CS, Sales, or any note)` : `1. Common Information (applies to all zones):
+   - CS/Sales Note: Enter custom text (e.g., CS, Sales, or any note)
+   - Account: Select GI or GJ (default: GI)` : `1. Common Information (applies to all zones):
    - Domain: Website domain
    - PIC: Person In Charge
    - PID: Publisher ID
@@ -742,6 +758,9 @@ export function ZoneDataEntryStep({
                   <th className="px-3 py-3 text-left font-medium text-gray-700">Zone Name</th>
                   <th className="px-3 py-3 text-left font-medium text-gray-700">Zone Type *</th>
                   <th className="px-3 py-3 text-left font-medium text-gray-700">CS/Sales Note *</th>
+                  {teamType === 'app' && (
+                    <th className="px-3 py-3 text-left font-medium text-gray-700">Account *</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -803,6 +822,22 @@ export function ZoneDataEntryStep({
                         rows={2}
                       />
                     </td>
+                    {teamType === 'app' && (
+                      <td className="px-3 py-2">
+                        <Select
+                          value={zone.account || 'GI'}
+                          onValueChange={(value) => handleZoneFieldChange(index, 'account', value)}
+                        >
+                          <SelectTrigger className="w-20 h-8 text-xs">
+                            <SelectValue placeholder="GI" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="GI" className="text-xs">GI</SelectItem>
+                            <SelectItem value="GJ" className="text-xs">GJ</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

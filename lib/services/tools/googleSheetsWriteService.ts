@@ -5,6 +5,7 @@
 
 import { google } from 'googleapis'
 import type { ExtractedZone } from '@/lib/types/tools'
+import { getSheetsClient } from '@/lib/services/googleSheetsClient'
 
 /**
  * Write zones to Google Sheets
@@ -21,18 +22,8 @@ export async function writeZonesToSheet(
   try {
     console.log(`[Sheets Write] Writing ${zones.length} zones to sheet "${sheetName}"`)
 
-    // Load service account credentials
-    const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || '{}')
-
-    if (!credentials.client_email) {
-      throw new Error('Google Service Account credentials not configured')
-    }
-
-    // Create Google Auth client
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    })
+    // Create Google Auth client using centralized service
+    const auth = getSheetsClient(['https://www.googleapis.com/auth/spreadsheets'])
 
     const sheets = google.sheets({ version: 'v4', auth })
 
@@ -141,20 +132,29 @@ export async function writeZonesToSheet(
         // L: Type
         row[11] = zone.zone_type || ''
 
-        // M: CS/Sales Note
-        row[12] = zone.cs_sales_note_type || ''
+        // M: PR (Payout Rate) - NEW
+        row[12] = zone.payout_rate || ''
 
-        // N: SKIP - Content (removed from UI)
+        // N: FP (Floor Price) - NEW
+        row[13] = zone.floor_price || ''
 
-        // O: SKIP - Ad Unit Name
+        // O: Account (GI/GJ) - NEW
+        row[14] = zone.account || 'GI'
 
-        // P: SKIP - Status YM Note
+        // P: Note (CS/Sales Note) - MOVED from M
+        row[15] = zone.cs_sales_note_type || ''
 
-        // Q: Child network code
-        row[16] = zone.child_network_code || ''
+        // Q: Content (Game/Non-game)
+        row[16] = zone.content || ''
 
-        // R: Company Name
-        row[17] = zone.company_name || ''
+        // R: SKIP
+
+        // S: SKIP
+
+        // T: Child network code
+        row[19] = zone.child_network_code || ''
+
+        // Company Name is NOT used for Team APP
       }
 
       return row
@@ -164,8 +164,10 @@ export async function writeZonesToSheet(
     // Use batchUpdate to write to non-contiguous ranges
     const requests = rows.map((row, index) => {
       const rowNumber = nextRow + index
+      // Team APP uses A:T (includes Child network code at T), Team WEB uses A:R
+      const endColumn = sheetName === 'Tag Creation_APP' ? 'T' : 'R'
       return {
-        range: `${sheetName}!A${rowNumber}:R${rowNumber}`,
+        range: `${sheetName}!A${rowNumber}:${endColumn}${rowNumber}`,
         values: [row],
       }
     })
@@ -215,12 +217,8 @@ export async function getSpreadsheetInfo(spreadsheetId: string): Promise<{
   sheets: string[]
 }> {
   try {
-    const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || '{}')
-
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-    })
+    // Create Google Auth client using centralized service
+    const auth = getSheetsClient(['https://www.googleapis.com/auth/spreadsheets.readonly'])
 
     const sheets = google.sheets({ version: 'v4', auth })
 

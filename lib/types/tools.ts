@@ -68,6 +68,11 @@ export interface ExtractedZone {
   revenue?: number | null
   ecpm?: number | null
   ad_source?: string | null
+
+  // Team APP new fields (for Google Sheets sync)
+  payout_rate?: string // Column M - auto-filled from Step 1
+  floor_price?: string // Column N - auto-filled from zone name
+  account?: string // Column O - GI/GJ dropdown (default: GI)
 }
 
 // API Response Types
