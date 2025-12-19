@@ -80,7 +80,7 @@ interface DrillState {
 
 /**
  * Determines initial drill level and path based on active filters
- * Priority: PIC > TEAM (most specific to least specific)
+ * Priority: ZONE > MID/product > PID/pubname > PIC > TEAM (most specific to least specific)
  * Skips irrelevant upper hierarchy levels when filters are active
  */
 function getInitialDrillLevelFromFilters(
@@ -101,8 +101,60 @@ function getInitialDrillLevelFromFilters(
 
   const teamFilter = normalizeFilter(filters.team)
   const picFilter = normalizeFilter(filters.pic)
+  // NEW: Support for all hierarchy levels
+  const pidFilter = normalizeFilter(filters.pid) || normalizeFilter(filters.pubname)
+  const midFilter = normalizeFilter(filters.mid) || normalizeFilter(filters.medianame)
+  const productFilter = normalizeFilter(filters.product)
+  const zoneFilter = normalizeFilter(filters.zone) || normalizeFilter(filters.zonename)
 
-  // Priority 1: PIC filter → Start at PID level (team → pic → pid)
+  // Priority 1: Zone/zonename filter → Start at ZID level (show zone details)
+  if (zoneFilter) {
+    return {
+      level: 'zid',
+      path: [{
+        level: 'zid',
+        id: zoneFilter,
+        name: zoneFilter
+      }]
+    }
+  }
+
+  // Priority 2: MID/medianame/product filter → Start at ZID breakdown (zones within MID)
+  if (midFilter || productFilter) {
+    const isMidFilter = normalizeFilter(filters.mid) !== null
+    const isProductFilter = normalizeFilter(filters.product) !== null
+
+    const filterId = midFilter || productFilter
+    const filterName = isMidFilter ? `MID ${filterId}`
+                      : isProductFilter ? `Product ${filterId}`
+                      : filterId  // medianame, show as-is
+
+    return {
+      level: 'zid',
+      path: [{
+        level: 'mid',
+        id: filterId,
+        name: filterName
+      }]
+    }
+  }
+
+  // Priority 3: PID/pubname filter → Start at MID breakdown (MIDs within PID)
+  if (pidFilter) {
+    const isPidFilter = normalizeFilter(filters.pid) !== null
+    const filterName = isPidFilter ? `PID ${pidFilter}` : pidFilter
+
+    return {
+      level: 'mid',
+      path: [{
+        level: 'pid',
+        id: pidFilter,
+        name: filterName
+      }]
+    }
+  }
+
+  // Priority 4: PIC filter → Start at PID level (team → pic → pid)
   if (picFilter) {
     // Find team for this PIC
     const picMapping = picMappings.find(m => m.pic_name === picFilter)
@@ -128,7 +180,7 @@ function getInitialDrillLevelFromFilters(
     return { level: 'pid', path }
   }
 
-  // Priority 2: TEAM filter → Start at PIC level (team → pic)
+  // Priority 5: TEAM filter → Start at PIC level (team → pic)
   if (teamFilter) {
     const teamConfig = teamConfigs.find(t => t.team_id === teamFilter)
 
@@ -142,7 +194,7 @@ function getInitialDrillLevelFromFilters(
     }
   }
 
-  // Priority 3: No relevant filters → Start at TEAM level
+  // Priority 6: No relevant filters → Start at TEAM level
   return { level: 'team', path: [] }
 }
 
@@ -203,7 +255,21 @@ export function DrillableTimeSeriesChart({
         onDrillToPIC(expectedPath[0].id)
       }
     }
-  }, [currentFilters?.team, currentFilters?.pic, teamConfigs, picMappings, onDrillToPIC, drillState.mode])
+  }, [
+    currentFilters?.team,
+    currentFilters?.pic,
+    currentFilters?.pid,
+    currentFilters?.pubname,
+    currentFilters?.mid,
+    currentFilters?.medianame,
+    currentFilters?.product,
+    currentFilters?.zone,
+    currentFilters?.zonename,
+    teamConfigs,
+    picMappings,
+    onDrillToPIC,
+    drillState.mode
+  ])
 
   // Handle mode toggle - FILTER AWARE
   const handleModeChange = (value: string) => {
@@ -439,6 +505,41 @@ export function DrillableTimeSeriesChart({
     if (level === 'mid') {
       const pid = path[2]?.id || path[1]?.id || path[0]?.id || null
       if (pid) {
+        // Check if we have pubname filter - if so, data is already filtered server-side
+        const hasPubnameFilter = currentFilters.pubname
+        if (hasPubnameFilter) {
+          console.log('[DrillableChart] Using pre-filtered MID data (pubname filter active)')
+
+          // Transform the already-filtered data without re-filtering
+          const transformed = (midByDateData || []).map((row: any) => {
+            let dateValue: string
+            let rawDateValue: string
+
+            if (row.date && typeof row.date === 'object' && 'value' in row.date) {
+              dateValue = row.date.value
+              rawDateValue = row.rawDate || row.date.value
+            } else {
+              dateValue = String(row.date || '')
+              rawDateValue = row.rawDate || dateValue
+            }
+
+            const isoDate = rawDateValue && rawDateValue.includes('T')
+              ? rawDateValue.split('T')[0]
+              : rawDateValue
+
+            return {
+              date: dateValue,
+              rawDate: isoDate,
+              entityId: String(row.mid),
+              entityName: row.medianame || `MID ${row.mid}`,
+              revenue: Number(row.rev || 0),
+              profit: Number(row.profit || 0)
+            }
+          })
+
+          return transformed
+        }
+
         console.log('[DrillableChart] Filtering MIDs from raw data for PID:', pid)
         return filterMIDsByPID(midByDateData, pid)
       }
@@ -448,6 +549,41 @@ export function DrillableTimeSeriesChart({
     if (level === 'zid') {
       const mid = path[3]?.id || path[2]?.id || path[1]?.id || path[0]?.id || null
       if (mid) {
+        // Check if we have medianame/product filter - if so, data is already filtered server-side
+        const hasMedianameFilter = currentFilters.medianame || currentFilters.product
+        if (hasMedianameFilter) {
+          console.log('[DrillableChart] Using pre-filtered zone data (medianame/product filter active)')
+
+          // Transform the already-filtered data without re-filtering
+          const transformed = (zoneTimeSeriesData || []).map((row: any) => {
+            let dateValue: string
+            let rawDateValue: string
+
+            if (row.date && typeof row.date === 'object' && 'value' in row.date) {
+              dateValue = row.date.value
+              rawDateValue = row.rawDate || row.date.value
+            } else {
+              dateValue = String(row.date || '')
+              rawDateValue = row.rawDate || dateValue
+            }
+
+            const isoDate = rawDateValue && rawDateValue.includes('T')
+              ? rawDateValue.split('T')[0]
+              : rawDateValue
+
+            return {
+              date: dateValue,
+              rawDate: isoDate,
+              entityId: String(row.zid),
+              entityName: row.zonename || `ZID ${row.zid}`,
+              revenue: Number(row.rev || 0),
+              profit: Number(row.profit || 0)
+            }
+          })
+
+          return transformed
+        }
+
         console.log('[DrillableChart] Filtering ZIDs from raw data for MID:', mid)
         return filterZIDsByMID(zoneTimeSeriesData, mid)
       }
@@ -455,7 +591,7 @@ export function DrillableTimeSeriesChart({
     }
 
     return []
-  }, [drillState.level, pathKey, teamLevelData, picLevelData, pidByDateData, midByDateData, zoneTimeSeriesData])
+  }, [drillState.level, pathKey, teamLevelData, picLevelData, pidByDateData, midByDateData, zoneTimeSeriesData, currentFilters])
 
   // Step 3: Memoize filtered and sorted data (topN)
   const topNData = useMemo(() => {
