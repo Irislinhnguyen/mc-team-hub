@@ -67,11 +67,11 @@ function BusinessHealthPageContent() {
   const [selectedTeamForDrill, setSelectedTeamForDrill] = useState<string | null>(null)
 
   // ✨ NEW: Fetch team breakdown (always loaded, small payload ~120 rows)
-  const { data: teamBreakdownResponse } = useTeamBreakdown(currentFilters)
+  const { data: teamBreakdownResponse, isLoading: isTeamBreakdownLoading } = useTeamBreakdown(currentFilters)
   const teamBreakdownData = teamBreakdownResponse?.teamBreakdown || []
 
   // ✨ NEW: Fetch PIC breakdown on-demand (only when user clicks a team)
-  const { data: picBreakdownResponse } = usePICBreakdown(
+  const { data: picBreakdownResponse, isLoading: isPICBreakdownLoading } = usePICBreakdown(
     selectedTeamForDrill,
     currentFilters,
     !!selectedTeamForDrill  // Only enabled when team selected
@@ -318,7 +318,7 @@ function BusinessHealthPageContent() {
             teamBreakdownData={teamBreakdownData}
             picBreakdownData={picBreakdownData}
             onDrillToPIC={handleDrillToPIC}
-            isLoading={loading || teamLoading}
+            isLoading={loading || teamLoading || isTeamBreakdownLoading || isPICBreakdownLoading}
             title="Revenue & Profit Over Time"
             height={300}
             topN={15}

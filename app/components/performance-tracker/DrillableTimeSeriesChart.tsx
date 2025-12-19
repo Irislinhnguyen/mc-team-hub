@@ -457,7 +457,7 @@ export function DrillableTimeSeriesChart({
 
     // Don't run expensive fallback if data is still loading
     const teamId = drillState.path[0]?.id || null
-    if (!picBreakdownData && isLoading && teamId) {
+    if (isLoading && teamId) {
       console.log('[DrillableChart] Skipping PIC aggregation - data is loading for team:', teamId)
       return []
     }
@@ -469,7 +469,7 @@ export function DrillableTimeSeriesChart({
     const result = aggregatePICTimeSeriesData(pidByDateData, picMappings, teamId)
     console.log('[DrillableChart] Client-side aggregated PICs:', result.length, 'rows')
     return result
-  }, [picBreakdownData, pidByDateData, picMappings, pathKey, isLoading])
+  }, [picBreakdownData, pidByDateData, picMappings, pathKey, isLoading, drillState.path])
 
   // Step 2: Memoize level-specific filtered data
   const currentLevelData = useMemo(() => {
