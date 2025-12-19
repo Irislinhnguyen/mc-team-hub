@@ -765,7 +765,7 @@ export default function QueryLabView() {
               variant="ghost"
               size="sm"
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="md:hidden text-gray-500 hover:text-[#1565C0]"
+              className="text-gray-500 hover:text-[#1565C0]"
             >
               {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
             </Button>

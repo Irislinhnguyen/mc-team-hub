@@ -16,6 +16,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/*
+          Desktop-only viewport: Forces 1280px width on all devices
+          Mobile users can pinch-to-zoom and pan (Looker Studio approach)
+          This viewport MUST be paired with FORCE_DESKTOP_LAYOUT=true in use-mobile.tsx
+        */}
         <meta name="viewport" content="width=1280, user-scalable=yes" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
