@@ -208,10 +208,12 @@ export async function GET(request: NextRequest) {
       })
     })
 
-    // Build team to PIC mapping
+    // Build team to PIC mapping from picMappings
     const teamToPicMap: Record<string, string[]> = {}
     teamConfig.teams.forEach((team: any) => {
-      teamToPicMap[team.team_id] = team.pic_ids || []
+      teamToPicMap[team.team_id] = teamConfig.picMappings
+        .filter((m: any) => m.team_id === team.team_id)
+        .map((m: any) => m.pic_name)
     })
 
     // Map h5 boolean values to Yes/No/NA
