@@ -24,14 +24,22 @@ async function executeQueryWithTimeout(query: string, timeoutMs: number = 15000)
 
 export async function GET(request: NextRequest) {
   try {
-    // Check cache first
-    if (cachedMetadata && Date.now() - cacheTimestamp < CACHE_TTL) {
+    // Check for cache-busting parameter
+    const { searchParams } = new URL(request.url)
+    const forceRefresh = searchParams.get('refresh') === 'true'
+
+    // Check cache first (unless force refresh)
+    if (!forceRefresh && cachedMetadata && Date.now() - cacheTimestamp < CACHE_TTL) {
       console.log('[Metadata] Returning cached data')
       return NextResponse.json({
         status: 'ok',
         data: cachedMetadata,
         fromCache: true,
       })
+    }
+
+    if (forceRefresh) {
+      console.log('[Metadata] Force refresh requested, bypassing cache')
     }
 
     console.log('[Metadata] Cache miss or expired, fetching from BigQuery...')

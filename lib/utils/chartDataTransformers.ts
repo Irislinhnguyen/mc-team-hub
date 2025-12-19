@@ -184,7 +184,8 @@ export function filterPIDsByPIC(
 }
 
 /**
- * Filter MID data to a specific PID
+ * Filter MID data to a specific PID or publisher name
+ * Supports both numeric PID (e.g., "37653") and string pubname (e.g., "Tran Xuan Tien")
  */
 export function filterMIDsByPID(
   midData: any[],
@@ -203,7 +204,11 @@ export function filterMIDsByPID(
     sampleRawDateField: midData[0]?.rawDate
   })
 
-  const filtered = midData.filter(row => String(row.pid) === pid)
+  // BUGFIX: Support both pid (numeric) and pubname (string) filters
+  // This allows filtering by either "pid: 37653" or "pubname: Tran Xuan Tien"
+  const filtered = midData.filter(row =>
+    String(row.pid) === pid || row.pubname === pid
+  )
 
   console.log('[filterMIDsByPID] Filtered:', {
     matchedRows: filtered.length,
@@ -247,7 +252,8 @@ export function filterMIDsByPID(
 }
 
 /**
- * Filter ZID data to a specific MID
+ * Filter ZID data to a specific MID or media name
+ * Supports both numeric MID (e.g., "12345") and string medianame (e.g., "Media Name")
  */
 export function filterZIDsByMID(
   zoneData: any[],
@@ -264,7 +270,11 @@ export function filterZIDsByMID(
     sampleRow: zoneData[0]
   })
 
-  const filtered = zoneData.filter(row => String(row.mid) === mid)
+  // BUGFIX: Support both mid (numeric) and medianame (string) filters
+  // This allows filtering by either "mid: 12345" or "medianame: Media Name"
+  const filtered = zoneData.filter(row =>
+    String(row.mid) === mid || row.medianame === mid
+  )
 
   console.log('[filterZIDsByMID] Filtered:', {
     matchedRows: filtered.length,

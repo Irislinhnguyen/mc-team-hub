@@ -813,6 +813,8 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
 
     listOfMid: `
       SELECT
+        pid,
+        pubname,
         mid,
         medianame,
         SUM(rev) as rev,
@@ -820,7 +822,7 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
         SUM(rev) - SUM(profit) as rev_to_pub
       FROM ${tableName}
       ${whereClause}
-      GROUP BY mid, medianame
+      GROUP BY pid, pubname, mid, medianame
       ORDER BY rev DESC
       LIMIT ${limit} OFFSET ${offset}
     `,
@@ -830,11 +832,13 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
         COUNT(*) as total_count
       FROM (
         SELECT
+          pid,
+          pubname,
           mid,
           medianame
         FROM ${tableName}
         ${whereClause}
-        GROUP BY mid, medianame
+        GROUP BY pid, pubname, mid, medianame
       ) AS subquery
     `,
 
@@ -844,6 +848,7 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
           DATE as date,
           pic,
           pid,
+          pubname,
           mid,
           medianame,
           SUM(rev) as rev,
@@ -852,7 +857,7 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
           ROW_NUMBER() OVER (PARTITION BY DATE ORDER BY SUM(rev) DESC) as rn
         FROM ${tableName}
         ${whereClause}
-        GROUP BY DATE, pic, pid, mid, medianame
+        GROUP BY DATE, pic, pid, pubname, mid, medianame
       ) ranked
       WHERE rn <= 100
       ORDER BY date ASC, rev DESC
@@ -864,11 +869,13 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
       FROM (
         SELECT
           DATE,
+          pid,
+          pubname,
           mid,
           medianame
         FROM ${tableName}
         ${whereClause}
-        GROUP BY DATE, mid, medianame
+        GROUP BY DATE, pid, pubname, mid, medianame
       ) AS subquery
     `,
   }
