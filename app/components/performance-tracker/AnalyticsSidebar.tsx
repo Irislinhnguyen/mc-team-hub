@@ -6,14 +6,12 @@ import { usePathname } from 'next/navigation'
 import { BarChart3, TrendingUp, Calendar, Settings, FileText, Plus, SearchCheck, Home, LogOut, Shield, Sparkles, ChevronUp } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '../../../app/contexts/AuthContext'
-import { useIsMobile } from '../../../app/hooks/use-mobile'
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarTrigger,
-  useSidebar,
 } from '@/components/ui/sidebar'
 import {
   DropdownMenu,
@@ -79,17 +77,9 @@ const ANALYTICS_PAGES: PageItem[] = [
 export function AnalyticsSidebar() {
   const pathname = usePathname()
   const { user, logout } = useAuth()
-  const { setOpenMobile } = useSidebar()
-  const isMobile = useIsMobile()
 
   const handleLogout = async () => {
     await logout()
-  }
-
-  const handleLinkClick = () => {
-    if (isMobile) {
-      setOpenMobile(false)
-    }
   }
 
   return (
@@ -110,7 +100,6 @@ export function AnalyticsSidebar() {
             <li>
               <Link
                 href="/"
-                onClick={handleLinkClick}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
               >
                 <Home size={18} />
@@ -129,7 +118,6 @@ export function AnalyticsSidebar() {
                 <li key={page.href}>
                   <Link
                     href={page.href}
-                    onClick={handleLinkClick}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       isActive
                         ? 'bg-[#1565C0] text-white'

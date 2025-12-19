@@ -80,9 +80,9 @@ export default function HomePage() {
       <Header />
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 md:px-8 py-8 md:py-16">
+      <main className="container mx-auto px-8 py-16">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-8 md:mb-12">
+          <div className="text-center mb-12">
             {isLoading ? (
               <>
                 <Skeleton className="h-8 w-96 mx-auto mb-3" />
@@ -90,10 +90,10 @@ export default function HomePage() {
               </>
             ) : (
               <>
-                <h2 className="text-xl md:text-2xl font-semibold text-gray-800 mb-3">
+                <h2 className="text-2xl font-semibold text-gray-800 mb-3">
                   {greeting}
                 </h2>
-                <p className="text-sm md:text-base text-gray-600">
+                <p className="text-gray-600">
                   Access all your tools and resources in one place
                 </p>
               </>
@@ -101,7 +101,7 @@ export default function HomePage() {
           </div>
 
           {/* Product Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <ProductCard
               title="GCPP Check"
               description="Monitor and validate GCPP compliance across all publishers and products"
@@ -168,7 +168,7 @@ export default function HomePage() {
           </div>
 
           {/* Footer Info */}
-          <div className="mt-12 md:mt-16 text-center text-sm text-slate-500">
+          <div className="mt-16 text-center text-sm text-slate-500">
             <p>Need help or have questions? Contact the MC Team</p>
           </div>
         </div>
