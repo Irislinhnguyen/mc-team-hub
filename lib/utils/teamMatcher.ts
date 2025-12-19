@@ -102,8 +102,14 @@ export async function getTeamConfigurations(): Promise<TeamConfigCache> {
   }
 
   if (picMappingsResult.error) {
-    console.error('Error fetching PIC mappings:', picMappingsResult.error)
-    console.warn('[teamMatcher] Using empty fallback for PIC mappings')
+    console.error('❌ [teamMatcher] Error fetching PIC mappings:', picMappingsResult.error)
+    console.error('   Error details:', {
+      message: picMappingsResult.error.message,
+      details: picMappingsResult.error.details,
+      hint: picMappingsResult.error.hint,
+      code: picMappingsResult.error.code
+    })
+    console.warn('[teamMatcher] Using empty fallback for PIC mappings - drill-down will not work!')
     configCache = {
       teams: teamsResult.data || [],
       picMappings: [],

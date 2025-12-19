@@ -17,7 +17,23 @@ async function fetchTeamConfigurations(): Promise<TeamConfigurationsResponse> {
     throw new Error(`Failed to fetch team configurations: ${response.statusText}`)
   }
 
-  return response.json()
+  const data = await response.json()
+
+  // Log warning if picMappings is empty (will break PIC-level drill-down)
+  if (!data.picMappings || data.picMappings.length === 0) {
+    console.warn('⚠️ [useTeamConfigurations] Received empty picMappings from API')
+    console.warn('   This will prevent PIC-level drill-down from working')
+    console.warn('   Teams loaded:', data.teams?.length || 0)
+    console.warn('   Product patterns loaded:', data.productPatterns?.length || 0)
+    if (data.warning) {
+      console.warn('   Server warning:', data.warning)
+    }
+    if (data.error) {
+      console.error('   Server error:', data.error)
+    }
+  }
+
+  return data
 }
 
 /**
