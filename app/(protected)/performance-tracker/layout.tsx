@@ -18,7 +18,7 @@ function AnalyticsContent({ children }: { children: React.ReactNode }) {
           minWidth: 0,
           width: '100%',
           maxWidth: '100%',
-          overflow: 'hidden'
+          overflow: 'auto'
         }}
       >
         <FloatingToggle />
