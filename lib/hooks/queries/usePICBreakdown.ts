@@ -46,10 +46,13 @@ export function usePICBreakdown(
 
       console.log('[usePICBreakdown] Fetching for team:', team_id, 'with baseFilters:', baseFilters)
 
+      // Exclude 'team' filter to avoid conflict with team_id parameter
+      const { team, ...filtersWithoutTeam } = baseFilters
+
       const response = await fetch('/api/performance-tracker/pic-breakdown', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ team_id, ...baseFilters })
+        body: JSON.stringify({ team_id, ...filtersWithoutTeam })
       })
 
       if (!response.ok) {
