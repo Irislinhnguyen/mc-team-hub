@@ -469,18 +469,41 @@ export async function buildWhereClause(
 
   // Handle team filter with dynamic configuration from Supabase
   if (filters.team) {
-    console.log('[buildWhereClause] Team filter detected:', filters.team)
-    if (Array.isArray(filters.team) && filters.team.length > 0) {
-      const teamCondition = await buildTeamConditions(filters.team)
+    console.log('[buildWhereClause] ⚠️  Team filter detected:', filters.team)
+    console.log('[buildWhereClause] Team filter type:', typeof filters.team)
+    console.log('[buildWhereClause] Team filter value:', JSON.stringify(filters.team))
+
+    // 🔧 AUTO-FIX: Convert team_name → team_id if needed (backward compatibility)
+    const TEAM_LABEL_TO_ID_MAP: Record<string, string> = {
+      'Web GTI': 'WEB_GTI',
+      'Web GV': 'WEB_GV',
+      'App': 'APP'
+    }
+
+    let normalizedTeam = filters.team
+    if (Array.isArray(normalizedTeam)) {
+      normalizedTeam = normalizedTeam.map(t => TEAM_LABEL_TO_ID_MAP[t] || t)
+      if (normalizedTeam.some((t: string, i: number) => t !== filters.team[i])) {
+        console.warn('[buildWhereClause] 🔧 AUTO-FIX: Converted team labels to IDs:', filters.team, '→', normalizedTeam)
+      }
+    } else if (typeof normalizedTeam === 'string' && TEAM_LABEL_TO_ID_MAP[normalizedTeam]) {
+      console.warn('[buildWhereClause] 🔧 AUTO-FIX: Converted team label to ID:', normalizedTeam, '→', TEAM_LABEL_TO_ID_MAP[normalizedTeam])
+      normalizedTeam = TEAM_LABEL_TO_ID_MAP[normalizedTeam]
+    }
+
+    if (Array.isArray(normalizedTeam) && normalizedTeam.length > 0) {
+      const teamCondition = await buildTeamConditions(normalizedTeam)
       console.log('[buildWhereClause] Team condition (array):', teamCondition)
       if (teamCondition) {
         conditions.push(teamCondition)
       }
-    } else if (filters.team !== '') {
-      const teamCondition = await buildTeamCondition(filters.team)
+    } else if (normalizedTeam !== '') {
+      const teamCondition = await buildTeamCondition(normalizedTeam as string)
       console.log('[buildWhereClause] Team condition (single):', teamCondition)
       if (teamCondition) {
         conditions.push(teamCondition)
+      } else {
+        console.warn('[buildWhereClause] ❌ Team condition returned empty/false - no PICs found for team:', normalizedTeam)
       }
     }
   }
@@ -691,7 +714,13 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
 
     profitRate: `
       SELECT
-        ROUND(SUM(profit) / NULLIF(SUM(rev), 0) * 100, 1) as profit_rate
+        COALESCE(
+          ROUND(
+            SUM(CAST(profit AS FLOAT64)) / NULLIF(SUM(CAST(rev AS FLOAT64)), 0) * 100,
+            1
+          ),
+          0
+        ) as profit_rate
       FROM ${tableName}
       ${whereClause}
     `,

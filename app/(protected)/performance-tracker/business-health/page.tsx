@@ -100,6 +100,7 @@ function BusinessHealthPageContent() {
       topMedia: rawData.topMedia,
       topZones: rawData.topZones,
       topEcpm: rawData.topEcpm,
+      profitRate: rawData.profitRate, // 🔧 FIX: Include profitRate from API
     }
   }, [rawData])
 
