@@ -11,6 +11,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from '@/components/ui/command'
 import {
   Popover,
@@ -396,7 +397,7 @@ Next steps:
             ) : (
             <>
               {/* Multi-select Popover */}
-              <Popover open={productSelectorOpen} onOpenChange={setProductSelectorOpen}>
+              <Popover open={productSelectorOpen} onOpenChange={setProductSelectorOpen} modal={true}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -410,30 +411,33 @@ Next steps:
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                  <Command>
+                <PopoverContent className="w-full p-0 pointer-events-auto" align="start" style={{ pointerEvents: 'auto' }}>
+                  <Command className="pointer-events-auto">
                     <CommandInput placeholder="Search products..." />
                     <CommandEmpty>No products found.</CommandEmpty>
-                    <CommandGroup className="max-h-64 overflow-auto">
-                      {products.map((product) => {
-                        const isSelected = selectedProducts.some(p => p.product === product.value)
-                        return (
-                          <CommandItem
-                            key={product.value}
-                            onSelect={() => handleToggleProduct(product.value)}
-                          >
-                            <Checkbox
-                              checked={isSelected}
-                              className="mr-2"
-                            />
-                            {product.label}
-                            {isSelected && (
-                              <Check className="ml-auto h-4 w-4" />
-                            )}
-                          </CommandItem>
-                        )
-                      })}
-                    </CommandGroup>
+                    <CommandList>
+                      <CommandGroup className="max-h-64 overflow-auto pointer-events-auto" style={{ pointerEvents: 'auto' }}>
+                        {products.map((product) => {
+                          const isSelected = selectedProducts.some(p => p.product === product.value)
+                          return (
+                            <div
+                              key={product.value}
+                              onClick={() => handleToggleProduct(product.value)}
+                              className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                            >
+                              <Checkbox
+                                checked={isSelected}
+                                className="mr-2"
+                              />
+                              {product.label}
+                              {isSelected && (
+                                <Check className="ml-auto h-4 w-4" />
+                              )}
+                            </div>
+                          )
+                        })}
+                      </CommandGroup>
+                    </CommandList>
                   </Command>
                 </PopoverContent>
               </Popover>
@@ -475,6 +479,7 @@ Next steps:
                                   <Popover
                                     open={sizeSelectorOpen[product] || false}
                                     onOpenChange={(open) => setSizeSelectorOpen({ ...sizeSelectorOpen, [product]: open })}
+                                    modal={true}
                                   >
                                     <PopoverTrigger asChild>
                                       <Button
@@ -486,71 +491,62 @@ Next steps:
                                         <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
                                       </Button>
                                     </PopoverTrigger>
-                                  <PopoverContent className="w-[220px] p-0" align="start">
-                                    <Command>
+                                  <PopoverContent className="w-[220px] p-0 pointer-events-auto" align="start" style={{ pointerEvents: 'auto' }}>
+                                    <Command className="pointer-events-auto">
                                       <CommandInput placeholder="Search..." className="h-7 text-xs" />
                                       <CommandEmpty className="text-xs py-2">No size found.</CommandEmpty>
-                                      <CommandGroup className="max-h-48 overflow-auto">
-                                        {BANNER_SIZE_PRESETS.map((size) => {
-                                          const isSelected = sizes?.some(s => s.size === size)
-                                          return (
-                                            <CommandItem
-                                              key={size}
-                                              value={size}
-                                              onSelect={() => {
-                                                handleToggleSize(product, size)
-                                              }}
-                                              className="text-xs py-1"
-                                            >
-                                              <div className="flex items-center gap-2 w-full">
-                                                <Checkbox checked={isSelected} className="h-3 w-3" />
+                                      <CommandList>
+                                        <CommandGroup className="max-h-48 overflow-auto pointer-events-auto" style={{ pointerEvents: 'auto' }}>
+                                          {BANNER_SIZE_PRESETS.map((size) => {
+                                            const isSelected = sizes?.some(s => s.size === size)
+                                            return (
+                                              <div
+                                                key={size}
+                                                onClick={() => handleToggleSize(product, size)}
+                                                className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1 text-xs outline-none hover:bg-accent hover:text-accent-foreground"
+                                              >
+                                                <Checkbox checked={isSelected} className="h-3 w-3 mr-2" />
                                                 <span>{size}</span>
                                               </div>
-                                            </CommandItem>
-                                          )
-                                        })}
+                                            )
+                                          })}
 
-                                        {/* Custom Size Option */}
-                                        <CommandItem
-                                          value="custom"
-                                          onSelect={(e) => {
-                                            e.preventDefault()
-                                          }}
-                                          className="text-xs border-t py-1"
-                                        >
-                                          <div className="w-full space-y-1">
-                                            <p className="font-medium text-xs">Custom</p>
-                                            <div className="flex gap-1">
-                                              <Input
-                                                placeholder="300x250"
-                                                value={customSizeInput[product] || ''}
-                                                onChange={(e) => {
-                                                  e.stopPropagation()
-                                                  setCustomSizeInput({ ...customSizeInput, [product]: e.target.value })
-                                                }}
-                                                onKeyDown={(e) => {
-                                                  e.stopPropagation()
-                                                  if (e.key === 'Enter') {
+                                          {/* Custom Size Option */}
+                                          <div className="relative flex select-none items-center rounded-sm px-2 py-1 text-xs outline-none border-t">
+                                            <div className="w-full space-y-1">
+                                              <p className="font-medium text-xs">Custom</p>
+                                              <div className="flex gap-1">
+                                                <Input
+                                                  placeholder="300x250"
+                                                  value={customSizeInput[product] || ''}
+                                                  onChange={(e) => {
+                                                    e.stopPropagation()
+                                                    setCustomSizeInput({ ...customSizeInput, [product]: e.target.value })
+                                                  }}
+                                                  onKeyDown={(e) => {
+                                                    e.stopPropagation()
+                                                    if (e.key === 'Enter') {
+                                                      handleAddCustomSize(product)
+                                                    }
+                                                  }}
+                                                  className="h-6 text-xs"
+                                                  onClick={(e) => e.stopPropagation()}
+                                                />
+                                                <Button
+                                                  size="sm"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation()
                                                     handleAddCustomSize(product)
-                                                  }
-                                                }}
-                                                className="h-6 text-xs"
-                                                onClick={(e) => e.stopPropagation()}
-                                              />
-                                              <Button
-                                                size="sm"
-                                                onClick={(e) => {
-                                                  e.stopPropagation()
-                                                  handleAddCustomSize(product)
-                                                }}
-                                                className="h-6 px-2"
-                                              >
-                                                <Plus className="h-3 w-3" />
-                                              </Button>
+                                                  }}
+                                                  className="h-6 px-2"
+                                                >
+                                                  <Plus className="h-3 w-3" />
+                                                </Button>
+                                              </div>
                                             </div>
                                           </div>
-                                        </CommandItem>
-                                      </CommandGroup>
+                                        </CommandGroup>
+                                      </CommandList>
                                     </Command>
                                   </PopoverContent>
                                 </Popover>
