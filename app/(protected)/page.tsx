@@ -130,8 +130,8 @@ export default function HomePage() {
               title="Pipeline"
               description="Data pipeline monitoring and management for seamless data flow"
               icon={<GitBranch className="h-full w-full" />}
-              status="developing"
-              onClick={null}
+              status="active"
+              onClick={() => router.push('/pipelines')}
             />
 
             <ProductCard

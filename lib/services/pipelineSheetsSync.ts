@@ -13,6 +13,7 @@ import {
   SHEET_COLUMN_MAPPING,
   getTargetSheet,
   getSyncableFields,
+  columnIndexToLetter,
 } from '@/lib/config/pipelineSheetMapping'
 import { formatValue } from '@/lib/utils/sheetFormatters'
 import { getSheetsClient } from '@/lib/services/googleSheetsClient'
@@ -182,7 +183,7 @@ async function findExistingRow(
  */
 function mapPipelineToSheetRow(pipeline: Pipeline): any[] {
   const syncableFields = getSyncableFields()
-  const maxColumnIndex = Math.max(...Object.values(SHEET_COLUMN_MAPPING))
+  const maxColumnIndex = Math.max(...Object.values(SHEET_COLUMN_MAPPING) as number[])
 
   // Initialize array with empty strings (Google Sheets prefers empty strings over null)
   const row = new Array(maxColumnIndex + 1).fill('')
@@ -200,6 +201,7 @@ function mapPipelineToSheetRow(pipeline: Pipeline): any[] {
 
 /**
  * Update existing row in Google Sheets
+ * Updates only specific columns to preserve formulas in other columns
  */
 async function updateSheetRow(
   sheets: any,
@@ -207,49 +209,257 @@ async function updateSheetRow(
   rowNumber: number,
   rowData: any[]
 ): Promise<void> {
-  const range = `${sheetName}!A${rowNumber}:AZ${rowNumber}` // A to AZ (52 columns)
+  // Build batch update for each column separately
+  // This prevents overwriting formula columns (B, Q, R, AK)
+  const updates: any[] = []
+  const syncableFields = getSyncableFields()
 
-  await sheets.spreadsheets.values.update({
+  for (const fieldName of syncableFields) {
+    const columnIndex = SHEET_COLUMN_MAPPING[fieldName]
+    const columnLetter = columnIndexToLetter(columnIndex)
+    const value = rowData[columnIndex]
+
+    // Add this cell to batch update
+    updates.push({
+      range: `${sheetName}!${columnLetter}${rowNumber}`,
+      values: [[value]],
+    })
+  }
+
+  // Execute batch update - all in one API call
+  await sheets.spreadsheets.values.batchUpdate({
     spreadsheetId: SPREADSHEET_CONFIG.spreadsheetId,
-    range,
-    valueInputOption: 'USER_ENTERED',
     requestBody: {
-      values: [rowData],
+      valueInputOption: 'USER_ENTERED',
+      data: updates,
     },
   })
 }
 
 /**
  * Create new row in Google Sheets
- * Appends to end of data range
+ * Finds first truly empty row by checking key columns (A, C, D, E)
  */
 async function createSheetRow(
   sheets: any,
   sheetName: string,
   rowData: any[]
 ): Promise<number> {
-  // Find next empty row
+  // Read from data start row (skip headers)
+  const startRow = SPREADSHEET_CONFIG.dataStartRow
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_CONFIG.spreadsheetId,
-    range: `${sheetName}!A:A`, // Read column A to find last row
+    range: `${sheetName}!A${startRow}:AZ`, // Read from row 3 onwards
   })
 
-  const existingRows = response.data.values?.length || SPREADSHEET_CONFIG.dataStartRow - 1
-  const nextRow = existingRows + 1
+  const rows = response.data.values || []
+  let targetRow = 0
 
-  // Append row
-  const range = `${sheetName}!A${nextRow}:AZ${nextRow}`
+  // Find first row where column A (Pipeline ID) is empty
+  // Column A never has formulas - only UUIDs or empty
+  // This is the safest way to find truly empty rows
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i] || []
+    const colA = row[0]?.toString().trim() || '' // Column A (index 0)
 
-  await sheets.spreadsheets.values.update({
+    // If A is empty, this row is available
+    if (!colA) {
+      targetRow = startRow + i
+      console.log(`[Pipeline Sync] Found empty row at ${targetRow} (A empty)`)
+      break
+    }
+  }
+
+  // If no empty row found, append to end
+  if (targetRow === 0) {
+    targetRow = startRow + rows.length
+    console.log(`[Pipeline Sync] No empty row found, appending to: ${targetRow}`)
+  }
+
+  // Insert into target row - update only specific columns to preserve formulas
+  const updates: any[] = []
+  const syncableFields = getSyncableFields()
+
+  for (const fieldName of syncableFields) {
+    const columnIndex = SHEET_COLUMN_MAPPING[fieldName]
+    const columnLetter = columnIndexToLetter(columnIndex)
+    const value = rowData[columnIndex]
+
+    // Add this cell to batch update
+    updates.push({
+      range: `${sheetName}!${columnLetter}${targetRow}`,
+      values: [[value]],
+    })
+  }
+
+  // Execute batch update - preserves formulas in columns B, Q, R, AK
+  await sheets.spreadsheets.values.batchUpdate({
     spreadsheetId: SPREADSHEET_CONFIG.spreadsheetId,
-    range,
-    valueInputOption: 'USER_ENTERED',
     requestBody: {
-      values: [rowData],
+      valueInputOption: 'USER_ENTERED',
+      data: updates,
     },
   })
 
-  return nextRow
+  return targetRow
+}
+
+/**
+ * Delete a row from Google Sheets by Pipeline ID
+ * Called when pipeline status changes to 【S】
+ */
+async function deleteSheetRowByPipelineId(
+  sheets: any,
+  sheetName: string,
+  pipelineId: string
+): Promise<{ deleted: boolean; rowNumber?: number }> {
+  try {
+    // 1. Read Pipeline ID column to find the row
+    const range = `${sheetName}!A${SPREADSHEET_CONFIG.dataStartRow}:A`
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_CONFIG.spreadsheetId,
+      range,
+    })
+
+    const rows = response.data.values || []
+    let rowNumber: number | null = null
+
+    // Find matching row
+    for (let i = 0; i < rows.length; i++) {
+      const rowId = rows[i][0]?.trim() || ''
+      if (rowId === pipelineId) {
+        rowNumber = SPREADSHEET_CONFIG.dataStartRow + i
+        break
+      }
+    }
+
+    if (!rowNumber) {
+      console.log(`[Pipeline Sync] No row found for pipeline ${pipelineId} to delete`)
+      return { deleted: false }
+    }
+
+    // 2. Get sheet ID (gid) for batchUpdate
+    const spreadsheetInfo = await sheets.spreadsheets.get({
+      spreadsheetId: SPREADSHEET_CONFIG.spreadsheetId,
+    })
+
+    const sheet = spreadsheetInfo.data.sheets?.find(
+      (s: any) => s.properties?.title === sheetName
+    )
+
+    if (!sheet) {
+      throw new Error(`Sheet ${sheetName} not found`)
+    }
+
+    const sheetId = sheet.properties?.sheetId
+
+    // 3. Delete row using batchUpdate
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SPREADSHEET_CONFIG.spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: sheetId,
+                dimension: 'ROWS',
+                startIndex: rowNumber - 1, // 0-indexed
+                endIndex: rowNumber, // exclusive
+              },
+            },
+          },
+        ],
+      },
+    })
+
+    console.log(`[Pipeline Sync] Deleted row ${rowNumber} for pipeline ${pipelineId}`)
+    return { deleted: true, rowNumber }
+  } catch (error: any) {
+    console.error('[Pipeline Sync] Error deleting row:', error.message)
+    throw error
+  }
+}
+
+/**
+ * Delete a pipeline row from Google Sheets
+ * Called when pipeline status changes to 【S】 (closed won)
+ *
+ * @param pipelineId - Pipeline UUID to delete
+ * @param group - Pipeline group ('sales' | 'cs') to determine target sheet
+ * @returns SyncResult with success status
+ */
+export async function deleteRowFromSheet(pipelineId: string, group: string | null): Promise<SyncResult> {
+  // Check if sync is enabled
+  const syncEnabled = process.env.PIPELINE_SYNC_ENABLED === 'true'
+  if (!syncEnabled) {
+    console.log('[Pipeline Sync] Sync disabled - skipping row deletion')
+    return { success: true }
+  }
+
+  const startTime = Date.now()
+  const sheetName = getTargetSheet(group)
+  console.log(`[Pipeline Sync] Deleting row for pipeline ${pipelineId} from ${sheetName}`)
+
+  try {
+    // Initialize Google Sheets client
+    const auth = getSheetsClient(['https://www.googleapis.com/auth/spreadsheets'])
+    const sheets = google.sheets({ version: 'v4', auth })
+
+    // Delete the row
+    const result = await deleteSheetRowByPipelineId(sheets, sheetName, pipelineId)
+
+    if (result.deleted) {
+      // Log success
+      await logSyncAttempt(pipelineId, {
+        sync_type: 'delete',
+        target_sheet: sheetName,
+        status: 'success',
+        row_number: result.rowNumber,
+      })
+
+      const duration = Date.now() - startTime
+      console.log(`[Pipeline Sync] ✅ Row deleted in ${duration}ms`)
+
+      return { success: true, rowNumber: result.rowNumber }
+    } else {
+      // Row not found - still success (nothing to delete)
+      console.log('[Pipeline Sync] Row not found - nothing to delete')
+      return { success: true }
+    }
+  } catch (error: any) {
+    console.error('[Pipeline Sync] ❌ Delete error:', error)
+
+    // Classify error
+    let errorType: SyncResult['errorType'] = 'unknown'
+    let errorMessage = error.message || 'Unknown error'
+
+    if (error.code === 403) {
+      errorType = 'permission_denied'
+      errorMessage = 'Sheet not shared with service account'
+    } else if (error.code === 404) {
+      errorType = 'sheet_not_found'
+    } else if (error.code === 429) {
+      errorType = 'rate_limit'
+    }
+
+    // Log failure
+    await logSyncAttempt(pipelineId, {
+      sync_type: 'delete',
+      target_sheet: sheetName,
+      status: 'failed',
+      error_type: errorType,
+      error_message: errorMessage,
+    })
+
+    const duration = Date.now() - startTime
+    console.log(`[Pipeline Sync] ❌ Delete failed in ${duration}ms - ${errorType}: ${errorMessage}`)
+
+    return {
+      success: false,
+      error: errorMessage,
+      errorType,
+    }
+  }
 }
 
 // =====================================================
@@ -257,7 +467,7 @@ async function createSheetRow(
 // =====================================================
 
 interface LogSyncParams {
-  sync_type: 'create' | 'update'
+  sync_type: 'create' | 'update' | 'delete'
   target_sheet: string
   status: 'success' | 'failed'
   error_type?: string
