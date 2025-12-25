@@ -301,3 +301,18 @@ export async function getAllPicAssignments(): Promise<Array<{
 
   return assignments
 }
+
+/**
+ * Get POC to Team mapping for Pipeline filtering
+ * Returns a Map of POC names to their team IDs
+ */
+export async function getPipelinePocToTeamMap(): Promise<Map<string, string>> {
+  const config = await getTeamConfigurations()
+
+  const pocToTeamMap = new Map<string, string>()
+  config.picMappings.forEach(mapping => {
+    pocToTeamMap.set(mapping.pic_name, mapping.team_id)
+  })
+
+  return pocToTeamMap
+}
