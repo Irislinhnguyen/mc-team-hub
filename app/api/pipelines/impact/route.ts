@@ -46,7 +46,7 @@ interface PipelineImpact {
   affected_zones_count: number
   pid: string | null
   mid: string | null
-  granularity: 'pid' | 'pid_mid' | 'pid_mid_zid'
+  granularity: 'pid_mid_zid' | 'pid_mid' | 'pid' | 'mid_zid' | 'mid' | 'zid'
   calculated_days: number
   is_locked: boolean
 }
@@ -143,8 +143,11 @@ export async function POST(request: NextRequest) {
 
     // Show ALL pipelines, but mark which ones can actually be calculated
     // Pipelines need actual_starting_date + 30 days elapsed for actual revenue calculation
+    // EXCLUDE "adjustment" pipelines from impact calculation
     const today = new Date()
-    const validPipelines = filteredPipelines  // Use filtered pipelines
+    const validPipelines = filteredPipelines.filter(p =>
+      p.classification && p.classification.toLowerCase() !== 'adjustment'
+    )
 
     console.log(`[Impact API] Processing ${validPipelines.length} pipelines`)
     const fallbackCount = validPipelines.filter(p => !allPipelines.find(ap => ap.id === p.id)?.actual_starting_date && p.actual_starting_date).length
@@ -189,13 +192,19 @@ export async function POST(request: NextRequest) {
           : actualRevenue > 0 ? 100 : -100
 
         const slotType = pipeline.classification === 'New Unit (New Slot)' ? 'new' : 'existing'
-        let granularity: 'pid' | 'pid_mid' | 'pid_mid_zid'
-        if (pipeline.mid && pipeline.affected_zones && pipeline.affected_zones.length > 0) {
+        let granularity: 'pid_mid_zid' | 'pid_mid' | 'pid' | 'mid_zid' | 'mid' | 'zid'
+        if (pipeline.pid && pipeline.mid && pipeline.affected_zones && pipeline.affected_zones.length > 0) {
           granularity = 'pid_mid_zid'
-        } else if (pipeline.mid) {
+        } else if (pipeline.pid && pipeline.mid) {
           granularity = 'pid_mid'
-        } else {
+        } else if (pipeline.pid) {
           granularity = 'pid'
+        } else if (pipeline.mid && pipeline.affected_zones && pipeline.affected_zones.length > 0) {
+          granularity = 'mid_zid'
+        } else if (pipeline.mid) {
+          granularity = 'mid'
+        } else {
+          granularity = 'zid'
         }
 
         let calculatedDays = 0
@@ -235,48 +244,111 @@ export async function POST(request: NextRequest) {
     // Cache is stale - need to query BigQuery for ALL pipelines
     console.log('[Impact API] Cache stale, querying BigQuery...')
 
+    // Helper function to check if pipeline has enough data (minimum 7 days)
+    const hasMinimumData = (p: any) => {
+      if (!p.actual_starting_date) return false
+      const sDate = new Date(p.actual_starting_date)
+      const sDatePlus6 = new Date(sDate)
+      sDatePlus6.setDate(sDate.getDate() + 6) // Minimum 7 days
+      return sDatePlus6 <= now
+    }
+
     // Classify pipelines by granularity level (only those that CAN be calculated)
-    // Require: PID + actual_starting_date + complete 30-day window
+    // Minimum 7-day window required for meaningful revenue calculation
     const pipelinesByGranularity = {
-      // Level 3: PID + MID + ZID (most granular)
+      // Level 6: PID + MID + ZID (most granular)
       pid_mid_zid: validPipelines.filter(p => {
         if (!p.pid || !p.mid || !p.affected_zones || p.affected_zones.length === 0) return false
-        if (!p.actual_starting_date) return false
-        const sDate = new Date(p.actual_starting_date)
-        const sDatePlus29 = new Date(sDate)
-        sDatePlus29.setDate(sDate.getDate() + 29)
-        return sDatePlus29 <= now
+        return hasMinimumData(p)
       }),
-      // Level 2: PID + MID (missing or empty zones)
+      // Level 5: PID + MID (no zones)
       pid_mid: validPipelines.filter(p => {
         if (!p.pid || !p.mid || (p.affected_zones && p.affected_zones.length > 0)) return false
-        if (!p.actual_starting_date) return false
-        const sDate = new Date(p.actual_starting_date)
-        const sDatePlus29 = new Date(sDate)
-        sDatePlus29.setDate(sDate.getDate() + 29)
-        return sDatePlus29 <= now
+        return hasMinimumData(p)
       }),
-      // Level 1: PID only (missing MID)
+      // Level 4: PID only
       pid: validPipelines.filter(p => {
         if (!p.pid || p.mid) return false
-        if (!p.actual_starting_date) return false
-        const sDate = new Date(p.actual_starting_date)
-        const sDatePlus29 = new Date(sDate)
-        sDatePlus29.setDate(sDate.getDate() + 29)
-        return sDatePlus29 <= now
+        return hasMinimumData(p)
+      }),
+      // Level 3: MID + ZID (no PID)
+      mid_zid: validPipelines.filter(p => {
+        if (p.pid || !p.mid || !p.affected_zones || p.affected_zones.length === 0) return false
+        return hasMinimumData(p)
+      }),
+      // Level 2: MID only (no PID, no zones)
+      mid: validPipelines.filter(p => {
+        if (p.pid || !p.mid || (p.affected_zones && p.affected_zones.length > 0)) return false
+        return hasMinimumData(p)
+      }),
+      // Level 1: ZID only (no PID, no MID)
+      zid: validPipelines.filter(p => {
+        if (p.pid || p.mid || !p.affected_zones || p.affected_zones.length === 0) return false
+        return hasMinimumData(p)
       })
     }
 
     console.log('[Impact API] Granularity breakdown:', {
-      level3_zones: pipelinesByGranularity.pid_mid_zid.length,
-      level2_media: pipelinesByGranularity.pid_mid.length,
-      level1_publisher: pipelinesByGranularity.pid.length,
+      level6_pid_mid_zid: pipelinesByGranularity.pid_mid_zid.length,
+      level5_pid_mid: pipelinesByGranularity.pid_mid.length,
+      level4_pid: pipelinesByGranularity.pid.length,
+      level3_mid_zid: pipelinesByGranularity.mid_zid.length,
+      level2_mid: pipelinesByGranularity.mid.length,
+      level1_zid: pipelinesByGranularity.zid.length,
       total: validPipelines.length
     })
+
+    // Debug: Show sample pipelines for MID-only levels
+    if (pipelinesByGranularity.mid.length > 0) {
+      console.log('[Impact API] Sample MID-only pipeline:', {
+        id: pipelinesByGranularity.mid[0].id,
+        publisher: pipelinesByGranularity.mid[0].publisher,
+        pid: pipelinesByGranularity.mid[0].pid,
+        mid: pipelinesByGranularity.mid[0].mid,
+        mid_type: typeof pipelinesByGranularity.mid[0].mid
+      })
+    }
+    if (pipelinesByGranularity.mid_zid.length > 0) {
+      console.log('[Impact API] Sample MID+ZID pipeline:', {
+        id: pipelinesByGranularity.mid_zid[0].id,
+        publisher: pipelinesByGranularity.mid_zid[0].publisher,
+        pid: pipelinesByGranularity.mid_zid[0].pid,
+        mid: pipelinesByGranularity.mid_zid[0].mid,
+        zones: pipelinesByGranularity.mid_zid[0].affected_zones
+      })
+    }
 
     // Helper function to format dates for BigQuery
     function formatDateForBQ(date: Date): string {
       return date.toISOString().split('T')[0]
+    }
+
+    // Helper function to validate PID/MID are valid numbers
+    function validatePipelineIds(
+      pipelines: any[],
+      options: { requirePid?: boolean; requireMid?: boolean } = { requirePid: true, requireMid: false }
+    ): any[] {
+      return pipelines.filter(p => {
+        // Validate PID if required
+        if (options.requirePid !== false) {
+          const pidNum = Number(p.pid)
+          if (isNaN(pidNum)) {
+            console.warn(`[Impact API] Skipping pipeline ${p.id} (${p.publisher}): invalid PID (${p.pid})`)
+            return false
+          }
+        }
+
+        // Validate MID if required
+        if (options.requireMid) {
+          const midNum = Number(p.mid)
+          if (isNaN(midNum)) {
+            console.warn(`[Impact API] Skipping pipeline ${p.id} (${p.publisher}): invalid MID (${p.mid})`)
+            return false
+          }
+        }
+
+        return true
+      })
     }
 
     // Build dynamic 30-day BigQuery query
@@ -284,19 +356,38 @@ export async function POST(request: NextRequest) {
     const resultSelects: string[] = []
     const unionParts: string[] = []
 
-    // ========== NEW SLOT QUERIES ==========
+    // Helper functions to determine slot type
+    const isNewSlotType = (classification: string | null) => {
+      if (!classification) return false
+      return classification === 'New Unit (New Slot)' ||
+             classification === 'New Unit (Slot exists)' ||
+             classification === 'New Acquisition'
+    }
 
-    // NEW SLOT - Level 3: PID + MID + ZID
-    const newSlotLevel3 = pipelinesByGranularity.pid_mid_zid.filter(p => p.classification === 'New Unit (New Slot)')
+    const isExistingSlotType = (classification: string | null) => {
+      if (!classification) return false
+      return classification === 'Existing Unit (Slot exists)'
+    }
+
+    // ========== NEW SLOT QUERIES ==========
+    // Includes: "New Unit (New Slot)", "New Unit (Slot exists)", "New Acquisition"
+    // Only "Existing Unit (Slot exists)" uses baseline calculation
+
+    // NEW SLOT - Level 6: PID + MID + ZID
+    const newSlotLevel3Raw = pipelinesByGranularity.pid_mid_zid.filter(p =>
+      isNewSlotType(p.classification)
+    )
+    const newSlotLevel3 = validatePipelineIds(newSlotLevel3Raw, { requirePid: true, requireMid: true })
     if (newSlotLevel3.length > 0) {
       const rows = newSlotLevel3.map(p => {
-        const zones = p.affected_zones!.map(z => `'${z}'`).join(', ')
-        const sDate = new Date(p.actual_starting_date)
-        const sDatePlus29 = new Date(sDate)
-        sDatePlus29.setDate(sDate.getDate() + 29)
+          const zones = p.affected_zones!.map(z => `'${z}'`).join(', ')
+          const sDate = new Date(p.actual_starting_date)
+          const maxEndDate = new Date(sDate)
+          maxEndDate.setDate(sDate.getDate() + 29) // 30 days total
+          const actualEndDate = maxEndDate <= now ? maxEndDate : now // Use available data
 
-        return `SELECT ${p.pid} as pid, ${p.mid} as mid, [${zones}] as zones, '${p.id}' as pipeline_id, '${formatDateForBQ(sDate)}' as start_date, '${formatDateForBQ(sDatePlus29)}' as end_date`
-      }).join(' UNION ALL\n      ')
+          return `SELECT ${p.pid} as pid, ${p.mid} as mid, [${zones}] as zones, '${p.id}' as pipeline_id, '${formatDateForBQ(sDate)}' as start_date, '${formatDateForBQ(actualEndDate)}' as end_date`
+        }).join(' UNION ALL\n      ')
 
       cteSections.push(`new_slot_level3_pipelines AS (\n      ${rows}\n    )`)
       resultSelects.push(`new_slot_level3_results AS (
@@ -311,15 +402,19 @@ export async function POST(request: NextRequest) {
       unionParts.push('SELECT * FROM new_slot_level3_results')
     }
 
-    // NEW SLOT - Level 2: PID + MID
-    const newSlotLevel2 = pipelinesByGranularity.pid_mid.filter(p => p.classification === 'New Unit (New Slot)')
+    // NEW SLOT - Level 5: PID + MID
+    const newSlotLevel2Raw = pipelinesByGranularity.pid_mid.filter(p =>
+      isNewSlotType(p.classification)
+    )
+    const newSlotLevel2 = validatePipelineIds(newSlotLevel2Raw, { requirePid: true, requireMid: true })
     if (newSlotLevel2.length > 0) {
       const rows = newSlotLevel2.map(p => {
         const sDate = new Date(p.actual_starting_date)
-        const sDatePlus29 = new Date(sDate)
-        sDatePlus29.setDate(sDate.getDate() + 29)
+        const maxEndDate = new Date(sDate)
+        maxEndDate.setDate(sDate.getDate() + 29) // 30 days total
+        const actualEndDate = maxEndDate <= now ? maxEndDate : now // Use available data
 
-        return `SELECT ${p.pid} as pid, ${p.mid} as mid, '${p.id}' as pipeline_id, '${formatDateForBQ(sDate)}' as start_date, '${formatDateForBQ(sDatePlus29)}' as end_date`
+        return `SELECT ${p.pid} as pid, ${p.mid} as mid, '${p.id}' as pipeline_id, '${formatDateForBQ(sDate)}' as start_date, '${formatDateForBQ(actualEndDate)}' as end_date`
       }).join(' UNION ALL\n      ')
 
       cteSections.push(`new_slot_level2_pipelines AS (\n      ${rows}\n    )`)
@@ -334,15 +429,19 @@ export async function POST(request: NextRequest) {
       unionParts.push('SELECT * FROM new_slot_level2_results')
     }
 
-    // NEW SLOT - Level 1: PID only
-    const newSlotLevel1 = pipelinesByGranularity.pid.filter(p => p.classification === 'New Unit (New Slot)')
+    // NEW SLOT - Level 4: PID only
+    const newSlotLevel1Raw = pipelinesByGranularity.pid.filter(p =>
+      isNewSlotType(p.classification)
+    )
+    const newSlotLevel1 = validatePipelineIds(newSlotLevel1Raw, { requirePid: true, requireMid: false })
     if (newSlotLevel1.length > 0) {
       const rows = newSlotLevel1.map(p => {
         const sDate = new Date(p.actual_starting_date)
-        const sDatePlus29 = new Date(sDate)
-        sDatePlus29.setDate(sDate.getDate() + 29)
+        const maxEndDate = new Date(sDate)
+        maxEndDate.setDate(sDate.getDate() + 29) // 30 days total
+        const actualEndDate = maxEndDate <= now ? maxEndDate : now // Use available data
 
-        return `SELECT ${p.pid} as pid, '${p.id}' as pipeline_id, '${formatDateForBQ(sDate)}' as start_date, '${formatDateForBQ(sDatePlus29)}' as end_date`
+        return `SELECT ${p.pid} as pid, '${p.id}' as pipeline_id, '${formatDateForBQ(sDate)}' as start_date, '${formatDateForBQ(actualEndDate)}' as end_date`
       }).join(' UNION ALL\n      ')
 
       cteSections.push(`new_slot_level1_pipelines AS (\n      ${rows}\n    )`)
@@ -359,8 +458,12 @@ export async function POST(request: NextRequest) {
 
     // ========== EXISTING SLOT QUERIES (with baseline + after) ==========
 
-    // EXISTING SLOT - Level 3: PID + MID + ZID
-    const existingSlotLevel3 = pipelinesByGranularity.pid_mid_zid.filter(p => p.classification === 'New Unit (Slot exists)')
+    // EXISTING SLOT - Level 6: PID + MID + ZID
+    // Accept both "New Unit (Slot exists)" and "Existing Unit (Slot exists)"
+    const existingSlotLevel3Raw = pipelinesByGranularity.pid_mid_zid.filter(p =>
+      p.classification && p.classification.includes('Slot exists')
+    )
+    const existingSlotLevel3 = validatePipelineIds(existingSlotLevel3Raw, { requirePid: true, requireMid: true })
     if (existingSlotLevel3.length > 0) {
       const rows = existingSlotLevel3.map(p => {
         const zones = p.affected_zones!.map(z => `'${z}'`).join(', ')
@@ -394,8 +497,12 @@ export async function POST(request: NextRequest) {
       unionParts.push('SELECT pid, mid, pipeline_id, actual_revenue, granularity, slot_type FROM existing_slot_level3_results')
     }
 
-    // EXISTING SLOT - Level 2: PID + MID
-    const existingSlotLevel2 = pipelinesByGranularity.pid_mid.filter(p => p.classification === 'New Unit (Slot exists)')
+    // EXISTING SLOT - Level 5: PID + MID
+    // ONLY "Existing Unit (Slot exists)" uses baseline calculation
+    const existingSlotLevel2Raw = pipelinesByGranularity.pid_mid.filter(p =>
+      isExistingSlotType(p.classification)
+    )
+    const existingSlotLevel2 = validatePipelineIds(existingSlotLevel2Raw, { requirePid: true, requireMid: true })
     if (existingSlotLevel2.length > 0) {
       const rows = existingSlotLevel2.map(p => {
         const sDate = new Date(p.actual_starting_date)
@@ -427,8 +534,12 @@ export async function POST(request: NextRequest) {
       unionParts.push('SELECT pid, mid, pipeline_id, actual_revenue, granularity, slot_type FROM existing_slot_level2_results')
     }
 
-    // EXISTING SLOT - Level 1: PID only
-    const existingSlotLevel1 = pipelinesByGranularity.pid.filter(p => p.classification === 'New Unit (Slot exists)')
+    // EXISTING SLOT - Level 4: PID only
+    // ONLY "Existing Unit (Slot exists)" uses baseline calculation
+    const existingSlotLevel1Raw = pipelinesByGranularity.pid.filter(p =>
+      isExistingSlotType(p.classification)
+    )
+    const existingSlotLevel1 = validatePipelineIds(existingSlotLevel1Raw, { requirePid: true, requireMid: false })
     if (existingSlotLevel1.length > 0) {
       const rows = existingSlotLevel1.map(p => {
         const sDate = new Date(p.actual_starting_date)
@@ -460,21 +571,297 @@ export async function POST(request: NextRequest) {
       unionParts.push('SELECT pid, mid, pipeline_id, actual_revenue, granularity, slot_type FROM existing_slot_level1_results')
     }
 
-    // Execute BigQuery only if we have pipelines with PID
+    // ========== MID-ONLY QUERIES (no PID) ==========
+
+    // NEW SLOT - Level 3: MID + ZID (no PID)
+    const newSlotMidZidRaw = pipelinesByGranularity.mid_zid.filter(p =>
+      isNewSlotType(p.classification)
+    )
+    const newSlotMidZid = validatePipelineIds(newSlotMidZidRaw, { requirePid: false, requireMid: true })
+    if (newSlotMidZid.length > 0) {
+      const rows = newSlotMidZid.map(p => {
+        const zones = p.affected_zones!.map(z => `'${z}'`).join(', ')
+        const sDate = new Date(p.actual_starting_date)
+        const maxEndDate = new Date(sDate)
+        maxEndDate.setDate(sDate.getDate() + 29) // 30 days total
+        const actualEndDate = maxEndDate <= now ? maxEndDate : now // Use available data
+
+        return `SELECT ${p.mid} as mid, [${zones}] as zones, '${p.id}' as pipeline_id, '${formatDateForBQ(sDate)}' as start_date, '${formatDateForBQ(actualEndDate)}' as end_date`
+      }).join(' UNION ALL\n      ')
+
+      cteSections.push(`new_slot_mid_zid_pipelines AS (\n      ${rows}\n    )`)
+      resultSelects.push(`new_slot_mid_zid_results AS (
+      SELECT NULL as pid, p.mid, p.pipeline_id, SUM(agg.rev) as actual_revenue, 'mid_zid' as granularity, 'new_slot' as slot_type
+      FROM new_slot_mid_zid_pipelines p
+      CROSS JOIN UNNEST(p.zones) as zone_id
+      INNER JOIN \`gcpp-check.GI_publisher.agg_monthly_with_pic_table_6_month\` agg
+        ON agg.mid = p.mid AND agg.zid = zone_id
+        AND agg.DATE >= DATE(p.start_date) AND agg.DATE <= DATE(p.end_date)
+      GROUP BY p.mid, p.pipeline_id
+    )`)
+      unionParts.push('SELECT pid, mid, pipeline_id, actual_revenue, granularity, slot_type FROM new_slot_mid_zid_results')
+    }
+
+    // NEW SLOT - Level 2: MID only (no PID, no zones)
+    const newSlotMidRaw = pipelinesByGranularity.mid.filter(p =>
+      isNewSlotType(p.classification)
+    )
+    const newSlotMid = validatePipelineIds(newSlotMidRaw, { requirePid: false, requireMid: true })
+    if (newSlotMidRaw.length > newSlotMid.length) {
+      console.log(`[Impact API] Validation skipped ${newSlotMidRaw.length - newSlotMid.length} MID-only new slot pipelines`)
+    }
+    if (newSlotMid.length > 0) {
+      const rows = newSlotMid.map(p => {
+        const sDate = new Date(p.actual_starting_date)
+        const maxEndDate = new Date(sDate)
+        maxEndDate.setDate(sDate.getDate() + 29) // 30 days total
+        const actualEndDate = maxEndDate <= now ? maxEndDate : now // Use available data
+
+        return `SELECT ${p.mid} as mid, '${p.id}' as pipeline_id, '${formatDateForBQ(sDate)}' as start_date, '${formatDateForBQ(actualEndDate)}' as end_date`
+      }).join(' UNION ALL\n      ')
+
+      cteSections.push(`new_slot_mid_pipelines AS (\n      ${rows}\n    )`)
+      resultSelects.push(`new_slot_mid_results AS (
+      SELECT NULL as pid, p.mid, p.pipeline_id, SUM(agg.rev) as actual_revenue, 'mid' as granularity, 'new_slot' as slot_type
+      FROM new_slot_mid_pipelines p
+      INNER JOIN \`gcpp-check.GI_publisher.agg_monthly_with_pic_table_6_month\` agg
+        ON agg.mid = p.mid
+        AND agg.DATE >= DATE(p.start_date) AND agg.DATE <= DATE(p.end_date)
+      GROUP BY p.mid, p.pipeline_id
+    )`)
+      unionParts.push('SELECT pid, mid, pipeline_id, actual_revenue, granularity, slot_type FROM new_slot_mid_results')
+    }
+
+    // EXISTING SLOT - Level 3: MID + ZID (no PID)
+    // ONLY "Existing Unit (Slot exists)" uses baseline calculation
+    const existingSlotMidZidRaw = pipelinesByGranularity.mid_zid.filter(p =>
+      isExistingSlotType(p.classification)
+    )
+    const existingSlotMidZid = validatePipelineIds(existingSlotMidZidRaw, { requirePid: false, requireMid: true })
+    if (existingSlotMidZid.length > 0) {
+      const rows = existingSlotMidZid.map(p => {
+        const zones = p.affected_zones!.map(z => `'${z}'`).join(', ')
+        const sDate = new Date(p.actual_starting_date)
+
+        const baselineStart = new Date(sDate)
+        baselineStart.setDate(sDate.getDate() - 30)
+        const baselineEnd = new Date(sDate)
+        baselineEnd.setDate(sDate.getDate() - 1)
+
+        const afterStart = sDate
+        const afterEnd = new Date(sDate)
+        afterEnd.setDate(sDate.getDate() + 29)
+
+        return `SELECT ${p.mid} as mid, [${zones}] as zones, '${p.id}' as pipeline_id, '${formatDateForBQ(baselineStart)}' as baseline_start, '${formatDateForBQ(baselineEnd)}' as baseline_end, '${formatDateForBQ(afterStart)}' as after_start, '${formatDateForBQ(afterEnd)}' as after_end`
+      }).join(' UNION ALL\n      ')
+
+      cteSections.push(`existing_slot_mid_zid_pipelines AS (\n      ${rows}\n    )`)
+      resultSelects.push(`existing_slot_mid_zid_results AS (
+      SELECT NULL as pid, p.mid, p.pipeline_id,
+        SUM(CASE WHEN agg.DATE >= DATE(p.after_start) AND agg.DATE <= DATE(p.after_end) THEN agg.rev ELSE 0 END) -
+        SUM(CASE WHEN agg.DATE >= DATE(p.baseline_start) AND agg.DATE <= DATE(p.baseline_end) THEN agg.rev ELSE 0 END) as actual_revenue,
+        'mid_zid' as granularity, 'existing_slot' as slot_type
+      FROM existing_slot_mid_zid_pipelines p
+      CROSS JOIN UNNEST(p.zones) as zone_id
+      INNER JOIN \`gcpp-check.GI_publisher.agg_monthly_with_pic_table_6_month\` agg
+        ON agg.mid = p.mid AND agg.zid = zone_id
+        AND ((agg.DATE >= DATE(p.baseline_start) AND agg.DATE <= DATE(p.baseline_end)) OR (agg.DATE >= DATE(p.after_start) AND agg.DATE <= DATE(p.after_end)))
+      GROUP BY p.mid, p.pipeline_id
+    )`)
+      unionParts.push('SELECT pid, mid, pipeline_id, actual_revenue, granularity, slot_type FROM existing_slot_mid_zid_results')
+    }
+
+    // EXISTING SLOT - Level 2: MID only (no PID, no zones)
+    // ONLY "Existing Unit (Slot exists)" uses baseline calculation
+    const existingSlotMidRaw = pipelinesByGranularity.mid.filter(p =>
+      isExistingSlotType(p.classification)
+    )
+    const existingSlotMid = validatePipelineIds(existingSlotMidRaw, { requirePid: false, requireMid: true })
+    if (existingSlotMidRaw.length > existingSlotMid.length) {
+      console.log(`[Impact API] Validation skipped ${existingSlotMidRaw.length - existingSlotMid.length} MID-only existing slot pipelines`)
+    }
+    if (existingSlotMid.length > 0) {
+      const rows = existingSlotMid.map(p => {
+        const sDate = new Date(p.actual_starting_date)
+
+        const baselineStart = new Date(sDate)
+        baselineStart.setDate(sDate.getDate() - 30)
+        const baselineEnd = new Date(sDate)
+        baselineEnd.setDate(sDate.getDate() - 1)
+
+        const afterStart = sDate
+        const afterEnd = new Date(sDate)
+        afterEnd.setDate(sDate.getDate() + 29)
+
+        return `SELECT ${p.mid} as mid, '${p.id}' as pipeline_id, '${formatDateForBQ(baselineStart)}' as baseline_start, '${formatDateForBQ(baselineEnd)}' as baseline_end, '${formatDateForBQ(afterStart)}' as after_start, '${formatDateForBQ(afterEnd)}' as after_end`
+      }).join(' UNION ALL\n      ')
+
+      cteSections.push(`existing_slot_mid_pipelines AS (\n      ${rows}\n    )`)
+      resultSelects.push(`existing_slot_mid_results AS (
+      SELECT NULL as pid, p.mid, p.pipeline_id,
+        SUM(CASE WHEN agg.DATE >= DATE(p.after_start) AND agg.DATE <= DATE(p.after_end) THEN agg.rev ELSE 0 END) -
+        SUM(CASE WHEN agg.DATE >= DATE(p.baseline_start) AND agg.DATE <= DATE(p.baseline_end) THEN agg.rev ELSE 0 END) as actual_revenue,
+        'mid' as granularity, 'existing_slot' as slot_type
+      FROM existing_slot_mid_pipelines p
+      INNER JOIN \`gcpp-check.GI_publisher.agg_monthly_with_pic_table_6_month\` agg
+        ON agg.mid = p.mid
+        AND ((agg.DATE >= DATE(p.baseline_start) AND agg.DATE <= DATE(p.baseline_end)) OR (agg.DATE >= DATE(p.after_start) AND agg.DATE <= DATE(p.after_end)))
+      GROUP BY p.mid, p.pipeline_id
+    )`)
+      unionParts.push('SELECT pid, mid, pipeline_id, actual_revenue, granularity, slot_type FROM existing_slot_mid_results')
+    }
+
+    // ========== ZID-ONLY QUERIES (no PID, no MID) ==========
+
+    // NEW SLOT - Level 1: ZID only (no PID, no MID)
+    // Each zone becomes a separate row in the query
+    const newSlotZidRaw = pipelinesByGranularity.zid.filter(p =>
+      isNewSlotType(p.classification)
+    )
+    if (newSlotZidRaw.length > 0) {
+      // Expand each pipeline into multiple rows (one per zone)
+      const rows = newSlotZidRaw.flatMap(p => {
+        const sDate = new Date(p.actual_starting_date)
+        const maxEndDate = new Date(sDate)
+        maxEndDate.setDate(sDate.getDate() + 29) // 30 days total
+        const actualEndDate = maxEndDate <= now ? maxEndDate : now // Use available data
+
+        // Create one row per zone
+        return p.affected_zones!.map(zone =>
+          `SELECT '${zone}' as zid, '${p.id}' as pipeline_id, '${formatDateForBQ(sDate)}' as start_date, '${formatDateForBQ(actualEndDate)}' as end_date`
+        )
+      }).join(' UNION ALL\n      ')
+
+      cteSections.push(`new_slot_zid_pipelines AS (\n      ${rows}\n    )`)
+      resultSelects.push(`new_slot_zid_results AS (
+      SELECT NULL as pid, NULL as mid, p.pipeline_id, SUM(agg.rev) as actual_revenue, 'zid' as granularity, 'new_slot' as slot_type
+      FROM new_slot_zid_pipelines p
+      INNER JOIN \`gcpp-check.GI_publisher.agg_monthly_with_pic_table_6_month\` agg
+        ON agg.zid = p.zid
+        AND agg.DATE >= DATE(p.start_date) AND agg.DATE <= DATE(p.end_date)
+      GROUP BY p.pipeline_id
+    )`)
+      unionParts.push('SELECT pid, mid, pipeline_id, actual_revenue, granularity, slot_type FROM new_slot_zid_results')
+    }
+
+    // EXISTING SLOT - Level 1: ZID only (no PID, no MID)
+    // ONLY "Existing Unit (Slot exists)" uses baseline calculation
+    const existingSlotZidRaw = pipelinesByGranularity.zid.filter(p =>
+      isExistingSlotType(p.classification)
+    )
+    if (existingSlotZidRaw.length > 0) {
+      // Expand each pipeline into multiple rows (one per zone)
+      const rows = existingSlotZidRaw.flatMap(p => {
+        const sDate = new Date(p.actual_starting_date)
+
+        const baselineStart = new Date(sDate)
+        baselineStart.setDate(sDate.getDate() - 30)
+        const baselineEnd = new Date(sDate)
+        baselineEnd.setDate(sDate.getDate() - 1)
+
+        const afterStart = sDate
+        const afterEnd = new Date(sDate)
+        afterEnd.setDate(sDate.getDate() + 29)
+
+        // Create one row per zone
+        return p.affected_zones!.map(zone =>
+          `SELECT '${zone}' as zid, '${p.id}' as pipeline_id, '${formatDateForBQ(baselineStart)}' as baseline_start, '${formatDateForBQ(baselineEnd)}' as baseline_end, '${formatDateForBQ(afterStart)}' as after_start, '${formatDateForBQ(afterEnd)}' as after_end`
+        )
+      }).join(' UNION ALL\n      ')
+
+      cteSections.push(`existing_slot_zid_pipelines AS (\n      ${rows}\n    )`)
+      resultSelects.push(`existing_slot_zid_results AS (
+      SELECT NULL as pid, NULL as mid, p.pipeline_id,
+        SUM(CASE WHEN agg.DATE >= DATE(p.after_start) AND agg.DATE <= DATE(p.after_end) THEN agg.rev ELSE 0 END) -
+        SUM(CASE WHEN agg.DATE >= DATE(p.baseline_start) AND agg.DATE <= DATE(p.baseline_end) THEN agg.rev ELSE 0 END) as actual_revenue,
+        'zid' as granularity, 'existing_slot' as slot_type
+      FROM existing_slot_zid_pipelines p
+      INNER JOIN \`gcpp-check.GI_publisher.agg_monthly_with_pic_table_6_month\` agg
+        ON agg.zid = p.zid
+        AND ((agg.DATE >= DATE(p.baseline_start) AND agg.DATE <= DATE(p.baseline_end)) OR (agg.DATE >= DATE(p.after_start) AND agg.DATE <= DATE(p.after_end)))
+      GROUP BY p.pipeline_id
+    )`)
+      unionParts.push('SELECT pid, mid, pipeline_id, actual_revenue, granularity, slot_type FROM existing_slot_zid_results')
+    }
+
+    // Execute BigQuery only if we have valid pipelines
     let bigqueryResults: any[] = []
     if (unionParts.length > 0) {
       const bigqueryQuery = `WITH\n    ${cteSections.join(',\n    ')},\n    ${resultSelects.join(',\n    ')}\n${unionParts.join('\nUNION ALL\n')}`
 
-      console.log('[Impact API] Executing BigQuery for', validPipelines.length, 'pipelines across', unionParts.length, 'query sections')
+      console.log('========== GENERATED BIGQUERY QUERY ==========')
+      console.log(bigqueryQuery)
+      console.log('========== PIPELINE DATA BEING QUERIED ==========')
+      console.log({
+        totalPipelines: validPipelines.length,
+        newSlotLevel3: newSlotLevel3.length,
+        newSlotLevel2: newSlotLevel2.length,
+        newSlotLevel1: newSlotLevel1.length,
+        existingSlotLevel3: existingSlotLevel3.length,
+        existingSlotLevel2: existingSlotLevel2.length,
+        existingSlotLevel1: existingSlotLevel1.length,
+        unionPartsCount: unionParts.length
+      })
+      console.log('=============================================')
 
       try {
         bigqueryResults = await BigQueryService.executeQuery(bigqueryQuery)
       } catch (error) {
-        console.error('[Impact API] BigQuery execution failed:', error)
-        return NextResponse.json(
-          { error: 'Failed to fetch actual revenue from BigQuery' },
-          { status: 500 }
-        )
+        console.error('[Impact API] ========== BIGQUERY ERROR DETAILS ==========')
+        console.error('Error type:', error?.constructor?.name)
+        console.error('Error message:', error instanceof Error ? error.message : String(error))
+        console.error('Error stack:', error instanceof Error ? error.stack : 'N/A')
+        if (error && typeof error === 'object') {
+          console.error('Full error object:', JSON.stringify(error, null, 2))
+        }
+        console.error('Query that failed (first 500 chars):', bigqueryQuery.substring(0, 500) + '...')
+        console.error('========================================')
+
+        const errorMsg = error instanceof Error ? error.message : String(error)
+
+        // Pattern 1: Table not found
+        if (errorMsg.includes('Not found: Table') || errorMsg.includes('404')) {
+          return NextResponse.json({
+            error: 'BigQuery table not found',
+            details: 'Table agg_monthly_with_pic_table_6_month does not exist',
+            suggestion: 'Contact data team to restore the table'
+          }, { status: 500 })
+        }
+
+        // Pattern 2: Permission denied
+        if (errorMsg.includes('permission') || errorMsg.includes('403')) {
+          return NextResponse.json({
+            error: 'BigQuery permission denied',
+            details: 'Service account lacks read access',
+            suggestion: 'Grant BigQuery Data Viewer role to service account'
+          }, { status: 500 })
+        }
+
+        // Pattern 3: Query timeout
+        if (errorMsg.includes('timeout') || errorMsg.includes('deadline')) {
+          return NextResponse.json({
+            error: 'BigQuery query timeout',
+            details: 'Query took too long to execute',
+            suggestion: 'Reduce number of pipelines or optimize query'
+          }, { status: 500 })
+        }
+
+        // Pattern 4: Invalid query syntax
+        if (errorMsg.includes('syntax') || errorMsg.includes('Unexpected')) {
+          return NextResponse.json({
+            error: 'Invalid BigQuery SQL',
+            details: errorMsg,
+            suggestion: 'Check generated query for syntax errors'
+          }, { status: 500 })
+        }
+
+        // Generic error
+        return NextResponse.json({
+          error: 'BigQuery execution failed',
+          details: errorMsg,
+          query_preview: bigqueryQuery.substring(0, 200),
+          hint: 'Check server logs for full query and error details'
+        }, { status: 500 })
       }
     } else {
       console.log('[Impact API] No pipelines with PID found, skipping BigQuery')
@@ -523,14 +910,20 @@ export async function POST(request: NextRequest) {
         // Determine slot type from classification
         const slotType = pipeline.classification === 'New Unit (New Slot)' ? 'new' : 'existing'
 
-        // Determine granularity based on available fields
-        let granularity: 'pid' | 'pid_mid' | 'pid_mid_zid'
-        if (pipeline.mid && pipeline.affected_zones && pipeline.affected_zones.length > 0) {
+        // Determine granularity based on available fields (all 6 levels)
+        let granularity: 'pid_mid_zid' | 'pid_mid' | 'pid' | 'mid_zid' | 'mid' | 'zid'
+        if (pipeline.pid && pipeline.mid && pipeline.affected_zones && pipeline.affected_zones.length > 0) {
           granularity = 'pid_mid_zid'
-        } else if (pipeline.mid) {
+        } else if (pipeline.pid && pipeline.mid) {
           granularity = 'pid_mid'
-        } else {
+        } else if (pipeline.pid) {
           granularity = 'pid'
+        } else if (pipeline.mid && pipeline.affected_zones && pipeline.affected_zones.length > 0) {
+          granularity = 'mid_zid'
+        } else if (pipeline.mid) {
+          granularity = 'mid'
+        } else {
+          granularity = 'zid'
         }
 
         // Calculate how many days of data we have (0-30)
