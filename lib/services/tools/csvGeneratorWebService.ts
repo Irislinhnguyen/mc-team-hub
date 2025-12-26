@@ -91,7 +91,7 @@ function generateZonesWithFormula(input: WebZoneInput, payoutRate: number): WebZ
             'Name of zone': zoneName,
             'Zone URL': input.mediaName,
             'Allowed domain list': '',
-            'Inventory Type': 'Desktop',
+            'Inventory Type': 'Mobile optimized web',
             'Type of zone': 'スタンダードバナー',
             width: width || 300,
             height: height || 250,
@@ -139,7 +139,7 @@ function generateZonesWithFormula(input: WebZoneInput, payoutRate: number): WebZ
             'Name of zone': zoneName,
             'Zone URL': input.mediaName,
             'Allowed domain list': '',
-            'Inventory Type': 'Desktop',
+            'Inventory Type': 'Mobile optimized web',
             'Type of zone': 'スタンダードバナー',
             width: 300,
             height: 250,
@@ -184,7 +184,7 @@ function generateZonesWithFormula(input: WebZoneInput, payoutRate: number): WebZ
           'Name of zone': zoneName,
           'Zone URL': input.mediaName,
           'Allowed domain list': '',
-          'Inventory Type': 'Desktop',
+          'Inventory Type': 'Mobile optimized web',
           'Type of zone': product.toLowerCase().includes('interstitial') ? 'インタースティシャル' : 'スタンダードバナー',
           width: 300,
           height: 250,
@@ -231,7 +231,7 @@ function createWebZoneTemplate(mediaName: string, payoutRate: number): WebZoneOu
     'Name of zone': '', // AI fills this
     'Zone URL': mediaName,
     'Allowed domain list': '',
-    'Inventory Type': 'Desktop',
+    'Inventory Type': 'Mobile optimized web',
     'Type of zone': 'スタンダードバナー',
     width: 300, // AI can override
     height: 250, // AI can override
