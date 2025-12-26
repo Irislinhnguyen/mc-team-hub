@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
 
     // Build query with monthly_forecasts join (limit to 3 months per quarter)
     // Use count: 'exact' to get total count for pagination
+    // NOTE: Removed .eq('user_id', auth.userId) - all authenticated users can see all pipelines
     let query = supabase
       .from('pipelines')
       .select(`
@@ -52,7 +53,6 @@ export async function GET(request: NextRequest) {
           notes
         ).order(month.asc).limit(3)
       `, { count: 'exact' })
-      .eq('user_id', auth.userId)
 
     // Apply group filter if provided
     if (group && ['sales', 'cs'].includes(group)) {

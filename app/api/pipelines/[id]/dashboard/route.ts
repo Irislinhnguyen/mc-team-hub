@@ -33,12 +33,11 @@ export async function GET(
 
     const supabase = createAdminClient()
 
-    // Verify pipeline ownership
+    // Verify pipeline exists
     const { data: pipeline } = await supabase
       .from('pipelines')
       .select('id')
       .eq('id', pipelineId)
-      .eq('user_id', auth.userId)
       .single()
 
     if (!pipeline) {

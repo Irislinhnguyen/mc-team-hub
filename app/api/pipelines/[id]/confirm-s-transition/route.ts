@@ -44,7 +44,6 @@ export async function POST(
       .from('pipelines')
       .select('*')
       .eq('id', id)
-      .eq('user_id', auth.userId)
       .single()
 
     if (fetchError || !pipeline) {
@@ -116,7 +115,6 @@ export async function POST(
       .from('pipelines')
       .update(updateData)
       .eq('id', id)
-      .eq('user_id', auth.userId)
       .select()
       .single()
 

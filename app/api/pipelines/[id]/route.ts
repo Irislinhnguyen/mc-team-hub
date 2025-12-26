@@ -50,7 +50,6 @@ export async function GET(
         ).order(month.asc).limit(3)
       `)
       .eq('id', id)
-      .eq('user_id', auth.userId)
       .single()
 
     if (error) {
@@ -101,7 +100,6 @@ export async function PUT(
       .from('pipelines')
       .select('*')
       .eq('id', id)
-      .eq('user_id', auth.userId)
       .single()
 
     if (fetchError || !existing) {
@@ -280,7 +278,6 @@ export async function PUT(
       .from('pipelines')
       .update(updateData)
       .eq('id', id)
-      .eq('user_id', auth.userId)
       .select(`
         *,
         monthly_forecasts:pipeline_monthly_forecast(
@@ -442,11 +439,11 @@ export async function DELETE(
     const supabase = createAdminClient()
 
     // Delete pipeline (cascade will delete forecasts and activities)
+    // NOTE: RLS policy will enforce only owner/admin can delete
     const { error } = await supabase
       .from('pipelines')
       .delete()
       .eq('id', id)
-      .eq('user_id', auth.userId)
 
     if (error) {
       console.error('[Pipeline Detail API] Error deleting pipeline:', error)

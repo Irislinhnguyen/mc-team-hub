@@ -89,10 +89,10 @@ export async function POST(request: NextRequest) {
     // Include cache columns for daily refresh
     // Also fetch product field for filtering
     // Also fetch group field for filtering by sales/CS
+    // NOTE: Removed .eq('user_id', auth.userId) - all authenticated users can see all pipelines
     let query = supabase
       .from('pipelines')
       .select('id, publisher, poc, status, pid, mid, classification, day_gross, actual_starting_date, starting_date, affected_zones, product, impact_last_calculated, impact_cached_value, group')
-      .eq('user_id', auth.userId)
       .in('status', status)
 
     // Filter by group if specified
