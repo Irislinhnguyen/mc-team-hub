@@ -40,6 +40,7 @@ interface PipelineImpactFilters {
   products?: string[]
   slotTypes?: string[]
   teams?: string[]
+  group?: 'sales' | 'cs'
 }
 
 export function usePipelineImpact(filters: PipelineImpactFilters) {
@@ -54,7 +55,8 @@ export function usePipelineImpact(filters: PipelineImpactFilters) {
           pocs: filters.pocs || [],
           products: filters.products || [],
           slotTypes: filters.slotTypes || [],
-          teams: filters.teams || []
+          teams: filters.teams || [],
+          group: filters.group
         })
       })
 

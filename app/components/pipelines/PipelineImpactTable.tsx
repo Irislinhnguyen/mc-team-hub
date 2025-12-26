@@ -17,6 +17,7 @@ interface PipelineImpactTableProps {
   filterProducts?: string[]
   filterSlotTypes?: string[]
   filterTeams?: string[]
+  activeGroup: 'sales' | 'cs'
   onPipelineClick?: (pipelineId: string) => void
 }
 
@@ -61,6 +62,7 @@ export function PipelineImpactTable({
   filterProducts = [],
   filterSlotTypes = [],
   filterTeams = [],
+  activeGroup,
   onPipelineClick
 }: PipelineImpactTableProps) {
   // Stabilize filter object reference for React Query cache
@@ -71,8 +73,9 @@ export function PipelineImpactTable({
     pocs: filterPICs,
     products: filterProducts,
     slotTypes: filterSlotTypes,
-    teams: filterTeams
-  }), [filterStatuses, filterPICs, filterProducts, filterSlotTypes, filterTeams])
+    teams: filterTeams,
+    group: activeGroup
+  }), [filterStatuses, filterPICs, filterProducts, filterSlotTypes, filterTeams, activeGroup])
 
   // Debounce filter changes to prevent excessive BigQuery calls
   // User can change 5 filters rapidly → only 1 API call after 300ms
@@ -82,7 +85,19 @@ export function PipelineImpactTable({
   // First call: 5-30s (BigQuery)
   // Cached calls: <50ms
   // 99% reduction in duplicate queries
-  const { impacts, loading, error: queryError } = usePipelineImpact(debouncedFilters)
+  const { impacts: rawImpacts, loading, error: queryError } = usePipelineImpact(debouncedFilters)
+
+  // Sort impacts by S- date (actual_starting_date) - newest first
+  const impacts = useMemo(() => {
+    if (!rawImpacts) return []
+    return [...rawImpacts].sort((a, b) => {
+      // Sort by actual_starting_date descending (newest first)
+      if (!a.actual_starting_date && !b.actual_starting_date) return 0
+      if (!a.actual_starting_date) return 1  // Move missing dates to bottom
+      if (!b.actual_starting_date) return -1
+      return new Date(b.actual_starting_date).getTime() - new Date(a.actual_starting_date).getTime()
+    })
+  }, [rawImpacts])
 
   // Convert query error to string for display
   const error = useMemo(() => {
@@ -456,10 +471,12 @@ export function PipelineImpactTable({
                     className="px-2 py-2 leading-tight text-right font-medium"
                     style={{
                       fontSize: typography.sizes.dataPoint,
-                      color: impact.actual_30d > 0 ? colors.text.primary : colors.text.tertiary
+                      color: impact.actual_30d !== 0
+                        ? (impact.actual_30d > 0 ? colors.text.primary : colors.status.danger)
+                        : colors.text.tertiary
                     }}
                   >
-                    {impact.actual_30d > 0 ? formatCurrency(impact.actual_30d) : 'N/A'}
+                    {impact.actual_30d !== 0 ? formatCurrency(impact.actual_30d) : 'N/A'}
                   </td>
                   {/* Variance */}
                   <td className="px-2 py-2 leading-tight text-right">

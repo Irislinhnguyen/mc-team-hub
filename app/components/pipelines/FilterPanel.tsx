@@ -11,6 +11,10 @@ import { ChevronDown, Search } from 'lucide-react'
 import { useState } from 'react'
 
 interface FilterPanelProps {
+  filterYear: number
+  setFilterYear: (year: number) => void
+  filterQuarter: number
+  setFilterQuarter: (quarter: number) => void
   teams: Array<{ team_id: string; team_name: string }>
   filterTeams: string[]
   setFilterTeams: (teams: string[]) => void
@@ -31,6 +35,10 @@ interface FilterPanelProps {
 }
 
 export function FilterPanel({
+  filterYear,
+  setFilterYear,
+  filterQuarter,
+  setFilterQuarter,
   teams,
   filterTeams,
   setFilterTeams,
@@ -53,6 +61,10 @@ export function FilterPanel({
   const [picSearch, setPicSearch] = useState('')
   const [productSearch, setProductSearch] = useState('')
   const [statusSearch, setStatusSearch] = useState('')
+
+  // Generate year options (current year and past 2 years)
+  const currentYear = new Date().getFullYear()
+  const yearOptions = [currentYear, currentYear - 1, currentYear - 2]
 
   const activeFilterCount =
     (filterTeams.length > 0 ? 1 : 0) +
@@ -83,6 +95,74 @@ export function FilterPanel({
         <div className="space-y-4">
           {/* Filter Controls Row */}
           <div className="flex flex-wrap gap-4 items-end">
+            {/* Year Filter */}
+            <div className="min-w-[140px]">
+              <Label className="text-xs font-medium text-gray-700 mb-2 block">
+                Year
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between border-[#1565C0] text-[#1565C0] bg-blue-50"
+                  >
+                    <span>{filterYear}</span>
+                    <ChevronDown className="h-4 w-4 ml-2 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-40">
+                  <div className="space-y-2">
+                    {yearOptions.map(year => (
+                      <div
+                        key={year}
+                        className={cn(
+                          "px-2 py-1.5 rounded cursor-pointer text-sm hover:bg-gray-100",
+                          filterYear === year && "bg-blue-50 text-[#1565C0] font-medium"
+                        )}
+                        onClick={() => setFilterYear(year)}
+                      >
+                        {year}
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Quarter Filter */}
+            <div className="min-w-[140px]">
+              <Label className="text-xs font-medium text-gray-700 mb-2 block">
+                Quarter
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between border-[#1565C0] text-[#1565C0] bg-blue-50"
+                  >
+                    <span>Q{filterQuarter}</span>
+                    <ChevronDown className="h-4 w-4 ml-2 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-40">
+                  <div className="space-y-2">
+                    {[1, 2, 3, 4].map(quarter => (
+                      <div
+                        key={quarter}
+                        className={cn(
+                          "px-2 py-1.5 rounded cursor-pointer text-sm hover:bg-gray-100",
+                          filterQuarter === quarter && "bg-blue-50 text-[#1565C0] font-medium"
+                        )}
+                        onClick={() => setFilterQuarter(quarter)}
+                      >
+                        Q{quarter} ({quarter * 3 - 2}-{quarter * 3})
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+
             {/* Team Filter */}
             <div className="min-w-[180px]">
               <Label className="text-xs font-medium text-gray-700 mb-2 block">

@@ -29,6 +29,7 @@ interface ImpactRequest {
   products?: string[] // Filter by Product
   slotTypes?: string[] // Filter by slot type: 'new' | 'existing'
   teams?: string[]   // Filter by team IDs (will be converted to PICs)
+  group?: 'sales' | 'cs'  // Filter by pipeline group
 }
 
 interface PipelineImpact {
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
     const products = body.products || []
     const slotTypes = body.slotTypes || []
     const teams = body.teams || []
+    const group = body.group  // Optional group filter
 
     // Use admin client to bypass RLS
     const supabase = createAdminClient()
@@ -86,11 +88,17 @@ export async function POST(request: NextRequest) {
     // TEMPORARY: Also fetch starting_date as fallback for actual_starting_date
     // Include cache columns for daily refresh
     // Also fetch product field for filtering
+    // Also fetch group field for filtering by sales/CS
     let query = supabase
       .from('pipelines')
-      .select('id, publisher, poc, status, pid, mid, classification, day_gross, actual_starting_date, starting_date, affected_zones, product, impact_last_calculated, impact_cached_value')
+      .select('id, publisher, poc, status, pid, mid, classification, day_gross, actual_starting_date, starting_date, affected_zones, product, impact_last_calculated, impact_cached_value, group')
       .eq('user_id', auth.userId)
       .in('status', status)
+
+    // Filter by group if specified
+    if (group) {
+      query = query.eq('group', group)
+    }
 
     // Apply PIC filter (combine direct PIC filter + team-based PICs)
     const allPICsFilter = [...pocs]
@@ -244,47 +252,38 @@ export async function POST(request: NextRequest) {
     // Cache is stale - need to query BigQuery for ALL pipelines
     console.log('[Impact API] Cache stale, querying BigQuery...')
 
-    // Helper function to check if pipeline has enough data (minimum 7 days)
-    const hasMinimumData = (p: any) => {
-      if (!p.actual_starting_date) return false
-      const sDate = new Date(p.actual_starting_date)
-      const sDatePlus6 = new Date(sDate)
-      sDatePlus6.setDate(sDate.getDate() + 6) // Minimum 7 days
-      return sDatePlus6 <= now
-    }
-
     // Classify pipelines by granularity level (only those that CAN be calculated)
-    // Minimum 7-day window required for meaningful revenue calculation
+    // Calculate from day 1 - no minimum days requirement
     const pipelinesByGranularity = {
       // Level 6: PID + MID + ZID (most granular)
       pid_mid_zid: validPipelines.filter(p => {
         if (!p.pid || !p.mid || !p.affected_zones || p.affected_zones.length === 0) return false
-        return hasMinimumData(p)
+        return !!p.actual_starting_date
       }),
       // Level 5: PID + MID (no zones)
       pid_mid: validPipelines.filter(p => {
         if (!p.pid || !p.mid || (p.affected_zones && p.affected_zones.length > 0)) return false
-        return hasMinimumData(p)
+        return !!p.actual_starting_date
       }),
       // Level 4: PID only
       pid: validPipelines.filter(p => {
         if (!p.pid || p.mid) return false
-        return hasMinimumData(p)
+        return !!p.actual_starting_date
       }),
       // Level 3: MID + ZID (no PID)
       mid_zid: validPipelines.filter(p => {
         if (p.pid || !p.mid || !p.affected_zones || p.affected_zones.length === 0) return false
-        return hasMinimumData(p)
+        return !!p.actual_starting_date
       }),
       // Level 2: MID only (no PID, no zones)
       mid: validPipelines.filter(p => {
         if (p.pid || !p.mid || (p.affected_zones && p.affected_zones.length > 0)) return false
-        return hasMinimumData(p)
+        return !!p.actual_starting_date
       }),
       // Level 1: ZID only (no PID, no MID)
       zid: validPipelines.filter(p => {
         if (p.pid || p.mid || !p.affected_zones || p.affected_zones.length === 0) return false
-        return hasMinimumData(p)
+        return !!p.actual_starting_date
       })
     }
 

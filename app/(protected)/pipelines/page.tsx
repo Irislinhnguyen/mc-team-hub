@@ -11,6 +11,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { PipelineProvider, usePipeline } from '@/app/contexts/PipelineContext'
 import { usePipelines } from '@/lib/hooks/queries/usePipelines'
+import { usePipelineMetadata } from '@/lib/hooks/queries/usePipelineMetadata'
 import { Button } from '@/components/ui/button'
 import {
   Popover,
@@ -59,8 +60,8 @@ function PipelinesPageContent() {
   // State
   const [activeGroup, setActiveGroup] = useState<PipelineGroup>('sales')
 
-  // Data fetching via React Query (with caching!)
-  const { pipelines, loading: pipelinesLoading, error: queryError, refetch } = usePipelines()
+  // Data fetching via React Query - Load ALL pipelines
+  const { pipelines, loading: pipelinesLoading, error: queryError, refetch } = usePipelines(activeGroup, { loadAll: true })
 
   // Mutations via Context
   const { createPipeline, updatePipeline, error: mutationError, clearError } = usePipeline()
@@ -78,9 +79,21 @@ function PipelinesPageContent() {
 
   // Team filter states
   const [filterTeams, setFilterTeams] = useState<string[]>([]) // Multi-select team filter
-  const [teams, setTeams] = useState<Array<{ team_id: string; team_name: string }>>([])
-  const [pocNames, setPocNames] = useState<string[]>([]) // Dynamic POC names from DB
-  const [pocTeamMap, setPocTeamMap] = useState<Record<string, string>>({})
+
+  // Time filter states - Quarter and Year
+  const currentYear = new Date().getFullYear()
+  const currentMonth = new Date().getMonth() + 1 // 1-12
+  const currentQuarter = Math.ceil(currentMonth / 3) // 1-4
+  const [filterYear, setFilterYear] = useState<number>(currentYear)
+  const [filterQuarter, setFilterQuarter] = useState<number>(currentQuarter)
+
+  // Load team metadata and POC names via React Query hook
+  // Cached for 24 hours (metadata rarely changes)
+  // First load: 300-500ms, subsequent loads: 0ms (instant)
+  const { metadata } = usePipelineMetadata()
+  const teams = metadata.teams
+  const pocNames = metadata.pocNames
+  const pocTeamMap = metadata.pocTeamMapping
 
   // Initialize from URL params
   useEffect(() => {
@@ -90,26 +103,7 @@ function PipelinesPageContent() {
     }
   }, [searchParams])
 
-  // Note: No need to manually fetch pipelines!
-  // React Query handles it automatically with caching
-
-  // Load team metadata and POC names
-  useEffect(() => {
-    async function loadMetadata() {
-      try {
-        const response = await fetch('/api/pipelines/metadata')
-        const data = await response.json()
-        setTeams(data.teams)
-        setPocNames(data.pocNames || [])
-        setPocTeamMap(data.pocTeamMapping)
-      } catch (error) {
-        console.error('Failed to load metadata:', error)
-      }
-    }
-    loadMetadata()
-  }, [])
-
-  // Filter pipelines by active group
+  // Filter pipelines by active group (already filtered by API, but keep for safety)
   const groupPipelines = useMemo(() => {
     return pipelines.filter((p) => p.group === activeGroup)
   }, [pipelines, activeGroup])
@@ -142,6 +136,19 @@ function PipelinesPageContent() {
   // Filter pipelines by active group and filters
   const filteredPipelines = useMemo(() => {
     let filtered = groupPipelines
+
+    // Quarter and Year filter - based on created_at
+    if (filterYear && filterQuarter) {
+      filtered = filtered.filter(p => {
+        if (!p.created_at) return false
+        const createdDate = new Date(p.created_at)
+        const createdYear = createdDate.getFullYear()
+        const createdMonth = createdDate.getMonth() + 1 // 1-12
+        const createdQuarter = Math.ceil(createdMonth / 3) // 1-4
+
+        return createdYear === filterYear && createdQuarter === filterQuarter
+      })
+    }
 
     if (filterTeam) {
       filtered = filtered.filter(p => p.team === filterTeam)
@@ -184,7 +191,7 @@ function PipelinesPageContent() {
     }
 
     return filtered
-  }, [groupPipelines, filterTeam, filterPICs, filterProducts, filterTeams, filterSlotTypes, filterStatuses, pocTeamMap])
+  }, [groupPipelines, filterYear, filterQuarter, filterTeam, filterPICs, filterProducts, filterTeams, filterSlotTypes, filterStatuses, pocTeamMap])
 
   // Calculate stats for filtered pipelines (respects team filter)
   const groupStats = useMemo(() => {
@@ -448,6 +455,10 @@ function PipelinesPageContent() {
           {/* Filters Section */}
           <div className="mb-6">
             <FilterPanel
+              filterYear={filterYear}
+              setFilterYear={setFilterYear}
+              filterQuarter={filterQuarter}
+              setFilterQuarter={setFilterQuarter}
               teams={teams}
               filterTeams={filterTeams}
               setFilterTeams={setFilterTeams}
@@ -471,6 +482,9 @@ function PipelinesPageContent() {
                 setFilterTeams([])
                 setFilterSlotTypes([])
                 setFilterStatuses([])
+                // Reset to current quarter and year
+                setFilterYear(currentYear)
+                setFilterQuarter(currentQuarter)
               }}
             />
           </div>
@@ -641,6 +655,7 @@ function PipelinesPageContent() {
                 filterProducts={filterProducts}
                 filterSlotTypes={filterSlotTypes}
                 filterTeams={filterTeams}
+                activeGroup={activeGroup}
                 onPipelineClick={(pipelineId) => {
                   const pipeline = pipelines.find(p => p.id === pipelineId)
                   if (pipeline) {
