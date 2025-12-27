@@ -50,10 +50,13 @@ export const POC_NAMES = [
 ] as const
 export type PocName = string // Changed to string to allow dynamic POC names from API
 
-// Classification types (Column B)
+// Classification types (Column C) - from Google Sheets dropdown
 export const CLASSIFICATION_TYPES = [
   'New Unit (New Slot)',
   'New Unit (Slot exists)',
+  'Existing Unit (Slot exists)',
+  'adjustment',
+  'New Acquisition',
 ] as const
 export type ClassificationType = (typeof CLASSIFICATION_TYPES)[number]
 
@@ -109,17 +112,22 @@ export const REGIONS = [
 ] as const
 export type RegionName = (typeof REGIONS)[number]
 
-// Product types
+// Product types (Column P) - merged from both Sales & CS sheets (14 options total)
 export const PRODUCT_TYPES = [
-  '[App] Interstitial',
+  'Ad Recover',
   'Banner',
   'Flexible Sticky',
   'Interstitial',
-  'Offerwall',
-  'other',
+  'Outstream',
   'Rewarded Ads',
   'Sticky',
   'Video / Wipe',
+  '[App] App open',
+  '[App] Banner',
+  '[App] Interstitial',
+  '[App] Native',
+  '[App] Rewarded',
+  'other',
 ] as const
 export type ProductType = (typeof PRODUCT_TYPES)[number]
 

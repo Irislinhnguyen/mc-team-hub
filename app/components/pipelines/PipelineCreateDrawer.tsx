@@ -31,6 +31,7 @@ import {
   PRODUCT_TYPES,
   PIPELINE_STAGES,
   NEXT_ACTION_TYPES,
+  ACTION_DETAIL_TYPES,
   type CreatePipelineInput,
   type PipelineGroup,
 } from '@/lib/types/pipeline'
@@ -50,9 +51,13 @@ export function PipelineCreateDrawer({ open, onClose, onCreate, activeGroup, poc
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false)
   const [attemptedSubmit, setAttemptedSubmit] = useState(false)
   const [expandedSections, setExpandedSections] = useState({
-    additionalDetails: false,
-    timeline: false,
+    actions: false,
+    notes: false,
   })
+  const [showCustomPoc, setShowCustomPoc] = useState(false)
+  const [customPoc, setCustomPoc] = useState('')
+  const [showCustomProduct, setShowCustomProduct] = useState(false)
+  const [customProduct, setCustomProduct] = useState('')
 
   // Reset form when drawer opens
   useEffect(() => {
@@ -60,9 +65,13 @@ export function PipelineCreateDrawer({ open, onClose, onCreate, activeGroup, poc
       setFormData({})
       setAttemptedSubmit(false)
       setExpandedSections({
-        additionalDetails: false,
-        timeline: false,
+        actions: false,
+        notes: false,
       })
+      setShowCustomPoc(false)
+      setCustomPoc('')
+      setShowCustomProduct(false)
+      setCustomProduct('')
     }
   }, [open])
 
@@ -208,18 +217,7 @@ export function PipelineCreateDrawer({ open, onClose, onCreate, activeGroup, poc
                   )}
                 </div>
 
-                {/* Row 3: Media Name */}
-                <div>
-                  <Label htmlFor="medianame">Media Name</Label>
-                  <Input
-                    id="medianame"
-                    value={formData.medianame || ''}
-                    onChange={(e) => setFormData({ ...formData, medianame: e.target.value })}
-                    placeholder="Enter media name (optional)"
-                  />
-                </div>
-
-                {/* Row 4: Domain (always manual input for website URL) */}
+                {/* Row 3: Domain */}
                 <div>
                   <Label htmlFor="domain">Domain</Label>
                   <Input
@@ -230,14 +228,43 @@ export function PipelineCreateDrawer({ open, onClose, onCreate, activeGroup, poc
                   />
                 </div>
 
+                {/* Row 4: Affected Zones */}
+                <div>
+                  <Label htmlFor="affected_zones">Affected Zones (ZID, comma-separated)</Label>
+                  <Input
+                    id="affected_zones"
+                    value={formData.affected_zones?.join(', ') || ''}
+                    onChange={(e) => {
+                      const zones = e.target.value
+                        .split(',')
+                        .map(z => z.trim())
+                        .filter(z => z !== '')
+                      setFormData({ ...formData, affected_zones: zones })
+                    }}
+                    placeholder="123, 456, 789"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Enter zone IDs separated by commas
+                  </p>
+                </div>
+
                 {/* Row 5: POC */}
                 <div>
                   <Label htmlFor="poc">
                     POC <span className="text-red-500">*</span>
                   </Label>
                   <Select
-                    value={formData.poc}
-                    onValueChange={(value) => setFormData({ ...formData, poc: value })}
+                    value={formData.poc === customPoc && customPoc ? 'Other (specify)' : (formData.poc || '')}
+                    onValueChange={(value) => {
+                      if (value === 'Other (specify)') {
+                        setShowCustomPoc(true)
+                        setFormData({ ...formData, poc: '' })
+                      } else {
+                        setShowCustomPoc(false)
+                        setCustomPoc('')
+                        setFormData({ ...formData, poc: value })
+                      }
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select POC" />
@@ -248,11 +275,103 @@ export function PipelineCreateDrawer({ open, onClose, onCreate, activeGroup, poc
                           {poc}
                         </SelectItem>
                       ))}
+                      <SelectItem value="Other (specify)">Other (specify)</SelectItem>
                     </SelectContent>
                   </Select>
+                  {showCustomPoc && (
+                    <Input
+                      placeholder="Enter custom POC name"
+                      value={customPoc}
+                      onChange={(e) => {
+                        setCustomPoc(e.target.value)
+                        setFormData({ ...formData, poc: e.target.value })
+                      }}
+                      className="mt-2"
+                    />
+                  )}
                   {attemptedSubmit && !formData.poc && (
                     <p className="text-xs text-red-600 mt-1">POC is required</p>
                   )}
+                </div>
+
+                {/* Row 5: Classification */}
+                <div>
+                  <Label htmlFor="classification">Classification</Label>
+                  <Select
+                    value={formData.classification}
+                    onValueChange={(value) => setFormData({ ...formData, classification: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select classification" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CLASSIFICATION_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Row 6: Product */}
+                <div>
+                  <Label htmlFor="product">Product</Label>
+                  <Select
+                    value={formData.product === customProduct && customProduct ? 'other' : (formData.product || '')}
+                    onValueChange={(value) => {
+                      if (value === 'other') {
+                        setShowCustomProduct(true)
+                        setFormData({ ...formData, product: '' })
+                      } else {
+                        setShowCustomProduct(false)
+                        setCustomProduct('')
+                        setFormData({ ...formData, product: value })
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select product" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRODUCT_TYPES.map((product) => (
+                        <SelectItem key={product} value={product}>
+                          {product}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {showCustomProduct && (
+                    <Input
+                      placeholder="Enter custom product type"
+                      value={customProduct}
+                      onChange={(e) => {
+                        setCustomProduct(e.target.value)
+                        setFormData({ ...formData, product: e.target.value })
+                      }}
+                      className="mt-2"
+                    />
+                  )}
+                </div>
+
+                {/* Row 7: Status */}
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) => setFormData({ ...formData, status: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PIPELINE_STAGES.map((stage) => (
+                        <SelectItem key={stage} value={stage}>
+                          {stage}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -265,7 +384,7 @@ export function PipelineCreateDrawer({ open, onClose, onCreate, activeGroup, poc
 
               {/* Row 1: Request - Full width */}
               <div>
-                <Label htmlFor="imp">Request (Imp/30d)</Label>
+                <Label htmlFor="imp">Request</Label>
                 <Input
                   id="imp"
                   type="text"
@@ -370,26 +489,6 @@ export function PipelineCreateDrawer({ open, onClose, onCreate, activeGroup, poc
                 </div>
               </div>
 
-              {/* Row 4: Status (optional) */}
-              <div>
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value) => setFormData({ ...formData, status: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PIPELINE_STAGES.map((stage) => (
-                      <SelectItem key={stage} value={stage}>
-                        {stage}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
               {/* Real-time Preview */}
               {calculatedPreview && (
                 <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
@@ -414,84 +513,22 @@ export function PipelineCreateDrawer({ open, onClose, onCreate, activeGroup, poc
 
             <Separator />
 
-            {/* Section 3: Additional Details (Optional, Collapsible) */}
+            {/* Section 3: Actions & Follow-up (Optional, Collapsible) */}
             <div className="space-y-4">
               <button
                 type="button"
-                onClick={() => toggleSection('additionalDetails')}
+                onClick={() => toggleSection('actions')}
                 className="w-full flex items-center justify-between text-sm font-semibold text-[#1565C0] hover:text-[#0D47A1] transition-colors"
               >
-                <span>Additional Details (Optional)</span>
-                {expandedSections.additionalDetails ? (
+                <span>Actions & Follow-up (Optional)</span>
+                {expandedSections.actions ? (
                   <ChevronUp className="h-4 w-4" />
                 ) : (
                   <ChevronDown className="h-4 w-4" />
                 )}
               </button>
 
-              {expandedSections.additionalDetails && (
-                <div className="space-y-3 animate-in fade-in duration-200">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor="product">Product</Label>
-                      <Select
-                        value={formData.product}
-                        onValueChange={(value) => setFormData({ ...formData, product: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select product" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PRODUCT_TYPES.map((product) => (
-                            <SelectItem key={product} value={product}>
-                              {product}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="classification">Classification</Label>
-                      <Select
-                        value={formData.classification}
-                        onValueChange={(value) => setFormData({ ...formData, classification: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select classification" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {CLASSIFICATION_TYPES.map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {type}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Section 4: Timeline (Optional, Collapsible) */}
-            <div className="space-y-4">
-              <button
-                type="button"
-                onClick={() => toggleSection('timeline')}
-                className="w-full flex items-center justify-between text-sm font-semibold text-[#1565C0] hover:text-[#0D47A1] transition-colors"
-              >
-                <span>Timeline & Actions (Optional)</span>
-                {expandedSections.timeline ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </button>
-
-              {expandedSections.timeline && (
+              {expandedSections.actions && (
                 <div className="space-y-3 animate-in fade-in duration-200">
                   <div>
                     <Label htmlFor="action_date">Action Date</Label>
@@ -522,6 +559,58 @@ export function PipelineCreateDrawer({ open, onClose, onCreate, activeGroup, poc
                     </Select>
                   </div>
 
+                  <div>
+                    <Label htmlFor="action_detail">Action Detail</Label>
+                    <Select
+                      value={formData.action_detail || ''}
+                      onValueChange={(value) => setFormData({ ...formData, action_detail: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select action detail" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ACTION_DETAIL_TYPES.map((detail) => (
+                          <SelectItem key={detail} value={detail}>
+                            {detail}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="action_progress">Action Progress</Label>
+                    <Textarea
+                      id="action_progress"
+                      value={formData.action_progress || ''}
+                      onChange={(e) => setFormData({ ...formData, action_progress: e.target.value })}
+                      placeholder="Enter progress notes..."
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Section 4: Notes (Optional, Collapsible) */}
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={() => toggleSection('notes')}
+                className="w-full flex items-center justify-between text-sm font-semibold text-[#1565C0] hover:text-[#0D47A1] transition-colors"
+              >
+                <span>Notes (Optional)</span>
+                {expandedSections.notes ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </button>
+
+              {expandedSections.notes && (
+                <div className="space-y-3 animate-in fade-in duration-200">
                   <div>
                     <Label htmlFor="description">Description</Label>
                     <Textarea

@@ -60,6 +60,10 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
   const [originalData, setOriginalData] = useState<Partial<Pipeline>>(pipeline || {})
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false)
+  const [showCustomPoc, setShowCustomPoc] = useState(false)
+  const [customPoc, setCustomPoc] = useState('')
+  const [showCustomProduct, setShowCustomProduct] = useState(false)
+  const [customProduct, setCustomProduct] = useState('')
 
   // Update form data when pipeline changes
   useEffect(() => {
@@ -503,8 +507,17 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
                 <div>
                   <Label htmlFor="poc" className="text-xs">POC *</Label>
                   <Select
-                    value={formData.poc || ''}
-                    onValueChange={(value) => setFormData({ ...formData, poc: value })}
+                    value={formData.poc === customPoc && customPoc ? 'Other (specify)' : (formData.poc || '')}
+                    onValueChange={(value) => {
+                      if (value === 'Other (specify)') {
+                        setShowCustomPoc(true)
+                        setFormData({ ...formData, poc: '' })
+                      } else {
+                        setShowCustomPoc(false)
+                        setCustomPoc('')
+                        setFormData({ ...formData, poc: value })
+                      }
+                    }}
                   >
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Select POC" />
@@ -515,14 +528,35 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
                           {poc}
                         </SelectItem>
                       ))}
+                      <SelectItem value="Other (specify)">Other (specify)</SelectItem>
                     </SelectContent>
                   </Select>
+                  {showCustomPoc && (
+                    <Input
+                      placeholder="Enter custom POC name"
+                      value={customPoc}
+                      onChange={(e) => {
+                        setCustomPoc(e.target.value)
+                        setFormData({ ...formData, poc: e.target.value })
+                      }}
+                      className="mt-2"
+                    />
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="product" className="text-xs">Product</Label>
                   <Select
-                    value={formData.product || ''}
-                    onValueChange={(value) => setFormData({ ...formData, product: value })}
+                    value={formData.product === customProduct && customProduct ? 'other' : (formData.product || '')}
+                    onValueChange={(value) => {
+                      if (value === 'other') {
+                        setShowCustomProduct(true)
+                        setFormData({ ...formData, product: '' })
+                      } else {
+                        setShowCustomProduct(false)
+                        setCustomProduct('')
+                        setFormData({ ...formData, product: value })
+                      }
+                    }}
                   >
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Select Product" />
@@ -535,6 +569,17 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
                       ))}
                     </SelectContent>
                   </Select>
+                  {showCustomProduct && (
+                    <Input
+                      placeholder="Enter custom product type"
+                      value={customProduct}
+                      onChange={(e) => {
+                        setCustomProduct(e.target.value)
+                        setFormData({ ...formData, product: e.target.value })
+                      }}
+                      className="mt-2"
+                    />
+                  )}
                 </div>
               </div>
 
@@ -737,6 +782,18 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
                   id="action_progress"
                   value={formData.action_progress || ''}
                   onChange={(e) => setFormData({ ...formData, action_progress: e.target.value })}
+                  className="mt-1"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="description" className="text-xs">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description || ''}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Pipeline description..."
                   className="mt-1"
                   rows={3}
                 />
