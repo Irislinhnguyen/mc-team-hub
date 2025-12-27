@@ -94,9 +94,9 @@ export function FilterPanel({
       <CardContent className="py-4">
         <div className="space-y-4">
           {/* Filter Controls Row */}
-          <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex flex-wrap gap-2 items-end">
             {/* Year Filter */}
-            <div className="min-w-[140px]">
+            <div className="min-w-[120px]">
               <Label className="text-xs font-medium text-gray-700 mb-2 block">
                 Year
               </Label>
@@ -130,7 +130,7 @@ export function FilterPanel({
             </div>
 
             {/* Quarter Filter */}
-            <div className="min-w-[140px]">
+            <div className="min-w-[120px]">
               <Label className="text-xs font-medium text-gray-700 mb-2 block">
                 Quarter
               </Label>
@@ -164,7 +164,7 @@ export function FilterPanel({
             </div>
 
             {/* Team Filter */}
-            <div className="min-w-[180px]">
+            <div className="min-w-[150px]">
               <Label className="text-xs font-medium text-gray-700 mb-2 block">
                 Team
               </Label>
@@ -225,7 +225,7 @@ export function FilterPanel({
             </div>
 
             {/* PIC Filter */}
-            <div className="min-w-[180px]">
+            <div className="min-w-[150px]">
               <Label className="text-xs font-medium text-gray-700 mb-2 block">
                 Person in Charge
               </Label>
@@ -286,7 +286,7 @@ export function FilterPanel({
             </div>
 
             {/* Product Filter */}
-            <div className="min-w-[180px]">
+            <div className="min-w-[150px]">
               <Label className="text-xs font-medium text-gray-700 mb-2 block">
                 Product
               </Label>
@@ -347,7 +347,7 @@ export function FilterPanel({
             </div>
 
             {/* Slot Type Filter */}
-            <div className="min-w-[180px]">
+            <div className="min-w-[150px]">
               <Label className="text-xs font-medium text-gray-700 mb-2 block">
                 Slot Type
               </Label>
@@ -399,7 +399,7 @@ export function FilterPanel({
             </div>
 
             {/* Status Filter */}
-            <div className="min-w-[180px]">
+            <div className="min-w-[150px]">
               <Label className="text-xs font-medium text-gray-700 mb-2 block">
                 Status
               </Label>
