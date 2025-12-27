@@ -438,6 +438,21 @@ export async function DELETE(
     // Use admin client to bypass RLS
     const supabase = createAdminClient()
 
+    // First, fetch pipeline data (need group for sheet sync)
+    const { data: pipeline, error: fetchError } = await supabase
+      .from('pipelines')
+      .select('id, group')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !pipeline) {
+      console.error('[Pipeline Detail API] Error fetching pipeline:', fetchError)
+      return NextResponse.json(
+        { error: 'Pipeline not found' },
+        { status: 404 }
+      )
+    }
+
     // Delete pipeline (cascade will delete forecasts and activities)
     // NOTE: RLS policy will enforce only owner/admin can delete
     const { error } = await supabase
@@ -451,6 +466,14 @@ export async function DELETE(
         { error: 'Failed to delete pipeline' },
         { status: 500 }
       )
+    }
+
+    // Sync deletion to Google Sheets (non-blocking)
+    try {
+      await deleteRowFromSheet(pipeline.id, pipeline.group)
+    } catch (syncError) {
+      // Don't fail the request if sheet sync fails
+      console.error('[Pipeline Detail API] Failed to delete from sheet:', syncError)
     }
 
     return NextResponse.json({

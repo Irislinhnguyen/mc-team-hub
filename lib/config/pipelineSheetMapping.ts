@@ -37,7 +37,7 @@ export const SHEET_COLUMN_MAPPING: Record<string, number> = {
   // These columns contain formulas in the Google Sheet
   'imp': 18,                 // Column S: IMP (30days)
   'ecpm': 19,                // Column T: eCPM
-  'max_gross': 20,           // Column U: Max Gross
+  // SKIP: 'max_gross': 20,           // Column U: FORMULA =S*T/1000 (DO NOT SYNC!)
   'revenue_share': 21,       // Column V: R/S
 
   // Action Tracking
@@ -50,8 +50,8 @@ export const SHEET_COLUMN_MAPPING: Record<string, number> = {
   'starting_date': 28,       // Column AC: Starting Date
   'status': 29,              // Column AD: Status
   // SKIP: 'progress_percent': 30,    // Column AE: % - has formula in sheet
-  'proposal_date': 31,       // Column AF: Date of first proposal
-  'interested_date': 32,     // Column AG: Interested date
+  // SKIP: 'proposal_date': 31,       // Column AF: NOT synced per user request
+  // SKIP: 'interested_date': 32,     // Column AG: NOT synced per user request
   // SKIP: 'acceptance_date': 33,     // Column AH: AUTO-LOGGED, not user input
 
   // Quarter Summary
