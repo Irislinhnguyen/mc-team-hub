@@ -126,7 +126,7 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
 
     const day_gross = !isNaN(max_gross) ? max_gross / 30 : 0
     const day_net_rev = (!isNaN(day_gross) && !isNaN(revenue_share))
-      ? day_gross * (revenue_share / 100)
+      ? day_gross * revenue_share
       : 0
 
     // Step 2: Check if status requires zero revenue
@@ -149,10 +149,9 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
       formData.status !== pipeline?.status
 
     if (!isZeroRevenue) {
-      const monthlyForecasts = pipeline?.monthly_forecasts || []
-
       if (hasUnsavedChanges) {
         // USER IS EDITING → Recalculate using current formData values (real-time preview)
+        const monthlyForecasts = pipeline?.monthly_forecasts || []
         if (monthlyForecasts.length > 0) {
           // Use delivery_days from forecasts for accuracy
           q_gross = monthlyForecasts.reduce((sum, forecast) => {
@@ -172,21 +171,9 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
           q_net_rev = monthlyNet * 3
         }
       } else {
-        // NO UNSAVED CHANGES → Use saved gross_revenue from database
-        if (monthlyForecasts.length > 0) {
-          q_gross = monthlyForecasts.reduce((sum, forecast) =>
-            sum + (forecast.gross_revenue || 0), 0
-          )
-          q_net_rev = monthlyForecasts.reduce((sum, forecast) =>
-            sum + (forecast.net_revenue || 0), 0
-          )
-        } else {
-          // Fallback calculation
-          const monthlyGross = day_gross * progressMultiplier * 30
-          const monthlyNet = day_net_rev * progressMultiplier * 30
-          q_gross = monthlyGross * 3
-          q_net_rev = monthlyNet * 3
-        }
+        // NO UNSAVED CHANGES → Use DB values directly (single source of truth)
+        q_gross = pipeline?.q_gross ?? 0
+        q_net_rev = pipeline?.q_net_rev ?? 0
       }
     }
     // else: isZeroRevenue = true, q_gross and q_net_rev stay 0
@@ -304,7 +291,7 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
               {/* Row 1: Request, eCPM, Revenue Share */}
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <Label htmlFor="imp" className="text-xs">Request (Imp/30d)</Label>
+                  <Label htmlFor="imp" className="text-xs">Request</Label>
                   <Input
                     id="imp"
                     type="text"

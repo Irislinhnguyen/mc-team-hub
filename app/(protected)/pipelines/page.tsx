@@ -9,16 +9,18 @@
 import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { useQueryClient } from '@tanstack/react-query'
 import { PipelineProvider, usePipeline } from '@/app/contexts/PipelineContext'
 import { usePipelines } from '@/lib/hooks/queries/usePipelines'
 import { usePipelineMetadata } from '@/lib/hooks/queries/usePipelineMetadata'
+import { useToast } from '@/app/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { Plus } from 'lucide-react'
+import { Plus, Home, RefreshCw } from 'lucide-react'
 import type { CreatePipelineInput, Pipeline, PipelineGroup } from '@/lib/types/pipeline'
 import {
   POC_NAMES,
@@ -56,6 +58,8 @@ import { daysBetween } from '@/lib/utils/dateHelpers'
 function PipelinesPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
 
   // State
   const [activeGroup, setActiveGroup] = useState<PipelineGroup>('sales')
@@ -321,6 +325,16 @@ function PipelinesPageContent() {
     }
   }
 
+  // Handle refresh data - Invalidate cache and refetch
+  const handleRefreshData = () => {
+    queryClient.invalidateQueries({ queryKey: ['pipelines'] })
+    refetch()
+    toast({
+      title: 'Data refreshed',
+      description: 'Pipeline data has been reloaded from the database.',
+    })
+  }
+
   // Format currency
   const formatCurrency = (amount: number | null) => {
     if (amount === null || amount === undefined) return '-'
@@ -337,7 +351,12 @@ function PipelinesPageContent() {
       {/* Header */}
       <div className="border-b pb-6 mb-6">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-3">
+            <Link href="/">
+              <Button variant="ghost" size="icon" className="hover:bg-blue-50">
+                <Home className="h-5 w-5 text-[#1565C0]" />
+              </Button>
+            </Link>
             <h1 className="text-2xl font-bold text-[#1565C0]">Sales Pipelines</h1>
           </div>
 
@@ -357,6 +376,16 @@ function PipelinesPageContent() {
                 Setup Teams
               </Button>
             </Link>
+
+            {/* Refresh Data Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefreshData}
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh Data
+            </Button>
 
             <Button
               size="sm"

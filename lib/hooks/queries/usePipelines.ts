@@ -65,6 +65,7 @@ export function usePipelines(
     },
     staleTime: cacheConfig.pipelines.staleTime,
     gcTime: cacheConfig.pipelines.gcTime,
+    refetchOnWindowFocus: true, // Refetch when user returns to tab to get latest data
   })
 
   return {

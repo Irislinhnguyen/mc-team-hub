@@ -70,7 +70,8 @@ export const queryKeys = {
 
   // Pipelines
   pipelines: {
-    list: (group?: string) => ['pipelines', { group }] as const,
+    list: (group?: string, cursor?: string | null, limit?: number) =>
+      ['pipelines', { group, cursor, limit }] as const,
     lists: () => ['pipelines'] as const,
     activities: (pipelineId: string) => ['pipelines', pipelineId, 'activities'] as const,
   },
@@ -106,7 +107,7 @@ export const cacheConfig = {
 
   // Pipelines - updates frequently, moderate caching
   pipelines: {
-    staleTime: 2 * 60 * 1000,        // 2 minutes
+    staleTime: 30 * 1000,            // 30 seconds (reduced from 2 minutes for fresher data)
     gcTime: 5 * 60 * 1000,           // 5 minutes
   },
 }
