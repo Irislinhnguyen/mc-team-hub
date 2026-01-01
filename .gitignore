@@ -34,6 +34,30 @@ playwright-report/
 nul
 refactor-log-*.json
 
+# Build artifacts & test outputs
+output/
+build-output.txt
+*-test-output.txt
+backtest-output.txt
+xgboost-*.txt
+product-mix-test-output.txt
+temp_response.json
+pipeline-backfill.csv
+
+# HTML utilities
+clear-cache.html
+clear-metadata-cache.html
+test-auth-cookie.html
+
+# Completion docs
+*_COMPLETE.md
+*_SUMMARY.md
+*_PROGRESS.md
+
+# Python/ML directories (not needed)
+python/
+models/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -44,3 +68,4 @@ refactor-log-*.json
 *.njsproj
 *.sln
 *.sw?
+.mcp-config/gcp-oauth.keys.json
