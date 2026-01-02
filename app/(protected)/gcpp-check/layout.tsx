@@ -1,12 +1,14 @@
 'use client'
 
 import { GCPPCheckSidebar } from '../../components/gcpp-check/GCPPCheckSidebar'
-import { FloatingToggle } from '../../components/performance-tracker/FloatingToggle'
 import { CrossFilterProvider } from '../../contexts/CrossFilterContext'
 import { SidebarProvider, SidebarInset, useSidebar } from '@/components/ui/sidebar'
+import { useIsMobile } from '../../hooks/use-mobile'
+import { cn } from '@/lib/utils'
 
 function GCPPContent({ children }: { children: React.ReactNode }) {
   const { open } = useSidebar()
+  const isMobile = useIsMobile()
 
   // ✨ REMOVED: Filter clearing on navigation
   // Now using React Query caching + persisted filters per tab
@@ -15,16 +17,17 @@ function GCPPContent({ children }: { children: React.ReactNode }) {
   return (
     <SidebarInset>
       <div
-        className="min-h-screen bg-gray-50 transition-[padding-left] duration-150 ease-out"
+        className={cn(
+          'min-h-screen bg-gray-50 transition-all duration-150 ease-out',
+          isMobile ? 'pl-0' : open ? 'pl-0' : 'pl-12'
+        )}
         style={{
-          paddingLeft: open ? '0' : '48px',
           minWidth: 0,
           width: '100%',
           maxWidth: '100%',
-          overflow: 'auto'
+          overflow: 'hidden'
         }}
       >
-        <FloatingToggle />
         {children}
       </div>
     </SidebarInset>

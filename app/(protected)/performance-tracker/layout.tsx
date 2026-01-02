@@ -2,26 +2,29 @@
 
 import { usePathname } from 'next/navigation'
 import { AnalyticsSidebar } from '../../components/performance-tracker/AnalyticsSidebar'
-import { FloatingToggle } from '../../components/performance-tracker/FloatingToggle'
 import { CrossFilterProvider } from '../../contexts/CrossFilterContext'
 import { SidebarProvider, SidebarInset, useSidebar } from '@/components/ui/sidebar'
+import { useIsMobile } from '../../hooks/use-mobile'
+import { cn } from '@/lib/utils'
 
 function AnalyticsContent({ children }: { children: React.ReactNode }) {
   const { open } = useSidebar()
+  const isMobile = useIsMobile()
 
   return (
     <SidebarInset>
       <div
-        className="min-h-screen bg-gray-50 transition-[padding-left] duration-150 ease-out"
+        className={cn(
+          'min-h-screen bg-gray-50 transition-all duration-150 ease-out',
+          isMobile ? 'pl-0' : open ? 'pl-0' : 'pl-12'
+        )}
         style={{
-          paddingLeft: open ? '0' : '48px',
           minWidth: 0,
           width: '100%',
           maxWidth: '100%',
-          overflow: 'auto'
+          overflow: 'hidden'
         }}
       >
-        <FloatingToggle />
         {children}
       </div>
     </SidebarInset>
