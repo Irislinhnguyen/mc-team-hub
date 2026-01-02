@@ -2,8 +2,7 @@
 
 import React from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { composedStyles, typography, chartSizes } from '../../../lib/design-tokens'
+import { BaseResponsiveChart, useResponsiveChart } from './BaseResponsiveChart'
 import { colors } from '../../../lib/colors'
 import { withExport } from './withExport'
 import { useCrossFilter } from '../../contexts/CrossFilterContext'
@@ -27,19 +26,22 @@ interface TimeSeriesChartProps {
   onEntityClick?: (entityName: string) => void
 }
 
-function TimeSeriesChartBase({
-  title,
+/**
+ * Inner chart content component that uses responsive configuration
+ */
+function TimeSeriesChartContent({
   data,
   lines,
-  height = chartSizes.heights.standard,
   enableCrossFilter = false,
   dateKey = 'date',
   crossFilterField,
   customYAxisFormatter,
   customTooltipFormatter: customTooltipFormatterProp,
-  hideTitle = false,
   onEntityClick
-}: TimeSeriesChartProps) {
+}: Omit<TimeSeriesChartProps, 'title' | 'height' | 'hideTitle'>) {
+  // Get responsive configuration from context
+  const { chartHeight, chartMargins, fontSize, isMobile } = useResponsiveChart()
+
   const { addCrossFilter, autoEnable, crossFilters } = useCrossFilter()
   const isEnabled = enableCrossFilter || autoEnable
   const [isCtrlPressed, setIsCtrlPressed] = React.useState(false)
@@ -133,56 +135,57 @@ function TimeSeriesChartBase({
     return formatChartAxis(value, primaryMetric)
   }
 
-  // Custom axis style - 12px font from design tokens
+  // Custom axis style - responsive font size
   const axisStyle = {
-    fontSize: typography.sizes.dataPoint,
+    fontSize: fontSize.axis,
     fontFamily: 'system-ui, -apple-system, sans-serif',
     fill: colors.neutralDark
   }
 
   return (
-    <Card
-      style={{
-        backgroundColor: '#FFFFFF',
-        border: `1px solid ${colors.neutralLight}`,
-        borderRadius: '4px',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-        minHeight: '320px',
-      }}
-    >
-      {!hideTitle && (
-        <CardHeader className="pb-3">
-          <h3
-            className={composedStyles.sectionTitle}
-            style={{
-              fontSize: typography.sizes.sectionTitle,
-              color: colors.main
-            }}
-          >
-            {title}
-          </h3>
-        </CardHeader>
-      )}
-      <CardContent style={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '240px'
-      }}>
-        <ResponsiveContainer width="100%" aspect={3}>
-          <LineChart
-            data={data}
-            onClick={isEnabled ? handlePointClick : undefined}
-            style={{ cursor: isEnabled ? 'pointer' : 'default' }}
-            margin={chartSizes.margins.default}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke={colors.neutralLight} opacity={0.3} />
-            <XAxis dataKey={dateKey} tick={axisStyle} />
-            <YAxis tick={axisStyle} tickFormatter={yAxisFormatter} />
-            <Tooltip formatter={customTooltipFormatter} contentStyle={{ fontSize: '12px' }} />
-            <Legend
-              wrapperStyle={{ fontSize: '12px', cursor: (isEnabled || onEntityClick) ? 'pointer' : 'default' }}
-              onClick={(isEnabled || onEntityClick) ? handleLegendClick : undefined}
-            />
+    <ResponsiveContainer width="100%" height={chartHeight}>
+      <LineChart
+        data={data}
+        onClick={isEnabled ? handlePointClick : undefined}
+        style={{ cursor: isEnabled ? 'pointer' : 'default' }}
+        margin={chartMargins}
+      >
+        <CartesianGrid
+          strokeDasharray="3 3"
+          stroke={colors.neutralLight}
+          opacity={0.5}
+          vertical={false}
+        />
+        <XAxis
+          dataKey={dateKey}
+          tick={{ ...axisStyle, fontSize: fontSize.axis }}
+          tickLine={false}
+          axisLine={{ stroke: colors.neutralLight }}
+        />
+        <YAxis
+          tick={{ ...axisStyle, fontSize: fontSize.axis }}
+          tickLine={false}
+          axisLine={{ stroke: colors.neutralLight }}
+          tickFormatter={yAxisFormatter}
+          tickCount={10}
+          interval={0}
+          scale="linear"
+          domain={[0, 'dataMax']}
+        />
+        <Tooltip
+          formatter={customTooltipFormatter}
+          contentStyle={{
+            fontSize: fontSize.tooltip,
+            backgroundColor: 'rgba(255, 255, 255, 0.98)',
+            border: `1px solid ${colors.neutralLight}`,
+            borderRadius: '6px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+          }}
+        />
+        <Legend
+          wrapperStyle={{ fontSize: fontSize.legend, cursor: (isEnabled || onEntityClick) ? 'pointer' : 'default' }}
+          onClick={(isEnabled || onEntityClick) ? handleLegendClick : undefined}
+        />
             {lines.filter(line => line && line.dataKey && line.dataKey.trim() !== '').map((line) => {
               // Check for active filters on BOTH date and line field
               const hasDateFilters = crossFilters.some(f => f.field === 'date')
@@ -196,34 +199,109 @@ function TimeSeriesChartBase({
                   dataKey={line.dataKey}
                   name={line.name}
                   stroke={line.color}
-                  strokeWidth={hasLineFilters && !isLineSelected ? 1 : 2}
+                  strokeWidth={hasLineFilters && !isLineSelected ? 2 : 3}
                   opacity={hasLineFilters && !isLineSelected ? 0.3 : 1}
+                  animationDuration={800}
+                  animationEasing="ease-in-out"
                   dot={(props: any) => {
-                    if (!isEnabled) return null
                     const { cx, cy, payload, index } = props
                     const rawDateValue = payload.rawDate || payload[dateKey]
                     const isDateSelected = crossFilters.some(f => f.field === 'date' && f.value === String(rawDateValue))
                     const key = `${line.dataKey}-${index}-${rawDateValue}`
 
+                    if (!isEnabled) {
+                      // No cross-filter: show nice dots
+                      return (
+                        <circle
+                          key={key}
+                          cx={cx}
+                          cy={cy}
+                          r={5}
+                          fill={line.color}
+                          stroke="#fff"
+                          strokeWidth={2}
+                        />
+                      )
+                    }
+
                     if (hasDateFilters && isDateSelected) {
                       // Selected point: larger, filled
-                      return <circle key={key} cx={cx} cy={cy} r={5} fill={line.color} stroke="#fff" strokeWidth={2} />
+                      return (
+                        <circle
+                          key={key}
+                          cx={cx}
+                          cy={cy}
+                          r={6}
+                          fill={line.color}
+                          stroke="#fff"
+                          strokeWidth={2}
+                        />
+                      )
                     } else if (hasDateFilters) {
                       // Non-selected: smaller, semi-transparent
-                      return <circle key={key} cx={cx} cy={cy} r={3} fill={line.color} opacity={0.4} />
+                      return (
+                        <circle
+                          key={key}
+                          cx={cx}
+                          cy={cy}
+                          r={4}
+                          fill={line.color}
+                          opacity={0.4}
+                        />
+                      )
                     } else {
                       // No filters: normal dots
-                      return <circle key={key} cx={cx} cy={cy} r={3} fill={line.color} />
+                      return (
+                        <circle
+                          key={key}
+                          cx={cx}
+                          cy={cy}
+                          r={5}
+                          fill={line.color}
+                          stroke="#fff"
+                          strokeWidth={2}
+                        />
+                      )
                     }
                   }}
-                  activeDot={isEnabled ? { r: 6 } : false}
+                  activeDot={isEnabled ? { r: 8, strokeWidth: 2 } : { r: 7, strokeWidth: 2 }}
                 />
               )
             })}
-          </LineChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
+      </LineChart>
+    </ResponsiveContainer>
+  )
+}
+
+/**
+ * Wrapper component that provides responsive chart wrapper
+ */
+function TimeSeriesChartBase({
+  title,
+  data,
+  lines,
+  height,
+  enableCrossFilter = false,
+  dateKey = 'date',
+  crossFilterField,
+  customYAxisFormatter,
+  customTooltipFormatter,
+  hideTitle = false,
+  onEntityClick
+}: TimeSeriesChartProps) {
+  return (
+    <BaseResponsiveChart title={title} hideTitle={hideTitle} minHeight={height}>
+      <TimeSeriesChartContent
+        data={data}
+        lines={lines}
+        enableCrossFilter={enableCrossFilter}
+        dateKey={dateKey}
+        crossFilterField={crossFilterField}
+        customYAxisFormatter={customYAxisFormatter}
+        customTooltipFormatter={customTooltipFormatter}
+        onEntityClick={onEntityClick}
+      />
+    </BaseResponsiveChart>
   )
 }
 

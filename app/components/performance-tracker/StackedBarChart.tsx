@@ -2,8 +2,7 @@
 
 import React from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { composedStyles, chartSizes, typography } from '../../../lib/design-tokens'
+import { BaseResponsiveChart, useResponsiveChart } from './BaseResponsiveChart'
 import { colors } from '../../../lib/colors'
 import { withExport } from './withExport'
 import { formatChartTooltip, formatChartAxis } from '../../../lib/utils/formatters'
@@ -60,17 +59,20 @@ const ClickableYAxisTick = ({ x = 0, y = 0, payload, onClick, isEnabled, axisSty
   )
 }
 
-function StackedBarChartBase({
-  title,
+/**
+ * Inner chart content component that uses responsive configuration
+ */
+function StackedBarChartContent({
   data,
   categories,
   xAxisDataKey,
-  height = chartSizes.heights.standard,
   layout = 'horizontal',
   colorMap,
   enableCrossFilter = false,
   crossFilterField
-}: StackedBarChartProps) {
+}: Omit<StackedBarChartProps, 'title' | 'height'>) {
+  // Get responsive configuration from context
+  const { chartHeight, chartMargins, fontSize, breakpoint, isMobile } = useResponsiveChart()
   const { addCrossFilter, autoEnable, crossFilters } = useCrossFilter()
   const isEnabled = enableCrossFilter || autoEnable
   const filterField = crossFilterField || xAxisDataKey
@@ -142,7 +144,6 @@ function StackedBarChartBase({
 
   // Debug logging
   console.log('[StackedBarChart] Props:', {
-    title,
     dataLength: data.length,
     categoriesLength: categories.length,
     layout,
@@ -153,9 +154,9 @@ function StackedBarChartBase({
 
   console.log('[StackedBarChart] Categories dataKeys:', categories.filter(c => c).map(c => c.dataKey))
 
-  // Custom axis style - 12px font from design tokens
+  // Custom axis style - responsive font size
   const axisStyle = {
-    fontSize: typography.sizes.dataPoint,
+    fontSize: fontSize.axis,
     fontFamily: 'system-ui, -apple-system, sans-serif',
     fill: colors.neutralDark
   }
@@ -166,75 +167,85 @@ function StackedBarChartBase({
   }
 
   return (
-    <Card
-      style={{
-        backgroundColor: '#FFFFFF',
-        border: `1px solid ${colors.neutralLight}`,
-        borderRadius: '4px',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-        height: '480px',
-      }}
-    >
-      <CardHeader className="pb-3">
-        <h3
-          className={composedStyles.sectionTitle}
-          style={{
-            fontSize: typography.sizes.sectionTitle,
-            color: colors.main
+    <ResponsiveContainer width="100%" height={chartHeight}>
+      <BarChart
+        data={data}
+        layout={layout}
+        margin={chartMargins}
+        style={{ cursor: isEnabled ? 'pointer' : 'default' }}
+        onClick={isEnabled ? (data) => handleBarClick(data.activePayload?.[0]?.payload, data as any) : undefined}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke={colors.neutralLight} />
+        <XAxis
+          type={layout === 'vertical' ? 'number' : 'category'}
+          dataKey={layout === 'vertical' ? undefined : xAxisDataKey}
+          tick={axisStyle}
+        />
+        <YAxis
+          type={layout === 'vertical' ? 'category' : 'number'}
+          dataKey={layout === 'vertical' ? xAxisDataKey : undefined}
+          tick={layout === 'vertical' ?
+            <ClickableYAxisTick
+              onClick={handleAxisLabelClick}
+              isEnabled={isEnabled}
+              axisStyle={axisStyle}
+            /> :
+            axisStyle
+          }
+        />
+        <Tooltip
+          formatter={customTooltipFormatter}
+          contentStyle={{ fontSize: fontSize.tooltip }}
+        />
+        <Legend
+          layout={breakpoint === 'xs' ? 'vertical' : 'horizontal'}
+          wrapperStyle={{
+            fontSize: fontSize.legend,
+            paddingTop: isMobile ? '8px' : '16px'
           }}
-        >
-          {title}
-        </h3>
-      </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={height}>
-          <BarChart
-            data={data}
-            layout={layout}
-            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-            style={{ cursor: isEnabled ? 'pointer' : 'default' }}
-            onClick={isEnabled ? (data) => handleBarClick(data.activePayload?.[0]?.payload, data as any) : undefined}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke={colors.neutralLight} />
-            <XAxis
-              type={layout === 'vertical' ? 'number' : 'category'}
-              dataKey={layout === 'vertical' ? undefined : xAxisDataKey}
-              tick={axisStyle}
-            />
-            <YAxis
-              type={layout === 'vertical' ? 'category' : 'number'}
-              dataKey={layout === 'vertical' ? xAxisDataKey : undefined}
-              tick={layout === 'vertical' ?
-                <ClickableYAxisTick
-                  onClick={handleAxisLabelClick}
-                  isEnabled={isEnabled}
-                  axisStyle={axisStyle}
-                /> :
-                axisStyle
-              }
-            />
-            <Tooltip formatter={customTooltipFormatter} contentStyle={{ fontSize: '12px' }} />
-            <Legend
-              wrapperStyle={{
-                fontSize: '12px',
-                paddingTop: '16px'
-              }}
-              iconType="rect"
-            />
-            {categories.filter(c => c && c.dataKey && c.dataKey.trim() !== '').map((category, index) => (
-              <Bar
-                key={category.dataKey}
-                dataKey={category.dataKey}
-                name={category.name}
-                stackId="a"
-                fill={getColor(category.dataKey, index)}
-                barSize={20}
-              />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
+          iconType="rect"
+        />
+        {categories.filter(c => c && c.dataKey && c.dataKey.trim() !== '').map((category, index) => (
+          <Bar
+            key={category.dataKey}
+            dataKey={category.dataKey}
+            name={category.name}
+            stackId="a"
+            fill={getColor(category.dataKey, index)}
+            barSize={isMobile ? 16 : 20}
+          />
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
+  )
+}
+
+/**
+ * Wrapper component that provides responsive chart wrapper
+ */
+function StackedBarChartBase({
+  title,
+  data,
+  categories,
+  xAxisDataKey,
+  height,
+  layout = 'horizontal',
+  colorMap,
+  enableCrossFilter = false,
+  crossFilterField
+}: StackedBarChartProps) {
+  return (
+    <BaseResponsiveChart title={title} minHeight={height}>
+      <StackedBarChartContent
+        data={data}
+        categories={categories}
+        xAxisDataKey={xAxisDataKey}
+        layout={layout}
+        colorMap={colorMap}
+        enableCrossFilter={enableCrossFilter}
+        crossFilterField={crossFilterField}
+      />
+    </BaseResponsiveChart>
   )
 }
 

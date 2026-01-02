@@ -39,23 +39,30 @@ export default function AuthPage() {
           'Content-Type': 'application/json',
         },
         credentials: 'include', // Important: include cookies
+        redirect: 'manual', // Don't auto-follow redirects, handle them manually
         body: JSON.stringify({ email, password }),
       })
 
+      // Server returns redirect on success (status 307/302)
+      // or JSON error on failure (status 401/500)
+      if (response.type === 'opaqueredirect' || response.status === 0) {
+        // Redirect was returned - login successful
+        // The auth cookie has been set by the server
+        // Now redirect to the original URL (from query params set by middleware)
+        const urlParams = new URLSearchParams(window.location.search)
+        const returnUrl = urlParams.get('returnUrl') || '/'
+        window.location.href = returnUrl
+        return
+      }
+
+      // If we got here, it's an error response (JSON)
       const data = await response.json()
 
       if (!response.ok) {
         throw new Error(data.error || 'Login failed')
       }
 
-      // Get return URL from cookie (will be read by client)
-      // Wait a moment for cookie to be set, then redirect to returnUrl or home
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      // Try to get return URL from cookie (best effort - client can't read httpOnly)
-      // Actually, return_url cookie is httpOnly, so we'll just redirect to home
-      // The server-side redirect already handled the return URL for OAuth
-      // For password login, we need to check if there's a query param
+      // Success case (if server returns 200 JSON instead of redirect)
       const urlParams = new URLSearchParams(window.location.search)
       const returnUrl = urlParams.get('returnUrl') || '/'
       window.location.href = returnUrl

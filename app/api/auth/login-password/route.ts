@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { authService } from '../../../../lib/services/auth'
 import { withRateLimit, RateLimitPresets } from '../../../../lib/middleware/rateLimit'
 import { loginPasswordSchema, validateRequest } from '../../../../lib/validation/schemas'
@@ -29,16 +30,15 @@ async function handler(request: NextRequest) {
 
     const { user, token } = result
 
-    // Create response with cookie
-    const response = NextResponse.json({
-      success: true,
-      user: {
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        accessLevel: user.accessLevel,
-      },
-    })
+    // Read return URL from cookie (set by middleware)
+    const cookieStore = await cookies()
+    const returnUrl = cookieStore.get('return_url')?.value || '/'
+
+    console.log('[API] Password login successful:', email)
+    console.log('[API] Redirecting to:', returnUrl)
+
+    // Create redirect response instead of JSON
+    const response = NextResponse.redirect(new URL(returnUrl, request.url))
 
     // Set auth token cookie with __Host- prefix for enhanced security
     response.cookies.set('__Host-auth_token', token, {
@@ -49,7 +49,9 @@ async function handler(request: NextRequest) {
       maxAge: 8 * 60 * 60, // 8 hours
     })
 
-    console.log('[API] Password login successful:', email)
+    // Clean up return URL cookie
+    response.cookies.delete('return_url')
+
     return response
   } catch (error) {
     console.error('[API] Error in password login:', error)

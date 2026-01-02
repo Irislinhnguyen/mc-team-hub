@@ -19,7 +19,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import ChartSkeleton from '../../../components/performance-tracker/skeletons/ChartSkeleton'
 import { DataTableSkeleton } from '../../../components/performance-tracker/skeletons/DataTableSkeleton'
 import { formatPartnerName, formatStringValue } from '../../../../lib/utils/formatters'
-import { normalizeFilterValue } from '../../../../lib/utils/filterHelpers'
+import { normalizeFilterValue, extractBaseFilters } from '../../../../lib/utils/filterHelpers'
 import {
   Select,
   SelectContent,
@@ -39,8 +39,7 @@ function MarketOverviewPageContent() {
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [startDate, setStartDate] = useState<Date | null>(null)
   const [endDate, setEndDate] = useState<Date | null>(null)
-  const [latestDateLoaded, setLatestDateLoaded] = useState(false)
-  const [fetchingInitialDate, setFetchingInitialDate] = useState(true)
+  const [isDateSelectorLoading, setIsDateSelectorLoading] = useState(true)
   const [selectedPartnerForPie, setSelectedPartnerForPie] = useState<string>('GENIEE')
 
   // Get query client for cache management
@@ -64,9 +63,27 @@ function MarketOverviewPageContent() {
     { key: 'total_impressions', label: 'Total Impressions' }
   ]
 
+  // Debug: Check what baseFilters would be
+  const baseFiltersDebug = useMemo(() => {
+    return extractBaseFilters(filters, crossFilters)
+  }, [filters, crossFilters])
+
+  useEffect(() => {
+    console.log('[Market Overview] 🔍 Base Filters (for query):', baseFiltersDebug)
+    console.log('[Market Overview] 🔍 Base Filters count:', Object.keys(baseFiltersDebug).length)
+  }, [baseFiltersDebug])
+
   // Use React Query hook for data fetching and caching
   const queryResult = useGCPPMarketOverview(filters)
   const { data: rawData, isLoading: loading, error, isFetching, status, fetchStatus } = queryResult
+
+  // Debug: Log query result details
+  useEffect(() => {
+    console.log('[Market Overview Query] Status:', status)
+    console.log('[Market Overview Query] Fetch Status:', fetchStatus)
+    console.log('[Market Overview Query] Is Fetching:', isFetching)
+    console.log('[Market Overview Query] Error:', error)
+  }, [status, fetchStatus, isFetching, error])
 
   // Apply client-side filtering for cross-filters (instant, no API call)
   const { filteredData: filteredMarketShareDetail } = useClientSideFilterMulti(
@@ -97,52 +114,28 @@ function MarketOverviewPageContent() {
     }
   }, [filteredMarketShareDetail, filteredMarketShareByMarketPartner, filteredImpressionsTimeSeries, filteredMarketDistribution, rawData])
 
-  const chartsLoading = loading
-  const tablesLoading = loading
+  // Show loading state when query is running OR when we have filters but no data yet
+  const hasFilters = Object.keys(filters).length > 0
+  const shouldShowLoading = loading || isDateSelectorLoading || (hasFilters && !data)
 
   // Debug: Log filters and query state
   useEffect(() => {
     console.log('[Market Overview] Filters:', filters)
-    console.log('[Market Overview] Filters count:', Object.keys(filters).length)
-    console.log('[Market Overview] 🔍 Partner filter value:', filters.partner)
-    console.log('[Market Overview] 🔍 Market filter value:', filters.market)
-    console.log('[Market Overview] 🔍 Team filter value:', filters.team)
-    console.log('[Market Overview] Query Status:', status)
-    console.log('[Market Overview] Fetch Status:', fetchStatus)
-    console.log('[Market Overview] Is Fetching:', isFetching)
+    console.log('[Market Overview] Has Filters:', hasFilters)
     console.log('[Market Overview] Is Loading:', loading)
-    console.log('[Market Overview] Data:', data)
-    console.log('[Market Overview] Error:', error)
-  }, [filters, data, loading, error, isFetching, status, fetchStatus])
-
-  // Auto-load latest date on mount (single date mode only)
-  useEffect(() => {
-    if (latestDateLoaded || dateMode !== 'single' || selectedDate) {
-      setFetchingInitialDate(false)
-      return
+    console.log('[Market Overview] Date Selector Loading:', isDateSelectorLoading)
+    console.log('[Market Overview] Should Show Loading:', shouldShowLoading)
+    console.log('[Market Overview] Data available:', !!data)
+    console.log('[Market Overview] Raw Data:', rawData)
+    console.log('[Market Overview] Filtered Data:', data)
+    console.log('[Market Overview] Cross Filters:', crossFilters)
+    if (data) {
+      console.log('[Market Overview] marketShareDetail count:', data.marketShareDetail?.length || 0)
+      console.log('[Market Overview] marketShareByMarketPartner count:', data.marketShareByMarketPartner?.length || 0)
+      console.log('[Market Overview] impressionsTimeSeries count:', data.impressionsTimeSeries?.length || 0)
+      console.log('[Market Overview] marketDistribution count:', data.marketDistribution?.length || 0)
     }
-
-    const fetchLatestDate = async () => {
-      setFetchingInitialDate(true)
-      try {
-        const response = await fetch('/api/gcpp-check/available-dates')
-        const result = await response.json()
-        if (result.status === 'ok' && result.data.latestDate) {
-          // Normalize latestDate to handle both string and {value: string} formats
-          const normalizedDate = normalizeFilterValue(result.data.latestDate)
-          setSelectedDate(normalizedDate)
-          setDateFilters({ date: normalizedDate })
-          setLatestDateLoaded(true)
-        }
-      } catch (error) {
-        console.error('Error fetching latest date:', error)
-      } finally {
-        setFetchingInitialDate(false)
-      }
-    }
-
-    fetchLatestDate()
-  }, [latestDateLoaded, dateMode, selectedDate])
+  }, [filters, hasFilters, loading, isDateSelectorLoading, shouldShowLoading, data, rawData, crossFilters])
 
   const handleDateModeChange = (mode: 'single' | 'range') => {
     setDateMode(mode)
@@ -299,12 +292,13 @@ function MarketOverviewPageContent() {
       contentRef={contentRef}
     >
       {/* Filter Controls Row */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mb-6">
         <DateModeToggle mode={dateMode} onModeChange={handleDateModeChange} />
         <DateSelector
           mode={dateMode}
           onDateChange={handleSingleDateChange}
           onDateRangeChange={handleDateRangeChange}
+          onLoadingChange={setIsDateSelectorLoading}
           initialDate={selectedDate}
           initialStartDate={startDate}
           initialEndDate={endDate}
@@ -324,7 +318,7 @@ function MarketOverviewPageContent() {
       {/* Row 1: Stacked Bar Chart + Market Share Detail Table */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6 [&>*]:min-w-0">
         {/* Chart 1: Market share by market and partner */}
-        {chartsLoading && !data ? (
+        {shouldShowLoading ? (
           <ChartSkeleton />
         ) : stackedBarData.data.length > 0 ? (
           <StackedBarChart
@@ -341,7 +335,7 @@ function MarketOverviewPageContent() {
         ) : null}
 
         {/* Table 1: Market share in detail */}
-        {tablesLoading ? (
+        {shouldShowLoading ? (
           <DataTableSkeleton columns={marketShareDetailColumns} rows={10} />
         ) : data?.marketShareDetail ? (
           <DataTable
@@ -356,7 +350,7 @@ function MarketOverviewPageContent() {
       {/* Row 2: Time Series Chart + Pie Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6 [&>*]:min-w-0">
         {/* Chart 2: Impressions by market and partner */}
-        {chartsLoading && !data ? (
+        {shouldShowLoading ? (
           <ChartSkeleton />
         ) : timeSeriesData.data.length > 0 ? (
           <TimeSeriesChart
@@ -371,7 +365,7 @@ function MarketOverviewPageContent() {
         ) : null}
 
         {/* Chart 3: Market distribution by partner */}
-        {chartsLoading && !data ? (
+        {shouldShowLoading ? (
           <ChartSkeleton />
         ) : pieChartData && pieChartData.length > 0 ? (
           <div className="bg-white border border-gray-200 rounded shadow-sm" style={{ borderColor: colors.neutralLight }}>
@@ -420,17 +414,15 @@ function MarketOverviewPageContent() {
         ) : null}
       </div>
 
-      {fetchingInitialDate && (
-        <>
-          <ChartSkeleton />
-          <DataTableSkeleton columns={marketShareDetailColumns} rows={5} />
-          <ChartSkeleton />
-        </>
+      {!loading && !hasFilters && (
+        <div className="p-8 text-center text-gray-500">
+          <p>Please select a date to view data.</p>
+        </div>
       )}
 
-      {!loading && !data && !fetchingInitialDate && (
+      {!loading && hasFilters && data && !data.marketShareDetail && !data.impressionsTimeSeries && (
         <div className="p-8 text-center text-gray-500">
-          <p>No data available. Please select filters.</p>
+          <p>No data available for the selected filters.</p>
         </div>
       )}
     </AnalyticsPageLayout>
