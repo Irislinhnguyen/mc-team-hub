@@ -515,8 +515,13 @@ export function getPartnerBreakdownQueries(whereClause: string, filters?: GCPPFi
  * Partner Breakdown Part 2 Queries (Tab 4)
  * Tables: master_top_100_by_partner_all_market, master_partner_market_top_by_market, geniee_wallet_analysis
  *
- * NOTE: Only master_partner_market_top_by_market has 'market' column.
- * Other tables aggregate across all markets, so we exclude 'market' filter from their WHERE clauses.
+ * SCHEMA NOTES (verified from BigQuery):
+ * - master_top_100_by_partner_all_market: HAS partner, domain_app_id, app_name, filtered_impressions, date
+ *   - NO market column (aggregates all markets)
+ * - master_partner_market_top_by_market: HAS partner, market, domain_app_id, app_name, performance, filtered_impressions, date
+ *   - This is the ONLY table with market column
+ * - geniee_wallet_analysis: HAS domain_app_id, app_name, geniee_impressions, total_impressions, date
+ *   - NO partner column, NO market column (aggregates all partners and markets)
  */
 export function getPartnerBreakdown2Queries(filters: GCPPFilters) {
   // For top100ByPartner: exclude 'market' (table doesn't have it - aggregates all markets)
@@ -583,24 +588,25 @@ export function getPartnerBreakdown2Queries(filters: GCPPFilters) {
  * Tables: new_pub_by_partner, shared_pub_monitoring
  *
  * SCHEMA NOTES (verified from BigQuery):
- * - new_pub_by_partner: NO date column (snapshot table), HAS pub_size_category
- * - shared_pub_monitoring: NO date column, uses latest_date/previous_date instead, NO pub_size_category
+ * - new_pub_by_partner: HAS partner, domain_app_id, app_name, pub_size_category, filtered_impressions, team
+ *   - NO date column (snapshot table)
+ * - shared_pub_monitoring: HAS domain_app_id, app_name, competitor_partner, latest_date, scenario, team
+ *   - NO date column (uses latest_date/previous_date instead)
+ *   - NO pub_size_category, NO partner (has competitor_partner instead), NO market columns
  */
 export function getPublisherMonitoringQueries(filters: GCPPFilters) {
   // For new_pub_by_partner: Exclude date filters (table has no date column)
-  const newPubFilters = { ...filters }
-  delete newPubFilters.date
-  delete newPubFilters.startDate
-  delete newPubFilters.endDate
-  const newPubWhereClause = buildGCPPWhereClause(newPubFilters)
+  const newPubWhereClause = buildGCPPWhereClause(filters, undefined, ['date', 'startDate', 'endDate'])
 
-  // For shared_pub_monitoring: Exclude pub_size_category and replace 'date' with 'latest_date'
-  const sharedPubFilters = { ...filters }
-  delete sharedPubFilters.pub_size_category
-
-  // Build WHERE clause and replace 'date' with 'latest_date'
-  let sharedPubWhereClause = buildGCPPWhereClause(sharedPubFilters)
-  sharedPubWhereClause = sharedPubWhereClause.replace(/\bdate\b/g, 'latest_date')
+  // For shared_pub_monitoring: Exclude date filters, pub_size_category, partner, and market
+  // (table doesn't have these columns - uses latest_date instead of date, has competitor_partner not partner)
+  // Replace 'date' references with 'latest_date' after building WHERE clause
+  let sharedPubWhereClause = buildGCPPWhereClause(
+    filters,
+    undefined,
+    ['date', 'startDate', 'endDate', 'pub_size_category', 'partner', 'market']
+  )
+  // Note: We don't need to replace 'date' with 'latest_date' anymore since date filters are excluded
 
   return {
     // New publishers by partner (NO date filter - snapshot table)
