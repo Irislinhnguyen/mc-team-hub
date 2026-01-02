@@ -81,7 +81,7 @@ export function buildGCPPWhereClause(filters: GCPPFilters, tableName?: string, e
   }
 
   // Partner filter
-  if (filters.partner) {
+  if (filters.partner && !excludeFields?.includes('partner')) {
     const partners = Array.isArray(filters.partner) ? filters.partner : [filters.partner]
     console.log('[DEBUG] Partner filter received:', filters.partner)
     console.log('[DEBUG] Partner filter (array):', partners)
@@ -525,8 +525,8 @@ export function getPartnerBreakdown2Queries(filters: GCPPFilters) {
   // For topPubsByPartnerMarket: include all filters (has market column)
   const topPubsWhereClause = buildGCPPWhereClause(filters)
 
-  // For genieeWallet: exclude 'market' (table doesn't have it - aggregates all markets)
-  const walletWhereClause = buildGCPPWhereClause(filters, undefined, ['market'])
+  // For genieeWallet: exclude 'market' and 'partner' (table doesn't have these columns)
+  const walletWhereClause = buildGCPPWhereClause(filters, undefined, ['market', 'partner'])
 
   return {
     // Top 100 by partner (all markets)
