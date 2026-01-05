@@ -635,7 +635,9 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
         SUM(rev) as total_revenue,
         SUM(profit) as total_profit,
         SUM(paid) as total_paid,
-        SUM(req) as total_requests
+        SUM(req) as total_requests,
+        AVG(CAST(request_CPM as FLOAT64)) as avg_ecpm,
+        ROUND((SUM(paid) / NULLIF(SUM(req), 0)) * 100, 2) as avg_fill_rate
       FROM ${tableName}
       ${whereClause}
     `,

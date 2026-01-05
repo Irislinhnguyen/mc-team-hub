@@ -281,13 +281,13 @@ function BusinessHealthPageContent() {
 
       {/* Top Metrics Row - Max 2 rows on mobile */}
         {loading && !data ? (
-          <div className="grid grid-cols-3 md:grid-cols-5 gap-2.5 md:gap-4">
-            {Array.from({ length: 5 }).map((_, i) => (
+          <div className="grid grid-cols-3 md:grid-cols-7 gap-2.5 md:gap-4">
+            {Array.from({ length: 7 }).map((_, i) => (
               <MetricCardSkeleton key={i} />
             ))}
           </div>
         ) : data ? (
-          <div className="grid grid-cols-3 md:grid-cols-5 gap-2.5 md:gap-4">
+          <div className="grid grid-cols-3 md:grid-cols-7 gap-2.5 md:gap-4">
             <MetricCard
               label="Rev"
               value={metrics.total_revenue || 0}
@@ -307,6 +307,15 @@ function BusinessHealthPageContent() {
             <MetricCard
               label="Profit rate"
               value={data?.profitRate || 0}
+              unit="%"
+            />
+            <MetricCard
+              label="Avg eCPM"
+              value={metrics.avg_ecpm || 0}
+            />
+            <MetricCard
+              label="Avg Fill Rate"
+              value={metrics.avg_fill_rate || 0}
               unit="%"
             />
           </div>
