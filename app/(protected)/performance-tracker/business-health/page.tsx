@@ -126,37 +126,45 @@ function BusinessHealthPageContent() {
 
   // Column configurations for skeletons
   const listOfPidColumns = [
-    { key: 'pid', label: 'pid', width: '15%' },
-    { key: 'pubname', label: 'pubname', width: '35%' },
-    { key: 'rev', label: 'rev', width: '16.67%' },
-    { key: 'profit', label: 'profit', width: '16.67%' },
-    { key: 'rev_to_pub', label: 'rev to pub', width: '16.67%' },
+    { key: 'pid', label: 'pid', width: '13%' },
+    { key: 'pubname', label: 'pubname', width: '30%' },
+    { key: 'rev', label: 'rev', width: '14.25%' },
+    { key: 'profit', label: 'profit', width: '14.25%' },
+    { key: 'rev_to_pub', label: 'rev to pub', width: '14.25%' },
+    { key: 'ecpm', label: 'avg eCPM', width: '14.25%' },
+    { key: 'fill_rate', label: 'fill rate %', width: '12%' },
   ]
 
   const listOfPidByDateColumns = [
-    { key: 'date', label: 'date', width: '18%', format: (v: any) => formatDate(v.value || v) },
-    { key: 'pid', label: 'pid', width: '12%' },
-    { key: 'pubname', label: 'pubname', width: '30%' },
-    { key: 'rev', label: 'rev', width: '13.33%' },
-    { key: 'profit', label: 'profit', width: '13.33%' },
-    { key: 'rev_to_pub', label: 'rev to pub', width: '13.33%' },
+    { key: 'date', label: 'date', width: '15%', format: (v: any) => formatDate(v.value || v) },
+    { key: 'pid', label: 'pid', width: '10%' },
+    { key: 'pubname', label: 'pubname', width: '25%' },
+    { key: 'rev', label: 'rev', width: '12.5%' },
+    { key: 'profit', label: 'profit', width: '12.5%' },
+    { key: 'rev_to_pub', label: 'rev to pub', width: '12.5%' },
+    { key: 'ecpm', label: 'avg eCPM', width: '12.5%' },
+    { key: 'fill_rate', label: 'fill rate %', width: '12%' },
   ]
 
   const listOfMidColumns = [
-    { key: 'mid', label: 'mid', width: '15%' },
-    { key: 'medianame', label: 'medianame', width: '35%' },
-    { key: 'rev', label: 'rev', width: '16.67%' },
-    { key: 'profit', label: 'profit', width: '16.67%' },
-    { key: 'rev_to_pub', label: 'rev to pub', width: '16.67%' },
+    { key: 'mid', label: 'mid', width: '13%' },
+    { key: 'medianame', label: 'medianame', width: '30%' },
+    { key: 'rev', label: 'rev', width: '14.25%' },
+    { key: 'profit', label: 'profit', width: '14.25%' },
+    { key: 'rev_to_pub', label: 'rev to pub', width: '14.25%' },
+    { key: 'ecpm', label: 'avg eCPM', width: '14.25%' },
+    { key: 'fill_rate', label: 'fill rate %', width: '12%' },
   ]
 
   const listOfMidByDateColumns = [
-    { key: 'date', label: 'date', width: '18%', format: (v: any) => formatDate(v.value || v) },
-    { key: 'mid', label: 'mid', width: '12%' },
-    { key: 'medianame', label: 'medianame', width: '30%' },
-    { key: 'rev', label: 'rev', width: '13.33%' },
-    { key: 'profit', label: 'profit', width: '13.33%' },
-    { key: 'rev_to_pub', label: 'rev to pub', width: '13.33%' },
+    { key: 'date', label: 'date', width: '15%', format: (v: any) => formatDate(v.value || v) },
+    { key: 'mid', label: 'mid', width: '10%' },
+    { key: 'medianame', label: 'medianame', width: '25%' },
+    { key: 'rev', label: 'rev', width: '12.5%' },
+    { key: 'profit', label: 'profit', width: '12.5%' },
+    { key: 'rev_to_pub', label: 'rev to pub', width: '12.5%' },
+    { key: 'ecpm', label: 'avg eCPM', width: '12.5%' },
+    { key: 'fill_rate', label: 'fill rate %', width: '12%' },
   ]
 
   const zoneMonitoringColumns = [
@@ -271,15 +279,15 @@ function BusinessHealthPageContent() {
         presetIdFromUrl={presetIdFromUrl || undefined}
       />
 
-      {/* Top Metrics Row */}
+      {/* Top Metrics Row - Max 2 rows on mobile */}
         {loading && !data ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+          <div className="grid grid-cols-3 md:grid-cols-5 gap-2.5 md:gap-4">
             {Array.from({ length: 5 }).map((_, i) => (
               <MetricCardSkeleton key={i} />
             ))}
           </div>
         ) : data ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+          <div className="grid grid-cols-3 md:grid-cols-5 gap-2.5 md:gap-4">
             <MetricCard
               label="Rev"
               value={metrics.total_revenue || 0}

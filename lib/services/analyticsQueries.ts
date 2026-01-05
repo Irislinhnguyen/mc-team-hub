@@ -786,7 +786,9 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
         pubname,
         SUM(rev) as rev,
         SUM(profit) as profit,
-        SUM(rev) - SUM(profit) as rev_to_pub
+        SUM(rev) - SUM(profit) as rev_to_pub,
+        AVG(CAST(request_CPM as FLOAT64)) as ecpm,
+        (SUM(paid) / NULLIF(SUM(req), 0)) * 100 as fill_rate
       FROM ${tableName}
       ${whereClause}
       GROUP BY pid, pubname
@@ -817,6 +819,8 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
           SUM(rev) as rev,
           SUM(profit) as profit,
           SUM(rev) - SUM(profit) as rev_to_pub,
+          AVG(CAST(request_CPM as FLOAT64)) as ecpm,
+          (SUM(paid) / NULLIF(SUM(req), 0)) * 100 as fill_rate,
           ROW_NUMBER() OVER (PARTITION BY DATE ORDER BY SUM(rev) DESC) as rn
         FROM ${tableName}
         ${whereClause}
@@ -848,7 +852,9 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
         medianame,
         SUM(rev) as rev,
         SUM(profit) as profit,
-        SUM(rev) - SUM(profit) as rev_to_pub
+        SUM(rev) - SUM(profit) as rev_to_pub,
+        AVG(CAST(request_CPM as FLOAT64)) as ecpm,
+        (SUM(paid) / NULLIF(SUM(req), 0)) * 100 as fill_rate
       FROM ${tableName}
       ${whereClause}
       GROUP BY pid, pubname, mid, medianame
@@ -883,6 +889,8 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
           SUM(rev) as rev,
           SUM(profit) as profit,
           SUM(rev) - SUM(profit) as rev_to_pub,
+          AVG(CAST(request_CPM as FLOAT64)) as ecpm,
+          (SUM(paid) / NULLIF(SUM(req), 0)) * 100 as fill_rate,
           ROW_NUMBER() OVER (PARTITION BY DATE ORDER BY SUM(rev) DESC) as rn
         FROM ${tableName}
         ${whereClause}
