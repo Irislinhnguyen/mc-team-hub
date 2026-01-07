@@ -1,15 +1,16 @@
 import type { Pipeline } from '@/lib/types/pipeline'
 
 export async function formatPipelineReport(pipeline: Pipeline): Promise<string[]> {
-  // Line 1: Status, Q Gross, Publisher, Product, POC, Date
+  // Line 1: Status, Q Gross, Publisher, Product, POC, Starting Date
   const line1 = `-${pipeline.status}, ${formatQGross(pipeline.q_gross)}, ${pipeline.publisher}, ${pipeline.product || 'N/A'} (${pipeline.poc}, ${formatDate(pipeline.starting_date)})`
 
-  // Line 2: Status description (AI summarized from action_detail + action_progress)
+  // Line 2: Status summary (from action_progress - tóm tắt status hiện tại)
   const statusSummary = await summarizeProgress(pipeline)
   const line2 = `- Status: ${statusSummary}`
 
-  // Line 3: Action Plan
-  const line3 = `- Action Plan: ${pipeline.next_action || 'No action planned'}`
+  // Line 3: Next Action with date (from next_action + action_date)
+  const actionDateStr = pipeline.action_date ? `[${formatDate(pipeline.action_date)}] ` : ''
+  const line3 = `- Next Action: ${actionDateStr}${pipeline.next_action || 'No action planned'}`
 
   return [line1, line2, line3, ''] // Empty line between pipelines
 }
@@ -23,11 +24,8 @@ export async function generateReport(pipelines: Pipeline[]): Promise<string> {
 }
 
 async function summarizeProgress(pipeline: Pipeline): Promise<string> {
-  // Combine action_detail and action_progress
-  const progressNotes = [
-    pipeline.action_detail,
-    pipeline.action_progress
-  ].filter(Boolean).join('. ')
+  // Use action_progress (tóm tắt status hiện tại của pipeline)
+  const progressNotes = pipeline.action_progress || ''
 
   if (!progressNotes) {
     return 'No status update'
@@ -46,7 +44,8 @@ async function summarizeProgress(pipeline: Pipeline): Promise<string> {
       body: JSON.stringify({
         progressNotes,
         pipelineStatus: pipeline.status,
-        publisher: pipeline.publisher
+        publisher: pipeline.publisher,
+        actionDate: pipeline.action_date
       })
     })
 

@@ -7,7 +7,7 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
-    const { progressNotes, pipelineStatus, publisher } = await request.json()
+    const { progressNotes, pipelineStatus, publisher, actionDate } = await request.json()
 
     if (!progressNotes) {
       return NextResponse.json(
@@ -23,15 +23,16 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: 'system',
-          content: 'You are a professional assistant that summarizes pipeline progress notes concisely. Keep summaries under 80 characters.'
+          content: 'You are a professional assistant that summarizes pipeline status updates concisely. The "Action Progress" field contains a summary of the current pipeline status. Keep summaries under 80 characters.'
         },
         {
           role: 'user',
-          content: `Summarize this pipeline progress note in ONE concise sentence (max 80 chars):
+          content: `Summarize this pipeline status in ONE concise sentence (max 80 chars):
 
 Pipeline: ${publisher}
-Status: ${pipelineStatus}
-Progress Notes: ${progressNotes}
+Current Status: ${pipelineStatus}
+Action Date: ${actionDate || 'Not set'}
+Action Progress (current status summary): ${progressNotes}
 
 Summary (concise, 1 sentence):`,
         },

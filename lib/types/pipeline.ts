@@ -262,6 +262,8 @@ export interface Pipeline {
   actual_starting_date: string | null
   /** AUTO-LOGGED: Set when status → S (deal fully won) - Calculated as actual_starting_date + 7 days */
   close_won_date: string | null
+  /** AUTO-LOGGED: Set when status → Z (deal closed/lost) - CS pipelines only */
+  closed_date: string | null
 
   // ===== S- TO S CONFIRMATION TRACKING =====
   /** Confirmation status for S- to S transition: pending (awaiting confirmation), confirmed (user approved), declined (user rejected) */

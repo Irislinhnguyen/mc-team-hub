@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { ExternalLink } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -84,7 +85,8 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
       'publisher', 'poc', 'classification', 'team', 'pid', 'mid',
       'affected_zones', 'domain', 'channel', 'region', 'product', 'proposal_date',
       'interested_date', 'acceptance_date', 'action_date',
-      'next_action', 'action_detail', 'action_progress', 'forecast_type'
+      'next_action', 'action_detail', 'action_progress', 'forecast_type',
+      'ready_to_deliver_date', 'closed_date'
     ]
 
     return fieldsToCompare.some(field => {
@@ -299,19 +301,11 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
                   <Input
                     id="imp"
                     type="text"
-                    inputMode="numeric"
                     value={formData.imp ? formData.imp.toLocaleString() : ''}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/,/g, '')
-                      if (value === '' || /^\d+$/.test(value)) {
-                        setFormData({
-                          ...formData,
-                          imp: value ? parseInt(value) : null
-                        })
-                      }
-                    }}
-                    className="mt-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="mt-1 bg-muted/50"
                     placeholder="1,000,000"
+                    disabled
+                    readOnly
                   />
                 </div>
                 <div>
@@ -319,20 +313,11 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
                   <Input
                     id="ecpm"
                     type="text"
-                    inputMode="decimal"
                     value={formData.ecpm ?? ''}
-                    onChange={(e) => {
-                      const value = e.target.value
-                      // Allow empty, digits, single decimal point, and decimals
-                      if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                        setFormData({
-                          ...formData,
-                          ecpm: value === '' ? null : value
-                        })
-                      }
-                    }}
-                    className="mt-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="mt-1 bg-muted/50"
                     placeholder="2.50"
+                    disabled
+                    readOnly
                   />
                 </div>
                 <div>
@@ -340,24 +325,11 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
                   <Input
                     id="revenue_share"
                     type="text"
-                    inputMode="numeric"
                     value={formData.revenue_share ?? ''}
-                    onChange={(e) => {
-                      const value = e.target.value
-                      // Allow empty, digits, and decimals
-                      if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                        // Validate range only for complete numbers
-                        const num = parseFloat(value)
-                        if (value === '' || value.endsWith('.') || (num >= 0 && num <= 100)) {
-                          setFormData({
-                            ...formData,
-                            revenue_share: value === '' ? null : value
-                          })
-                        }
-                      }
-                    }}
-                    className="mt-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="mt-1 bg-muted/50"
                     placeholder="70"
+                    disabled
+                    readOnly
                   />
                 </div>
               </div>
@@ -370,28 +342,19 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
                     id="starting_date"
                     type="date"
                     value={formData.starting_date || ''}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      starting_date: e.target.value || null
-                    })}
-                    className="mt-1"
+                    className="mt-1 bg-muted/50"
+                    disabled
+                    readOnly
                   />
                 </div>
                 <div>
                   <Label htmlFor="status" className="text-xs">Status</Label>
-                  <Select
+                  <Input
                     value={formData.status || ''}
-                    onValueChange={(value) => setFormData({ ...formData, status: value })}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PIPELINE_STAGES.map((stage) => (
-                        <SelectItem key={stage} value={stage}>{stage}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    className="mt-1 bg-muted/50"
+                    disabled
+                    readOnly
+                  />
                 </div>
               </div>
             </div>
@@ -444,8 +407,9 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
                   id="publisher"
                   placeholder="Publisher name"
                   value={formData.publisher || ''}
-                  onChange={(e) => setFormData({ ...formData, publisher: e.target.value })}
-                  className="mt-1"
+                  className="mt-1 bg-muted/50"
+                  disabled
+                  readOnly
                 />
               </div>
 
@@ -456,8 +420,9 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
                     id="pid"
                     placeholder="Publisher ID"
                     value={formData.pid || ''}
-                    onChange={(e) => setFormData({ ...formData, pid: e.target.value })}
-                    className="mt-1"
+                    className="mt-1 bg-muted/50"
+                    disabled
+                    readOnly
                   />
                 </div>
                 <div>
@@ -466,8 +431,9 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
                     id="mid"
                     placeholder="Media ID"
                     value={formData.mid || ''}
-                    onChange={(e) => setFormData({ ...formData, mid: e.target.value })}
-                    className="mt-1"
+                    className="mt-1 bg-muted/50"
+                    disabled
+                    readOnly
                   />
                 </div>
               </div>
@@ -479,18 +445,10 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
                   id="affected_zones"
                   placeholder="123, 456, 789"
                   value={formData.affected_zones?.join(', ') || ''}
-                  onChange={(e) => {
-                    const zones = e.target.value
-                      .split(',')
-                      .map(z => z.trim())
-                      .filter(z => z !== '')
-                    setFormData({ ...formData, affected_zones: zones })
-                  }}
-                  className="mt-1"
+                  className="mt-1 bg-muted/50"
+                  disabled
+                  readOnly
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Enter zone IDs separated by commas (e.g., 123, 456, 789)
-                </p>
               </div>
 
               <div>
@@ -498,108 +456,41 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
                 <Input
                   id="domain"
                   value={formData.domain || ''}
-                  onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
-                  className="mt-1"
+                  className="mt-1 bg-muted/50"
+                  disabled
+                  readOnly
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="poc" className="text-xs">POC *</Label>
-                  <Select
-                    value={formData.poc === customPoc && customPoc ? 'Other (specify)' : (formData.poc || '')}
-                    onValueChange={(value) => {
-                      if (value === 'Other (specify)') {
-                        setShowCustomPoc(true)
-                        setFormData({ ...formData, poc: '' })
-                      } else {
-                        setShowCustomPoc(false)
-                        setCustomPoc('')
-                        setFormData({ ...formData, poc: value })
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select POC" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(pocNames || POC_NAMES).map((poc) => (
-                        <SelectItem key={poc} value={poc}>
-                          {poc}
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="Other (specify)">Other (specify)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {showCustomPoc && (
-                    <Input
-                      placeholder="Enter custom POC name"
-                      value={customPoc}
-                      onChange={(e) => {
-                        setCustomPoc(e.target.value)
-                        setFormData({ ...formData, poc: e.target.value })
-                      }}
-                      className="mt-2"
-                    />
-                  )}
+                  <Input
+                    value={formData.poc || ''}
+                    className="mt-1 bg-muted/50"
+                    disabled
+                    readOnly
+                  />
                 </div>
                 <div>
                   <Label htmlFor="product" className="text-xs">Product</Label>
-                  <Select
-                    value={formData.product === customProduct && customProduct ? 'other' : (formData.product || '')}
-                    onValueChange={(value) => {
-                      if (value === 'other') {
-                        setShowCustomProduct(true)
-                        setFormData({ ...formData, product: '' })
-                      } else {
-                        setShowCustomProduct(false)
-                        setCustomProduct('')
-                        setFormData({ ...formData, product: value })
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select Product" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PRODUCT_TYPES.map((product) => (
-                        <SelectItem key={product} value={product}>
-                          {product}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {showCustomProduct && (
-                    <Input
-                      placeholder="Enter custom product type"
-                      value={customProduct}
-                      onChange={(e) => {
-                        setCustomProduct(e.target.value)
-                        setFormData({ ...formData, product: e.target.value })
-                      }}
-                      className="mt-2"
-                    />
-                  )}
+                  <Input
+                    value={formData.product || ''}
+                    className="mt-1 bg-muted/50"
+                    disabled
+                    readOnly
+                  />
                 </div>
               </div>
 
               <div>
                 <Label htmlFor="classification" className="text-xs">Classification</Label>
-                <Select
+                <Input
                   value={formData.classification || ''}
-                  onValueChange={(value) => setFormData({ ...formData, classification: value })}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select Classification" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CLASSIFICATION_TYPES.map((classification) => (
-                      <SelectItem key={classification} value={classification}>
-                        {classification}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  className="mt-1 bg-muted/50"
+                  disabled
+                  readOnly
+                />
               </div>
             </div>
 
@@ -617,9 +508,9 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
                     id="proposal_date"
                     type="date"
                     value={formData.proposal_date || ''}
-                    onChange={(e) => setFormData({ ...formData, proposal_date: e.target.value })}
-                    className={`mt-1 ${!formData.proposal_date ? 'border-red-300' : ''}`}
-                    required
+                    className="mt-1 bg-muted/50"
+                    disabled
+                    readOnly
                   />
                 </div>
                 <div>
@@ -630,9 +521,9 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
                     id="starting_date"
                     type="date"
                     value={formData.starting_date || ''}
-                    onChange={(e) => setFormData({ ...formData, starting_date: e.target.value })}
-                    className={`mt-1 ${!formData.starting_date ? 'border-red-300' : ''}`}
-                    required
+                    className="mt-1 bg-muted/50"
+                    disabled
+                    readOnly
                   />
                   <p className="text-[10px] text-muted-foreground mt-1">
                     For delivery days calculation
@@ -714,14 +605,97 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
                     <Input
                       type="date"
                       value={formData.end_date || ''}
-                      onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                      className="mt-1"
+                      className="mt-1 bg-muted/50"
+                      disabled
+                      readOnly
                     />
                     <p className="text-[10px] text-muted-foreground mt-1">Optional</p>
                   </div>
                 </div>
               </div>
             </div>
+
+            {/* CS DELIVERY MILESTONES - Only for CS pipelines */}
+            {pipeline.group === 'cs' && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-blue-700 flex items-center gap-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                    <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z" />
+                  </svg>
+                  CS Delivery Milestones
+                </h3>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Ready to Deliver Date (Status A) */}
+                  <div className="space-y-2">
+                    <Label htmlFor="cs_ready_to_deliver" className="text-xs font-medium">
+                      Ready to Deliver (A)
+                    </Label>
+                    <Input
+                      id="cs_ready_to_deliver"
+                      type="date"
+                      value={formData.ready_to_deliver_date?.split('T')[0] || ''}
+                      disabled
+                      className="text-sm bg-blue-50 border-blue-200"
+                    />
+                    <p className="text-xs text-muted-foreground">Synced from Google Sheets - Column AH</p>
+                  </div>
+
+                  {/* Closed Date (Status Z) */}
+                  <div className="space-y-2">
+                    <Label htmlFor="cs_closed_date" className="text-xs font-medium">
+                      Closed Date (Z)
+                    </Label>
+                    <Input
+                      id="cs_closed_date"
+                      type="date"
+                      value={formData.closed_date?.split('T')[0] || ''}
+                      disabled
+                      className="text-sm bg-blue-50 border-blue-200"
+                    />
+                    <p className="text-xs text-muted-foreground">Synced from Google Sheets - Column AI</p>
+                  </div>
+                </div>
+
+                {/* Action Detail - Expanded for CS */}
+                <div className="space-y-2">
+                  <Label htmlFor="cs_action_detail" className="text-xs font-medium">
+                    Action Detail (Column X)
+                  </Label>
+                  <Textarea
+                    id="cs_action_detail"
+                    value={formData.action_detail || ''}
+                    disabled
+                    className="text-sm bg-blue-50 border-blue-200 min-h-[60px]"
+                    placeholder="Synced from Google Sheets..."
+                  />
+                  <p className="text-xs text-muted-foreground">CS-specific detail field</p>
+                </div>
+
+                {/* Action Progress - Expanded for CS */}
+                <div className="space-y-2">
+                  <Label htmlFor="cs_action_progress" className="text-xs font-medium">
+                    Action Progress (Column Y)
+                  </Label>
+                  <Textarea
+                    id="cs_action_progress"
+                    value={formData.action_progress || ''}
+                    disabled
+                    className="text-sm bg-blue-50 border-blue-200 min-h-[60px]"
+                    placeholder="Synced from Google Sheets..."
+                  />
+                  <p className="text-xs text-muted-foreground">CS-specific progress tracking</p>
+                </div>
+              </div>
+            )}
+
+            <Separator />
 
             {/* Actions & Notes */}
             <div className="space-y-4">
@@ -733,47 +707,30 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
                   id="action_date"
                   type="date"
                   value={formData.action_date || ''}
-                  onChange={(e) => setFormData({ ...formData, action_date: e.target.value })}
-                  className="mt-1"
+                  className="mt-1 bg-muted/50"
+                  disabled
+                  readOnly
                 />
               </div>
 
               <div>
                 <Label htmlFor="next_action" className="text-xs">Next Action</Label>
-                <Select
+                <Input
                   value={formData.next_action || ''}
-                  onValueChange={(value) => setFormData({ ...formData, next_action: value })}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select next action" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {NEXT_ACTION_TYPES.map((action) => (
-                      <SelectItem key={action} value={action}>
-                        {action}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  className="mt-1 bg-muted/50"
+                  disabled
+                  readOnly
+                />
               </div>
 
               <div>
                 <Label htmlFor="action_detail" className="text-xs">Action Details</Label>
-                <Select
+                <Input
                   value={formData.action_detail || ''}
-                  onValueChange={(value) => setFormData({ ...formData, action_detail: value })}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select action detail" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ACTION_DETAIL_TYPES.map((detail) => (
-                      <SelectItem key={detail} value={detail}>
-                        {detail}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  className="mt-1 bg-muted/50"
+                  disabled
+                  readOnly
+                />
               </div>
 
               <div>
@@ -781,9 +738,10 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
                 <Textarea
                   id="action_progress"
                   value={formData.action_progress || ''}
-                  onChange={(e) => setFormData({ ...formData, action_progress: e.target.value })}
-                  className="mt-1"
+                  className="mt-1 bg-muted/50"
                   rows={3}
+                  disabled
+                  readOnly
                 />
               </div>
 
@@ -792,10 +750,11 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
                 <Textarea
                   id="description"
                   value={formData.description || ''}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Pipeline description..."
-                  className="mt-1"
+                  className="mt-1 bg-muted/50"
                   rows={3}
+                  disabled
+                  readOnly
                 />
               </div>
 
@@ -807,12 +766,23 @@ export function PipelineDetailDrawer({ pipeline, open, onClose, onSave, pocNames
             {/* Action Buttons */}
             <div className="flex gap-3 pt-4 border-t">
               <Button variant="outline" onClick={handleClose} className="flex-1">
-                Cancel
+                Close
               </Button>
-              <Button onClick={handleSave} disabled={saving || !hasUnsavedChanges} className="flex-1 bg-[#1565C0] hover:bg-[#0D47A1]">
-                {saving ? 'Saving...' : 'Save Changes'}
+              <Button
+                variant="default"
+                className="flex-1 bg-[#1565C0] hover:bg-[#0D47A1]"
+                onClick={() => {
+                  // Navigate to sheet management page
+                  window.open('/pipelines/sheet-config', '_blank')
+                }}
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Edit in Google Sheets
               </Button>
             </div>
+            <p className="text-xs text-center text-muted-foreground mt-2">
+              Pipelines are managed via Google Sheets. Changes sync automatically.
+            </p>
           </TabsContent>
 
           {/* Monthly Tab */}

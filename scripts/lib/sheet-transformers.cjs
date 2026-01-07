@@ -2,9 +2,14 @@
  * Data Transformation Utilities for Google Sheets Import
  *
  * Handles parsing, validation, and transformation of sheet data
+ *
+ * NOTE: Sales and CS sheets have different column mappings!
+ * - Use pipeline-column-mapping.cjs for Sales
+ * - Use pipeline-column-mapping-cs.cjs for CS
  */
 
-const { COLUMN_MAPPING, MONTHLY_COLUMNS, VALID_STATUSES, DEFAULT_VALUES } = require('./pipeline-column-mapping.cjs')
+// NOTE: COLUMN_MAPPING is now loaded dynamically based on group
+// See transformRowToPipeline() function
 
 /**
  * Parse decimal/numeric values from sheet cells
@@ -90,8 +95,21 @@ function parseBoolean(value) {
 
 /**
  * Transform a sheet row to a pipeline object
+ *
+ * @param {Array} row - Row data from Google Sheets
+ * @param {string} userId - User ID creating/updating the pipeline
+ * @param {string} group - Pipeline group: 'sales' or 'cs'
+ * @param {number} fiscalYear - Fiscal year (default 2025)
+ * @returns {Object} Transformed pipeline object
  */
 function transformRowToPipeline(row, userId, group, fiscalYear = 2025) {
+  // ⚠️ Load mapping based on group (Sales vs CS)
+  const mappingFile = group === 'cs'
+    ? './pipeline-column-mapping-cs.cjs'
+    : './pipeline-column-mapping.cjs'  // Sales
+
+  const { COLUMN_MAPPING, MONTHLY_COLUMNS, VALID_STATUSES, DEFAULT_VALUES } = require(mappingFile)
+
   const pipeline = {
     user_id: userId,
     group: group,
@@ -168,9 +186,38 @@ function transformRowToPipeline(row, userId, group, fiscalYear = 2025) {
     if (pipeline.progress_percent > 100) pipeline.progress_percent = 100
   }
 
-  // Extract quarterly breakdown from columns 37-48 and store in metadata
+  // Handle ZID field (Sales only - column 33/AH)
+  // CS sheet uses column 33 for ready_to_deliver_date instead
+  if (group === 'sales') {
+    pipeline.zid = row[33] ? row[33].toString().trim() : null  // AH: ZID
+  } else {
+    // CS doesn't have ZID column
+    pipeline.zid = null
+  }
+
+  // Extract additional fields and quarterly breakdown into metadata
+  // These fields don't have dedicated database columns but are useful for reporting
   pipeline.metadata = {
     ...pipeline.metadata,
+
+    // NEW FIELDS from updated sheet structure
+    ma_mi: row[4] ? row[4].toString().trim() : null,              // E: MA/MI
+    pipeline_quarter: row[12] ? row[12].toString().trim() : null, // M: Pipeline Quarter
+    estimation_logic: row[21] ? row[21].toString().trim() : null, // V: logic of Estimation
+    update_target: row[26] ? row[26].toString().trim() : null,    // AA: Update Target
+
+    // C+↑ field (Sales only - column 34/AI)
+    // CS uses column 34 for closed_date instead
+    c_plus_upgrade: (group === 'sales' && row[34]) ? row[34].toString().trim() : null,
+
+    // Summary columns (computed in Google Sheets)
+    estimate_total: parseDecimal(row[95]),           // CR: Estimate
+    out_of_estimate_total: parseDecimal(row[96]),    // CS: Out of estimate
+    max_total: parseDecimal(row[97]),                // CT: Max
+    report_text: row[98] ? row[98].toString() : null, // CU: Report
+    masaya_check: parseBoolean(row[100]),            // CW: Masaya Check
+
+    // Quarterly breakdown from columns 37-48 (same for both Sales and CS)
     quarterly_breakdown: {
       gross: {
         first_month: parseDecimal(row[37]),    // AL: Q粗利 初月
@@ -201,8 +248,21 @@ function transformRowToPipeline(row, userId, group, fiscalYear = 2025) {
 /**
  * Extract monthly forecasts from a row
  * Returns array of forecast objects
+ *
+ * @param {Array} row - Row data from Google Sheets
+ * @param {string} pipelineId - Pipeline ID to associate forecasts with
+ * @param {number} startYear - Starting year for forecast (default 2025)
+ * @param {string} group - Pipeline group (sales/cs) for loading correct mapping
+ * @returns {Array} Array of monthly forecast objects
  */
-function extractMonthlyForecasts(row, pipelineId, startYear = 2025) {
+function extractMonthlyForecasts(row, pipelineId, startYear = 2025, group = 'sales') {
+  // Load MONTHLY_COLUMNS from appropriate mapping file
+  const mappingFile = group === 'cs'
+    ? './pipeline-column-mapping-cs.cjs'
+    : './pipeline-column-mapping.cjs'
+
+  const { MONTHLY_COLUMNS } = require(mappingFile)
+
   const forecasts = []
 
   // Process 15 months of data
@@ -248,8 +308,19 @@ function extractMonthlyForecasts(row, pipelineId, startYear = 2025) {
 /**
  * Validate a pipeline object before insertion
  * Returns array of validation errors
+ *
+ * @param {Object} pipeline - Pipeline object to validate
+ * @param {number} rowNumber - Row number in sheet (for error reporting)
+ * @returns {Array} Array of validation error messages
  */
 function validatePipeline(pipeline, rowNumber) {
+  // Load VALID_STATUSES from appropriate mapping file
+  const mappingFile = pipeline.group === 'cs'
+    ? './pipeline-column-mapping-cs.cjs'
+    : './pipeline-column-mapping.cjs'
+
+  const { VALID_STATUSES } = require(mappingFile)
+
   const errors = []
 
   // Required fields

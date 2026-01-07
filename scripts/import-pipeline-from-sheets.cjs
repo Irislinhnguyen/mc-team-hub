@@ -28,8 +28,8 @@ const {
 dotenv.config({ path: '.env.local' })
 
 // Configuration
-// NEW IMPORT SHEET (no Pipeline ID in Column A, all columns shifted left)
-const SPREADSHEET_ID = '1dSG654pi7dMkguMj637etfJ_ipT38Do7tdcDLb-p3mg'
+// ⚠️ UPDATED TO NEW SHEET (2026-01-07)
+const SPREADSHEET_ID = '1LGZxn4_pJwsS5LDBgkHT6BDU0E3XQmTsjMnR3ziuYSM'
 const SHEETS_TO_IMPORT = ['SEA_Sales', 'SEA_CS']
 
 // Parse command line arguments
@@ -226,8 +226,8 @@ async function importPipelinesSheet(sheets, supabase, userId, sheetName, group) 
         }
         pipelinesCount++
 
-        // Count forecasts
-        const forecasts = extractMonthlyForecasts(row, 'dry-run-id')
+        // Count forecasts (pass group parameter)
+        const forecasts = extractMonthlyForecasts(row, 'dry-run-id', 2025, group)
         forecastCount += forecasts.length
       } else {
         // Insert pipeline
@@ -244,8 +244,8 @@ async function importPipelinesSheet(sheets, supabase, userId, sheetName, group) 
 
         pipelinesCount++
 
-        // Extract and insert monthly forecasts
-        const forecasts = extractMonthlyForecasts(row, insertedPipeline.id)
+        // Extract and insert monthly forecasts (pass group parameter)
+        const forecasts = extractMonthlyForecasts(row, insertedPipeline.id, 2025, group)
 
         if (forecasts.length > 0) {
           const { error: forecastError } = await supabase

@@ -158,12 +158,31 @@ export function KanbanCard({ pipeline, onClick, isDragging = false, onQuickEdit,
           <span className="font-bold text-gray-900">
             {formatValue(pipeline.q_gross)}
           </span>
-          {pipeline.action_date && (
-            <span className={`font-medium ${
-              isOverdue ? 'text-red-600' : 'text-gray-600'
-            }`}>
-              {formatDate(pipeline.action_date)}
-            </span>
+
+          {/* CS-specific: Show delivery milestone date */}
+          {pipeline.group === 'cs' ? (
+            <>
+              {pipeline.status === '【Z】' && pipeline.closed_date ? (
+                <span className="font-medium text-gray-600">
+                  Closed: {formatDate(pipeline.closed_date)}
+                </span>
+              ) : pipeline.ready_to_deliver_date ? (
+                <span className="font-medium text-blue-600">
+                  Ready: {formatDate(pipeline.ready_to_deliver_date)}
+                </span>
+              ) : pipeline.action_date ? (
+                <span className={`font-medium ${isOverdue ? 'text-red-600' : 'text-gray-600'}`}>
+                  {formatDate(pipeline.action_date)}
+                </span>
+              ) : null}
+            </>
+          ) : (
+            /* Sales: Show action date as before */
+            pipeline.action_date && (
+              <span className={`font-medium ${isOverdue ? 'text-red-600' : 'text-gray-600'}`}>
+                {formatDate(pipeline.action_date)}
+              </span>
+            )
           )}
         </div>
       </CardContent>
