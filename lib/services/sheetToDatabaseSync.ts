@@ -391,6 +391,16 @@ export async function syncQuarterlySheet(
     // Step 2: Fetch sheet data from Google Sheets
     let sheetRows: any[][]
 
+    // TEMPORARY: Disable incremental sync due to JSON parsing errors
+    // Always use full sync for now until we can identify and fix the root cause
+    console.log(`[Sync] 📄 Full sync: Fetching all rows from ${sanitizedQuarterlySheet.sheet_name}...`)
+    sheetRows = await fetchSheetData(
+      sanitizedQuarterlySheet.spreadsheet_id,
+      sanitizedQuarterlySheet.sheet_name
+    )
+    console.log(`[Sync] Found ${sheetRows.length} rows in sheet`)
+
+    /* DISABLED: Incremental sync causing JSON parsing errors
     if (changedRows && changedRows.length > 0) {
       // INCREMENTAL SYNC: Fetch only changed rows
       console.log(`[Sync] 🎯 Incremental sync: Fetching ${changedRows.length} changed rows from ${sanitizedQuarterlySheet.sheet_name}...`)
@@ -409,6 +419,7 @@ export async function syncQuarterlySheet(
       )
       console.log(`[Sync] Found ${sheetRows.length} rows in sheet`)
     }
+    */
 
     // Step 3: Parse sheet rows
     // Get user_id (for now, use first user - TODO: make configurable)
