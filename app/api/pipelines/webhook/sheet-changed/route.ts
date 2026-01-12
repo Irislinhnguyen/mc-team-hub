@@ -20,6 +20,7 @@ interface WebhookPayload {
   timestamp?: string
   row_count?: number
   user_email?: string
+  changed_rows?: number[]  // ← NEW: Array of row numbers that changed
 }
 
 // Supabase admin client
@@ -47,13 +48,16 @@ async function authenticateWebhookToken(token: string) {
 /**
  * Process sync asynchronously
  */
-async function processSyncAsync(quarterlySheetId: string, payload: WebhookPayload) {
+async function processSyncAsync(quarterlySheetId: string, changedRows?: number[]) {
   const startTime = Date.now()
 
   try {
     console.log(`[Webhook] Starting sync for sheet ${quarterlySheetId}`)
+    if (changedRows && changedRows.length > 0) {
+      console.log(`[Webhook] 🎯 Incremental sync: ${changedRows.length} changed rows: ${changedRows.join(', ')}`)
+    }
 
-    const result = await syncQuarterlySheet(quarterlySheetId)
+    const result = await syncQuarterlySheet(quarterlySheetId, changedRows)
 
     const duration = Date.now() - startTime
 
@@ -142,7 +146,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Process sync in background (non-blocking)
-    processSyncAsync(quarterlySheet.id, payload).catch((error) => {
+    processSyncAsync(quarterlySheet.id, payload.changed_rows).catch((error) => {
       console.error('[Webhook] Async processing error:', error)
     })
 

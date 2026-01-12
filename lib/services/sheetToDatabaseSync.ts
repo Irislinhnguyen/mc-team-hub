@@ -153,6 +153,51 @@ async function fetchSheetData(
 }
 
 /**
+ * Fetch specific rows by row numbers (for incremental sync)
+ * More efficient than fetching all rows when only a few changed
+ */
+async function fetchSpecificRows(
+  spreadsheetId: string,
+  sheetName: string,
+  rowNumbers: number[]
+): Promise<any[][]> {
+  const sheets = await getGoogleSheetsClient()
+
+  // Build ranges for each row (A:CZ covers up to column 104)
+  const ranges = rowNumbers.map(row => `${sheetName}!A${row}:CZ${row}`)
+
+  const response = await sheets.spreadsheets.values.batchGet({
+    spreadsheetId,
+    ranges,
+    valueRenderOption: 'UNFORMATTED_VALUE',
+    dateTimeRenderOption: 'SERIAL_NUMBER'
+  })
+
+  // Extract values from each range
+  const rows = response.data.valueRanges
+    ?.map(range => range.values && range.values.length > 0 ? range.values[0] : null)
+    .filter(row => row !== null) || []
+
+  return rows
+}
+
+/**
+ * Generate composite key for pipeline matching
+ * Uses: A (key) + B (classification) + C (poc) + I (domain) + O (description) + proposal_date
+ */
+function generateCompositeKey(pipeline: any): string {
+  const parts = [
+    pipeline.key || '',
+    pipeline.classification || '',
+    pipeline.poc || '',
+    pipeline.domain || '',
+    pipeline.description || '',
+    pipeline.proposal_date || ''
+  ]
+  return parts.join('|')
+}
+
+/**
  * Parse sheet rows into pipeline objects
  */
 function parseSheetRows(
@@ -166,13 +211,14 @@ function parseSheetRows(
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
+    const sheetRowNumber = i + 3 // Row 3 is first data row
 
     // Skip empty rows (check if columns A, B, C are all empty)
     if (!row[0] && !row[1] && !row[2]) continue
 
     // Skip rows without key (Column A)
     if (!row[0] || row[0].toString().trim() === '') {
-      console.warn(`Row ${i + 3}: Skipping - no key in Column A`)
+      console.warn(`Row ${sheetRowNumber}: Skipping - no key in Column A`)
       continue
     }
 
@@ -183,6 +229,9 @@ function parseSheetRows(
       // Add quarterly_sheet_id
       pipeline.quarterly_sheet_id = quarterlySheetId
 
+      // Add sheet row number
+      pipeline.sheet_row_number = sheetRowNumber
+
       // Ensure key is set from Column A
       if (!pipeline.key) {
         pipeline.key = row[0].toString().trim()
@@ -190,7 +239,7 @@ function parseSheetRows(
 
       pipelines.push(pipeline)
     } catch (error: any) {
-      console.error(`Row ${i + 3}: Failed to transform - ${error.message}`)
+      console.error(`Row ${sheetRowNumber}: Failed to transform - ${error.message}`)
       continue
     }
   }
@@ -235,9 +284,12 @@ function normalizeValue(value: any): any {
 
 /**
  * Main sync function: sync quarterly sheet to database
+ * @param quarterlySheetId - ID of quarterly sheet record
+ * @param changedRows - Optional array of row numbers for incremental sync
  */
 export async function syncQuarterlySheet(
-  quarterlySheetId: string
+  quarterlySheetId: string,
+  changedRows?: number[]
 ): Promise<SyncResult> {
   const startTime = Date.now()
   const errors: string[] = []
@@ -259,13 +311,26 @@ export async function syncQuarterlySheet(
     }
 
     // Step 2: Fetch sheet data from Google Sheets
-    console.log(`[Sync] Fetching data from ${quarterlySheet.sheet_name}...`)
-    const sheetRows = await fetchSheetData(
-      quarterlySheet.spreadsheet_id,
-      quarterlySheet.sheet_name
-    )
+    let sheetRows: any[][]
 
-    console.log(`[Sync] Found ${sheetRows.length} rows in sheet`)
+    if (changedRows && changedRows.length > 0) {
+      // INCREMENTAL SYNC: Fetch only changed rows
+      console.log(`[Sync] 🎯 Incremental sync: Fetching ${changedRows.length} changed rows from ${quarterlySheet.sheet_name}...`)
+      sheetRows = await fetchSpecificRows(
+        quarterlySheet.spreadsheet_id,
+        quarterlySheet.sheet_name,
+        changedRows
+      )
+      console.log(`[Sync] ✅ Fetched ${sheetRows.length} rows (${changedRows.length} requested)`)
+    } else {
+      // FULL SYNC: Fetch all rows
+      console.log(`[Sync] 📄 Full sync: Fetching all rows from ${quarterlySheet.sheet_name}...`)
+      sheetRows = await fetchSheetData(
+        quarterlySheet.spreadsheet_id,
+        quarterlySheet.sheet_name
+      )
+      console.log(`[Sync] Found ${sheetRows.length} rows in sheet`)
+    }
 
     // Step 3: Parse sheet rows
     // Get user_id (for now, use first user - TODO: make configurable)
@@ -296,43 +361,100 @@ export async function syncQuarterlySheet(
 
     console.log(`[Sync] Found ${dbPipelines?.length || 0} pipelines in DB`)
 
-    // Step 5: Build maps for comparison (composite key: "key-proposal_date")
-    const sheetMap = new Map(
+    // Step 5: Build maps for comparison
+    // PRIMARY: Map by row number (quarterly_sheet_id + row_number)
+    // SECONDARY: Map by composite key for detecting moved pipelines
+    const sheetByRow = new Map(
       sheetPipelines.map((p) => [
-        `${p.key}-${p.proposal_date}`,
+        `${quarterlySheetId}-${p.sheet_row_number}`,
         p
       ])
     )
 
-    const dbMap = new Map(
+    const sheetByComposite = new Map(
+      sheetPipelines.map((p) => [
+        generateCompositeKey(p),
+        p
+      ])
+    )
+
+    const dbByRow = new Map(
       (dbPipelines || []).map((p: any) => [
-        `${p.key}-${p.proposal_date}`,
+        `${quarterlySheetId}-${p.sheet_row_number}`,
+        p
+      ])
+    )
+
+    const dbByComposite = new Map(
+      (dbPipelines || []).map((p: any) => [
+        generateCompositeKey(p),
         p
       ])
     )
 
     // Step 6: Detect changes
     const toCreate: any[] = []
-    const toUpdate: Array<{ id: string; changes: any }> = []
+    const toUpdate: Array<{ id: string; changes: any; reason: string }> = []
     const toDelete: any[] = []
+    const matched = new Set<string>() // Track matched DB pipelines
 
-    // Find NEW and UPDATED
-    for (const [compositeKey, sheetPipeline] of sheetMap) {
-      const dbPipeline = dbMap.get(compositeKey)
+    // Find NEW and UPDATED (match by row number FIRST)
+    for (const sheetPipeline of sheetPipelines) {
+      const rowKey = `${quarterlySheetId}-${sheetPipeline.sheet_row_number}`
+      const compositeKey = generateCompositeKey(sheetPipeline)
 
-      if (!dbPipeline) {
-        toCreate.push(sheetPipeline)
-      } else if (hasChanges(dbPipeline, sheetPipeline)) {
-        toUpdate.push({
-          id: dbPipeline.id,
-          changes: sheetPipeline
-        })
+      // Strategy 1: Match by row number (same position in sheet)
+      let dbPipeline = dbByRow.get(rowKey)
+      let matchReason = ''
+
+      if (dbPipeline) {
+        matchReason = 'row_number'
+        matched.add(dbPipeline.id)
+
+        // Check if composite key changed (key changed but same row)
+        const dbCompositeKey = generateCompositeKey(dbPipeline)
+        if (dbCompositeKey !== compositeKey) {
+          console.log(
+            `[Sync] Row ${sheetPipeline.sheet_row_number}: Key changed from "${dbCompositeKey}" to "${compositeKey}"`
+          )
+        }
+
+        // Update if data changed
+        if (hasChanges(dbPipeline, sheetPipeline)) {
+          toUpdate.push({
+            id: dbPipeline.id,
+            changes: sheetPipeline,
+            reason: 'row_number_match_with_changes'
+          })
+        }
+      } else {
+        // Strategy 2: Match by composite key (pipeline moved to different row)
+        dbPipeline = dbByComposite.get(compositeKey)
+
+        if (dbPipeline) {
+          matchReason = 'composite_key'
+          matched.add(dbPipeline.id)
+
+          console.log(
+            `[Sync] Pipeline moved: "${compositeKey}" from row ${dbPipeline.sheet_row_number} to row ${sheetPipeline.sheet_row_number}`
+          )
+
+          // Update with new row number and any data changes
+          toUpdate.push({
+            id: dbPipeline.id,
+            changes: sheetPipeline,
+            reason: 'composite_key_match_row_moved'
+          })
+        } else {
+          // Strategy 3: No match - create new pipeline
+          toCreate.push(sheetPipeline)
+        }
       }
     }
 
-    // Find DELETED
-    for (const [compositeKey, dbPipeline] of dbMap) {
-      if (!sheetMap.has(compositeKey)) {
+    // Find DELETED (pipelines in DB but not in sheet)
+    for (const dbPipeline of dbPipelines || []) {
+      if (!matched.has(dbPipeline.id)) {
         toDelete.push(dbPipeline)
       }
     }
