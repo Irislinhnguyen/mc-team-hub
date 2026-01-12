@@ -46,7 +46,7 @@ async function authenticateWebhookToken(token: string) {
 }
 
 /**
- * Process sync asynchronously
+ * Process sync and return result
  */
 async function processSyncAsync(quarterlySheetId: string, changedRows?: number[]) {
   const startTime = Date.now()
@@ -70,9 +70,12 @@ async function processSyncAsync(quarterlySheetId: string, changedRows?: number[]
       console.warn(`[Webhook] Sync completed with ${result.errors.length} errors:`)
       result.errors.forEach((err) => console.warn(`  - ${err}`))
     }
+
+    return result
   } catch (error: any) {
     const duration = Date.now() - startTime
     console.error(`[Webhook] ❌ Sync failed after ${duration}ms:`, error.message)
+    throw error // Re-throw to return error response
   }
 }
 
@@ -136,21 +139,23 @@ export async function POST(request: NextRequest) {
       `[Webhook] Accepted sync request for Q${quarterlySheet.quarter} ${quarterlySheet.year} (${quarterlySheet.group})`
     )
 
-    // Step 5: Return 200 immediately, process async
-    // This prevents Google Apps Script timeout
-    const response = NextResponse.json({
-      status: 'accepted',
-      message: 'Sync queued for processing',
+    // Step 5: Process sync SYNCHRONOUSLY and wait for completion
+    // Note: This may take 5-10 seconds for incremental sync, 2-5 minutes for full sync
+    const result = await processSyncAsync(quarterlySheet.id, payload.changed_rows)
+
+    // Return response after sync completes
+    return NextResponse.json({
+      status: 'completed',
+      message: 'Sync completed successfully',
       quarter: `Q${quarterlySheet.quarter} ${quarterlySheet.year}`,
-      group: quarterlySheet.group
+      group: quarterlySheet.group,
+      result: {
+        created: result.created,
+        updated: result.updated,
+        deleted: result.deleted,
+        errors: result.errors.length
+      }
     })
-
-    // Process sync in background (non-blocking)
-    processSyncAsync(quarterlySheet.id, payload.changed_rows).catch((error) => {
-      console.error('[Webhook] Async processing error:', error)
-    })
-
-    return response
   } catch (error: any) {
     const duration = Date.now() - startTime
     console.error(`[Webhook] Error after ${duration}ms:`, error.message)
