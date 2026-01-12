@@ -167,10 +167,18 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime
     console.error(`[Webhook] Error after ${duration}ms:`, error.message)
 
+    // Sanitize error message to prevent JSON parsing errors
+    const sanitizedMessage = error.message
+      ?.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '')
+      .replace(/\n/g, ' ')
+      .replace(/\r/g, '')
+      .replace(/\t/g, ' ')
+      .trim() || 'Unknown error'
+
     return NextResponse.json(
       {
         error: 'Internal server error',
-        message: error.message
+        message: sanitizedMessage
       },
       { status: 500 }
     )
