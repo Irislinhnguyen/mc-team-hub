@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut, ChevronDown, LayoutDashboard, Shield } from 'lucide-react';
+import { LogOut, ChevronDown, LayoutDashboard, Shield, Menu, Home, X } from 'lucide-react';
 // import { NotificationBell } from '../notifications/NotificationBell'; // TODO: Enable when notifications feature is ready
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -15,24 +15,48 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { useIsMobile } from '../../hooks/use-mobile';
+import { useState } from 'react';
 
 export function Header() {
   const { user, isLoading, logout } = useAuth();
+  const isMobile = useIsMobile();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
   };
 
   return (
-    <header className="border-b bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-10">
-      <div className="container mx-auto px-8 py-6">
+    <header className={`border-b bg-white/80 backdrop-blur-sm shadow-sm ${
+      isMobile ? 'fixed top-0 left-0 right-0 z-50' : 'sticky top-0 z-40'
+    }`}>
+      <div className={`container mx-auto ${isMobile ? 'px-4 py-3' : 'px-8 py-6'}`}>
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-[#1565C0]">MC Team Hub</h1>
-            <p className="text-gray-600 mt-1">
-              Your central hub for analytics, compliance monitoring, and team
-              collaboration
-            </p>
+          {/* Mobile Hamburger Menu */}
+          {isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="h-8 w-8 hover:bg-blue-50 flex-shrink-0"
+              aria-label="Open menu"
+            >
+              <Menu className="h-5 w-5 text-[#1565C0]" />
+            </Button>
+          )}
+
+          <div className={isMobile ? '' : ''}>
+            <h1 className={`font-bold text-[#1565C0] ${isMobile ? 'text-lg' : 'text-3xl'}`}>
+              {isMobile ? 'MC Hub' : 'MC Team Hub'}
+            </h1>
+            {!isMobile && (
+              <p className="text-gray-600 mt-1">
+                Your central hub for analytics, compliance monitoring, and team
+                collaboration
+              </p>
+            )}
           </div>
 
           {/* User Profile & Notifications */}
@@ -119,6 +143,51 @@ export function Header() {
           ) : null}
         </div>
       </div>
+
+      {/* Mobile Menu Sheet */}
+      {isMobile && (
+        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          <SheetContent side="left" className="w-72 bg-white">
+            <SheetHeader>
+              <SheetTitle className="text-[#1565C0] text-left">Navigation</SheetTitle>
+            </SheetHeader>
+            <div className="mt-6 space-y-1">
+              <Link
+                href="/"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <Home size={18} className="text-[#1565C0]" />
+                <span>Home</span>
+              </Link>
+
+              {(user?.role === 'admin' || user?.role === 'manager') && (
+                <Link
+                  href="/admin"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  <LayoutDashboard size={18} className="text-[#1565C0]" />
+                  <span>Dashboard</span>
+                </Link>
+              )}
+
+              <div className="my-4 border-t border-gray-200" />
+
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  handleLogout();
+                }}
+                className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors w-full text-left"
+              >
+                <LogOut size={18} />
+                <span>Logout</span>
+              </button>
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
     </header>
   );
 }

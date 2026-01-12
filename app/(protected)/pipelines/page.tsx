@@ -10,7 +10,7 @@ import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
-import { PipelineProvider, usePipeline } from '@/app/contexts/PipelineContext'
+import { usePipeline } from '@/app/contexts/PipelineContext'
 import { usePipelines } from '@/lib/hooks/queries/usePipelines'
 import { usePipelineMetadata } from '@/lib/hooks/queries/usePipelineMetadata'
 import { useToast } from '@/app/hooks/use-toast'
@@ -20,8 +20,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { Plus, Home, RefreshCw } from 'lucide-react'
-import type { CreatePipelineInput, Pipeline, PipelineGroup } from '@/lib/types/pipeline'
+import { Home, RefreshCw, Settings } from 'lucide-react'
+import type { Pipeline, PipelineGroup } from '@/lib/types/pipeline'
 import {
   POC_NAMES,
   CLASSIFICATION_TYPES,
@@ -41,7 +41,6 @@ import {
   KanbanBoardSkeleton
 } from '@/app/components/pipelines/skeletons'
 import { PipelineDetailDrawer } from '@/app/components/pipelines/PipelineDetailDrawer'
-import { PipelineCreateDrawer } from '@/app/components/pipelines/PipelineCreateDrawer'
 import { SalesCycleCard } from '@/app/components/pipelines/SalesCycleCard'
 import { NewPipelinesCard } from '@/app/components/pipelines/NewPipelinesCard'
 import { SimpleDataTable } from '@/app/components/pipelines/SimpleDataTable'
@@ -54,6 +53,7 @@ import { FilterPanel } from '@/app/components/pipelines/FilterPanel'
 import { Badge } from '@/components/ui/badge'
 import { formatDateShort } from '@/lib/utils/dateHelpers'
 import { daysBetween } from '@/lib/utils/dateHelpers'
+import { getQuarterFromDate, isDateInQuarter } from '@/lib/utils/quarterHelpers'
 
 function PipelinesPageContent() {
   const router = useRouter()
@@ -68,11 +68,10 @@ function PipelinesPageContent() {
   const { pipelines, loading: pipelinesLoading, error: queryError, refetch } = usePipelines(activeGroup, { loadAll: true })
 
   // Mutations via Context
-  const { createPipeline, updatePipeline, error: mutationError, clearError } = usePipeline()
+  const { updatePipeline, error: mutationError, clearError } = usePipeline()
 
   // Consolidated error
   const error = queryError || mutationError
-  const [createDrawerOpen, setCreateDrawerOpen] = useState(false)
   const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [filterTeam, setFilterTeam] = useState('')
@@ -141,16 +140,26 @@ function PipelinesPageContent() {
   const filteredPipelines = useMemo(() => {
     let filtered = groupPipelines
 
-    // Quarter and Year filter - based on created_at
+    // Quarter and Year filter - based on proposal_date AND starting_date
+    // Show pipeline if EITHER:
+    // 1. proposal_date is in this quarter (native pipeline)
+    // 2. starting_date is in this quarter (active pipeline from previous quarter)
     if (filterYear && filterQuarter) {
       filtered = filtered.filter(p => {
-        if (!p.created_at) return false
-        const createdDate = new Date(p.created_at)
-        const createdYear = createdDate.getFullYear()
-        const createdMonth = createdDate.getMonth() + 1 // 1-12
-        const createdQuarter = Math.ceil(createdMonth / 3) // 1-4
+        // Check if proposed in this quarter
+        const proposalDate = p.proposal_date ? new Date(p.proposal_date) : null
+        const proposalQuarter = proposalDate ? getQuarterFromDate(proposalDate) : 0
+        const proposalYear = proposalDate?.getFullYear()
+        const matchesProposalQuarter = proposalYear === filterYear && proposalQuarter === filterQuarter
 
-        return createdYear === filterYear && createdQuarter === filterQuarter
+        // Check if starting in this quarter (active pipeline)
+        const startingDate = p.starting_date ? new Date(p.starting_date) : null
+        const startingQuarter = startingDate ? getQuarterFromDate(startingDate) : 0
+        const startingYear = startingDate?.getFullYear()
+        const matchesStartingQuarter = startingYear === filterYear && startingQuarter === filterQuarter
+
+        // Show if EITHER proposed OR starting in this quarter
+        return matchesProposalQuarter || matchesStartingQuarter
       })
     }
 
@@ -316,15 +325,6 @@ function PipelinesPageContent() {
     }
   }
 
-  // Handle pipeline creation
-  const handleCreate = async (data: CreatePipelineInput) => {
-    const pipeline = await createPipeline(data)
-    if (pipeline) {
-      // Drawer will close itself on success
-      refetch()
-    }
-  }
-
   // Handle refresh data - Invalidate cache and refetch
   const handleRefreshData = () => {
     queryClient.invalidateQueries({ queryKey: ['pipelines'] })
@@ -370,13 +370,6 @@ function PipelinesPageContent() {
           </div>
 
           <div className="flex gap-2">
-            {/* Team Setup Button */}
-            <Link href="/performance-tracker/team-setup">
-              <Button variant="outline" size="sm">
-                Setup Teams
-              </Button>
-            </Link>
-
             {/* Refresh Data Button */}
             <Button
               variant="outline"
@@ -386,15 +379,6 @@ function PipelinesPageContent() {
               <RefreshCw className="mr-2 h-4 w-4" />
               Refresh Data
             </Button>
-
-            <Button
-              size="sm"
-              className="bg-[#1565C0] hover:bg-[#0D47A1]"
-              onClick={() => setCreateDrawerOpen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              New Pipeline
-            </Button>
           </div>
         </div>
       </div>
@@ -403,7 +387,7 @@ function PipelinesPageContent() {
       {error && (
         <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-red-800">{error}</p>
+            <p className="text-sm text-red-800">{error instanceof Error ? error.message : String(error)}</p>
             <Button variant="ghost" size="sm" onClick={clearError}>
               Dismiss
             </Button>
@@ -457,12 +441,14 @@ function PipelinesPageContent() {
             No pipelines yet
           </h3>
           <p className="mb-4 text-sm text-muted-foreground">
-            Create your first pipeline to start tracking opportunities
+            Pipelines are managed via Google Sheets. Register a quarterly sheet to sync your data.
           </p>
-          <Button onClick={() => setCreateDrawerOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Pipeline
-          </Button>
+          <Link href="/pipelines/sheet-config">
+            <Button>
+              <Settings className="mr-2 h-4 w-4" />
+              Manage Quarterly Sheets
+            </Button>
+          </Link>
         </div>
       ) : groupPipelines.length === 0 ? (
         /* Empty State */
@@ -471,12 +457,14 @@ function PipelinesPageContent() {
             No pipelines in {activeGroup === 'sales' ? 'Sales' : 'CS'} group yet
           </h3>
           <p className="mb-4 text-sm text-muted-foreground">
-            Create your first pipeline to start tracking opportunities
+            Pipelines are managed via Google Sheets. Add pipelines to your quarterly sheet and sync.
           </p>
-          <Button onClick={() => setCreateDrawerOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Pipeline
-          </Button>
+          <Link href="/pipelines/sheet-config">
+            <Button>
+              <Settings className="mr-2 h-4 w-4" />
+              Manage Quarterly Sheets
+            </Button>
+          </Link>
         </div>
       ) : (
         /* Main Content - Kanban Board */
@@ -674,7 +662,7 @@ function PipelinesPageContent() {
                 pipelines={filteredPipelines}
                 onPipelineClick={handlePipelineClick}
               />
-              <PipelineReportCard pipelines={filteredPipelines} />
+              <PipelineReportCard pipelines={groupPipelines} />
             </div>
 
             <div className="mt-6">
@@ -703,17 +691,6 @@ function PipelinesPageContent() {
         pipeline={selectedPipeline}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        onSave={handlePipelineSave}
-        pocNames={pocNames}
-      />
-
-      {/* Pipeline Create Drawer */}
-      <PipelineCreateDrawer
-        open={createDrawerOpen}
-        onClose={() => setCreateDrawerOpen(false)}
-        onCreate={handleCreate}
-        activeGroup={activeGroup}
-        pocNames={pocNames}
       />
     </div>
   )
@@ -729,9 +706,5 @@ function PipelinesPageWrapper() {
 }
 
 export default function PipelinesPage() {
-  return (
-    <PipelineProvider>
-      <PipelinesPageWrapper />
-    </PipelineProvider>
-  )
+  return <PipelinesPageWrapper />
 }

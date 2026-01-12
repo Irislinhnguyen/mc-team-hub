@@ -11,7 +11,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Copy } from 'lucide-react'
-import { POC_NAMES } from '@/lib/types/pipeline'
 import type { Pipeline } from '@/lib/types/pipeline'
 import { generateReport } from '@/lib/utils/pipelineReportFormatter'
 import { useToast } from '@/app/hooks/use-toast'
@@ -28,21 +27,37 @@ export function PipelineReportCard({ pipelines }: PipelineReportCardProps) {
   const [generating, setGenerating] = useState(false)
   const { toast } = useToast()
 
+  // Extract unique POCs from pipelines (dynamically, not hardcoded)
+  const uniquePOCs = useMemo(() => {
+    if (!pipelines || pipelines.length === 0) return []
+    const pocs = new Set(pipelines.map(p => p.poc).filter(Boolean))
+    return Array.from(pocs).sort()
+  }, [pipelines])
+
   // Filter pipelines
   const filteredPipelines = useMemo(() => {
     let filtered = pipelines.filter(p =>
-      // Only include pipelines with action items
-      (p.action_detail || p.next_action) &&
-      // Exclude closed pipelines
-      !['【S】', '【S-】', '【Z】', '【D】', '【E】', '【F】'].includes(p.status)
+      // Include S- (Distribution started) for ongoing monitoring
+      // Show ALL pipelines even with empty action fields - let user see what needs to be filled
+      // Exclude only fully closed: S, Z, D, E, F
+      !['【S】', '【Z】', '【D】', '【E】', '【F】'].includes(p.status)
     )
 
     if (selectedPOC !== 'all') {
-      filtered = filtered.filter(p => p.poc === selectedPOC)
+      filtered = filtered.filter(p => p.poc && p.poc === selectedPOC)
     }
 
-    // Sort by starting_date (soonest first)
+    // Sort by q_gross (highest first), then by starting_date as tiebreaker
     return filtered.sort((a, b) => {
+      // Primary sort: q_gross (highest first)
+      const grossA = a.q_gross || 0
+      const grossB = b.q_gross || 0
+
+      if (grossB !== grossA) {
+        return grossB - grossA  // Descending order (highest value first)
+      }
+
+      // Tiebreaker: starting_date (earliest first)
       const dateA = new Date(a.starting_date || '9999-12-31')
       const dateB = new Date(b.starting_date || '9999-12-31')
       return dateA.getTime() - dateB.getTime()
@@ -110,7 +125,7 @@ export function PipelineReportCard({ pipelines }: PipelineReportCardProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All POCs</SelectItem>
-              {POC_NAMES.map(poc => (
+              {uniquePOCs.map(poc => (
                 <SelectItem key={poc} value={poc}>{poc}</SelectItem>
               ))}
             </SelectContent>
@@ -156,7 +171,7 @@ export function PipelineReportCard({ pipelines }: PipelineReportCardProps) {
                   ? reportText
                       .replace(/^- Status:/gm, '- <strong>Status:</strong>')
                       .replace(/^- Action Plan:/gm, '- <strong>Action Plan:</strong>')
-                  : 'No pipelines with action items found'
+                  : 'No open pipelines found'
               }}
             />
           )}
