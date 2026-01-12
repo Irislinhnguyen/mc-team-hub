@@ -429,6 +429,7 @@ export async function syncQuarterlySheet(
     console.log(`[Sync] Parsed ${sheetPipelines.length} valid pipelines`)
 
     // Step 4: Fetch current DB state for this quarter
+    console.log('[Sync] Fetching existing pipelines from database...')
     const { data: dbPipelines, error: dbError } = await supabase
       .from('pipelines')
       .select('*')
@@ -436,10 +437,11 @@ export async function syncQuarterlySheet(
 
     if (dbError) throw dbError
 
+    console.log('[Sync] Sanitizing database pipelines...')
     // Sanitize database response to remove control characters (CRITICAL FIX)
     const sanitizedPipelines = sanitizeDatabaseResponse(dbPipelines) || []
 
-    console.log(`[Sync] Found ${sanitizedPipelines.length} pipelines in DB`)
+    console.log(`[Sync] Found ${sanitizedPipelines.length} pipelines in DB (sanitized)`)
 
     // Step 5: Build maps for comparison
     // PRIMARY: Map by row number (quarterly_sheet_id + row_number)
