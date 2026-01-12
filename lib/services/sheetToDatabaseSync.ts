@@ -186,6 +186,18 @@ function sanitizeObject(obj: any): any {
 }
 
 /**
+ * Sanitize data fetched from database
+ * Removes control characters from all string fields in database records
+ */
+function sanitizeDatabaseResponse<T>(data: T | T[] | null): T | T[] | null {
+  if (!data) return data
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizeObject(item))
+  }
+  return sanitizeObject(data)
+}
+
+/**
  * Fetch all rows from a Google Sheet
  */
 async function fetchSheetData(
@@ -332,8 +344,8 @@ function normalizeValue(value: any): any {
   // Null, undefined, empty string all become null
   if (value === null || value === undefined || value === '') return null
 
-  // Trim strings
-  if (typeof value === 'string') return value.trim()
+  // Trim strings AND remove control characters
+  if (typeof value === 'string') return sanitizeCellValue(value.trim())
 
   // Handle dates (compare as ISO strings)
   if (value instanceof Date) return value.toISOString().split('T')[0]
@@ -368,8 +380,11 @@ export async function syncQuarterlySheet(
       throw new Error(`Quarterly sheet not found: ${quarterlySheetId}`)
     }
 
-    if (quarterlySheet.sync_status !== 'active') {
-      throw new Error(`Sync is paused for sheet: ${quarterlySheet.sheet_name}`)
+    // Sanitize database response to remove control characters
+    const sanitizedQuarterlySheet = sanitizeDatabaseResponse(quarterlySheet) as typeof quarterlySheet
+
+    if (sanitizedQuarterlySheet.sync_status !== 'active') {
+      throw new Error(`Sync is paused for sheet: ${sanitizedQuarterlySheet.sheet_name}`)
     }
 
     // Step 2: Fetch sheet data from Google Sheets
@@ -377,19 +392,19 @@ export async function syncQuarterlySheet(
 
     if (changedRows && changedRows.length > 0) {
       // INCREMENTAL SYNC: Fetch only changed rows
-      console.log(`[Sync] 🎯 Incremental sync: Fetching ${changedRows.length} changed rows from ${quarterlySheet.sheet_name}...`)
+      console.log(`[Sync] 🎯 Incremental sync: Fetching ${changedRows.length} changed rows from ${sanitizedQuarterlySheet.sheet_name}...`)
       sheetRows = await fetchSpecificRows(
-        quarterlySheet.spreadsheet_id,
-        quarterlySheet.sheet_name,
+        sanitizedQuarterlySheet.spreadsheet_id,
+        sanitizedQuarterlySheet.sheet_name,
         changedRows
       )
       console.log(`[Sync] ✅ Fetched ${sheetRows.length} rows (${changedRows.length} requested)`)
     } else {
       // FULL SYNC: Fetch all rows
-      console.log(`[Sync] 📄 Full sync: Fetching all rows from ${quarterlySheet.sheet_name}...`)
+      console.log(`[Sync] 📄 Full sync: Fetching all rows from ${sanitizedQuarterlySheet.sheet_name}...`)
       sheetRows = await fetchSheetData(
-        quarterlySheet.spreadsheet_id,
-        quarterlySheet.sheet_name
+        sanitizedQuarterlySheet.spreadsheet_id,
+        sanitizedQuarterlySheet.sheet_name
       )
       console.log(`[Sync] Found ${sheetRows.length} rows in sheet`)
     }
@@ -406,9 +421,9 @@ export async function syncQuarterlySheet(
     const sheetPipelines = parseSheetRows(
       sheetRows,
       userId,
-      quarterlySheet.group,
+      sanitizedQuarterlySheet.group,
       quarterlySheetId,
-      quarterlySheet.year
+      sanitizedQuarterlySheet.year
     )
 
     console.log(`[Sync] Parsed ${sheetPipelines.length} valid pipelines`)
@@ -421,7 +436,10 @@ export async function syncQuarterlySheet(
 
     if (dbError) throw dbError
 
-    console.log(`[Sync] Found ${dbPipelines?.length || 0} pipelines in DB`)
+    // Sanitize database response to remove control characters (CRITICAL FIX)
+    const sanitizedPipelines = sanitizeDatabaseResponse(dbPipelines) || []
+
+    console.log(`[Sync] Found ${sanitizedPipelines.length} pipelines in DB`)
 
     // Step 5: Build maps for comparison
     // PRIMARY: Map by row number (quarterly_sheet_id + row_number)
@@ -441,14 +459,14 @@ export async function syncQuarterlySheet(
     )
 
     const dbByRow = new Map(
-      (dbPipelines || []).map((p: any) => [
+      sanitizedPipelines.map((p: any) => [
         `${quarterlySheetId}-${p.sheet_row_number}`,
         p
       ])
     )
 
     const dbByComposite = new Map(
-      (dbPipelines || []).map((p: any) => [
+      sanitizedPipelines.map((p: any) => [
         generateCompositeKey(p),
         p
       ])
@@ -515,7 +533,7 @@ export async function syncQuarterlySheet(
     }
 
     // Find DELETED (pipelines in DB but not in sheet)
-    for (const dbPipeline of dbPipelines || []) {
+    for (const dbPipeline of sanitizedPipelines) {
       if (!matched.has(dbPipeline.id)) {
         toDelete.push(dbPipeline)
       }
@@ -590,6 +608,9 @@ export async function syncQuarterlySheet(
             .select('*')
             .eq('pipeline_id', pipeline.id)
 
+          // Sanitize forecasts (may contain control characters from DB)
+          const sanitizedForecasts = sanitizeDatabaseResponse(forecasts) || []
+
           // Insert into deleted_pipelines
           const deletedRecord = sanitizeObject({
             ...pipeline,
@@ -599,7 +620,7 @@ export async function syncQuarterlySheet(
             deletion_reason: 'removed_from_sheet',
             deletion_source: 'webhook_sync',
             quarterly_sheet_reference: quarterlySheetId,
-            monthly_forecasts_snapshot: forecasts || []
+            monthly_forecasts_snapshot: sanitizedForecasts
           })
           await supabase.from('deleted_pipelines').insert(deletedRecord)
 
