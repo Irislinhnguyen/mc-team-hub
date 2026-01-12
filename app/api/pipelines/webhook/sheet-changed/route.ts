@@ -141,7 +141,14 @@ export async function POST(request: NextRequest) {
 
     // Step 5: Process sync SYNCHRONOUSLY and wait for completion
     // Note: This may take 5-10 seconds for incremental sync, 2-5 minutes for full sync
-    const result = await processSyncAsync(quarterlySheet.id, payload.changed_rows)
+    let result
+    try {
+      result = await processSyncAsync(quarterlySheet.id, payload.changed_rows)
+    } catch (syncError: any) {
+      console.error('[Webhook] Sync process error:', syncError.message)
+      console.error('[Webhook] Error stack:', syncError.stack)
+      throw syncError
+    }
 
     // Return response after sync completes
     return NextResponse.json({
@@ -150,10 +157,10 @@ export async function POST(request: NextRequest) {
       quarter: `Q${quarterlySheet.quarter} ${quarterlySheet.year}`,
       group: quarterlySheet.group,
       result: {
-        created: result.created,
-        updated: result.updated,
-        deleted: result.deleted,
-        errors: result.errors.length
+        created: result.created || 0,
+        updated: result.updated || 0,
+        deleted: result.deleted || 0,
+        errors: result.errors?.length || 0
       }
     })
   } catch (error: any) {
