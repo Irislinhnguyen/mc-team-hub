@@ -155,6 +155,37 @@ function sanitizeRows(rows: any[][]): any[][] {
 }
 
 /**
+ * Sanitize entire object recursively
+ */
+function sanitizeObject(obj: any): any {
+  if (obj === null || obj === undefined) return null
+
+  // Handle arrays
+  if (Array.isArray(obj)) {
+    return obj.map(item => sanitizeObject(item))
+  }
+
+  // Handle strings
+  if (typeof obj === 'string') {
+    return sanitizeCellValue(obj)
+  }
+
+  // Handle objects (recurse)
+  if (typeof obj === 'object') {
+    const sanitized: any = {}
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        sanitized[key] = sanitizeObject(obj[key])
+      }
+    }
+    return sanitized
+  }
+
+  // Return other types as-is (numbers, booleans, etc.)
+  return obj
+}
+
+/**
  * Fetch all rows from a Google Sheet
  */
 async function fetchSheetData(
@@ -503,7 +534,9 @@ export async function syncQuarterlySheet(
     if (toCreate.length > 0) {
       for (const pipeline of toCreate) {
         try {
-          const { error } = await supabase.from('pipelines').insert(pipeline)
+          // Sanitize pipeline object before insert
+          const sanitized = sanitizeObject(pipeline)
+          const { error } = await supabase.from('pipelines').insert(sanitized)
 
           if (error) {
             errors.push(`Create failed for ${pipeline.key}: ${error.message}`)
@@ -528,9 +561,12 @@ export async function syncQuarterlySheet(
             }
           }
 
+          // Sanitize updates before applying
+          const sanitized = sanitizeObject(updates)
+
           const { error } = await supabase
             .from('pipelines')
-            .update(updates)
+            .update(sanitized)
             .eq('id', id)
 
           if (error) {
@@ -555,7 +591,7 @@ export async function syncQuarterlySheet(
             .eq('pipeline_id', pipeline.id)
 
           // Insert into deleted_pipelines
-          await supabase.from('deleted_pipelines').insert({
+          const deletedRecord = sanitizeObject({
             ...pipeline,
             original_created_at: pipeline.created_at,
             original_updated_at: pipeline.updated_at,
@@ -565,6 +601,7 @@ export async function syncQuarterlySheet(
             quarterly_sheet_reference: quarterlySheetId,
             monthly_forecasts_snapshot: forecasts || []
           })
+          await supabase.from('deleted_pipelines').insert(deletedRecord)
 
           // Delete from pipelines
           const { error } = await supabase
@@ -605,7 +642,9 @@ export async function syncQuarterlySheet(
       .update({
         last_sync_at: new Date().toISOString(),
         last_sync_status: errors.length > 0 ? 'partial' : 'success',
-        last_sync_error: errors.length > 0 ? errors.join('; ') : null
+        last_sync_error: errors.length > 0
+          ? errors.map(e => sanitizeCellValue(e)).join('; ')
+          : null
       })
       .eq('id', quarterlySheetId)
 
