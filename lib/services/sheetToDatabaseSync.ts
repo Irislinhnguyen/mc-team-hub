@@ -258,15 +258,16 @@ async function fetchSpecificRows(
 /**
  * Generate composite key for pipeline matching
  * Uses: A (key) + B (classification) + C (poc) + I (domain) + O (description) + proposal_date
+ * CRITICAL: Sanitize all parts to prevent JSON serialization errors
  */
 function generateCompositeKey(pipeline: any): string {
   const parts = [
-    pipeline.key || '',
-    pipeline.classification || '',
-    pipeline.poc || '',
-    pipeline.domain || '',
-    pipeline.description || '',
-    pipeline.proposal_date || ''
+    sanitizeCellValue(pipeline.key || ''),
+    sanitizeCellValue(pipeline.classification || ''),
+    sanitizeCellValue(pipeline.poc || ''),
+    sanitizeCellValue(pipeline.domain || ''),
+    sanitizeCellValue(pipeline.description || ''),
+    sanitizeCellValue(pipeline.proposal_date || '')
   ]
   return parts.join('|')
 }
@@ -426,7 +427,10 @@ export async function syncQuarterlySheet(
       sanitizedQuarterlySheet.year
     )
 
-    console.log(`[Sync] Parsed ${sheetPipelines.length} valid pipelines`)
+    // CRITICAL FIX: Sanitize ALL sheet pipelines to remove control characters
+    const sanitizedSheetPipelines = sheetPipelines.map(p => sanitizeObject(p))
+
+    console.log(`[Sync] Parsed ${sanitizedSheetPipelines.length} valid pipelines (sanitized)`)
 
     // Step 4: Fetch current DB state for this quarter
     console.log('[Sync] Fetching existing pipelines from database...')
@@ -447,14 +451,14 @@ export async function syncQuarterlySheet(
     // PRIMARY: Map by row number (quarterly_sheet_id + row_number)
     // SECONDARY: Map by composite key for detecting moved pipelines
     const sheetByRow = new Map(
-      sheetPipelines.map((p) => [
+      sanitizedSheetPipelines.map((p) => [
         `${quarterlySheetId}-${p.sheet_row_number}`,
         p
       ])
     )
 
     const sheetByComposite = new Map(
-      sheetPipelines.map((p) => [
+      sanitizedSheetPipelines.map((p) => [
         generateCompositeKey(p),
         p
       ])
@@ -481,7 +485,7 @@ export async function syncQuarterlySheet(
     const matched = new Set<string>() // Track matched DB pipelines
 
     // Find NEW and UPDATED (match by row number FIRST)
-    for (const sheetPipeline of sheetPipelines) {
+    for (const sheetPipeline of sanitizedSheetPipelines) {
       const rowKey = `${quarterlySheetId}-${sheetPipeline.sheet_row_number}`
       const compositeKey = generateCompositeKey(sheetPipeline)
 
@@ -650,9 +654,9 @@ export async function syncQuarterlySheet(
       quarterly_sheet_id: quarterlySheetId,
       sync_type: 'batch',
       sync_direction: 'sheet_to_db',
-      target_sheet: quarterlySheet.sheet_name,
+      target_sheet: sanitizedQuarterlySheet.sheet_name,
       status: errors.length > 0 ? 'partial' : 'success',
-      rows_processed: sheetPipelines.length,
+      rows_processed: sanitizedSheetPipelines.length,
       rows_created: createdCount,
       rows_updated: updatedCount,
       rows_deleted: deletedCount,
@@ -673,7 +677,7 @@ export async function syncQuarterlySheet(
 
     return {
       success: errors.length === 0,
-      total: sheetPipelines.length,
+      total: sanitizedSheetPipelines.length,
       created: createdCount,
       updated: updatedCount,
       deleted: deletedCount,
