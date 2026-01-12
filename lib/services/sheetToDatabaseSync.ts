@@ -128,6 +128,33 @@ async function getGoogleSheetsClient() {
 }
 
 /**
+ * Sanitize cell value by removing control characters that break JSON
+ */
+function sanitizeCellValue(value: any): any {
+  if (value === null || value === undefined) return null
+
+  if (typeof value === 'string') {
+    // Remove all control characters except \n, \r, \t which we want to preserve
+    // But escape them properly
+    return value
+      .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '') // Remove problematic control chars
+      .replace(/\n/g, ' ') // Replace newlines with spaces
+      .replace(/\r/g, '') // Remove carriage returns
+      .replace(/\t/g, ' ') // Replace tabs with spaces
+      .trim()
+  }
+
+  return value
+}
+
+/**
+ * Sanitize all rows to remove control characters
+ */
+function sanitizeRows(rows: any[][]): any[][] {
+  return rows.map(row => row.map(cell => sanitizeCellValue(cell)))
+}
+
+/**
  * Fetch all rows from a Google Sheet
  */
 async function fetchSheetData(
@@ -148,8 +175,11 @@ async function fetchSheetData(
 
   const rows = response.data.values || []
 
+  // Sanitize rows to remove control characters
+  const sanitizedRows = sanitizeRows(rows)
+
   // Skip header rows (rows 1-2 are headers, data starts at row 3)
-  return rows.slice(2)
+  return sanitizedRows.slice(2)
 }
 
 /**
@@ -178,7 +208,8 @@ async function fetchSpecificRows(
     ?.map(range => range.values && range.values.length > 0 ? range.values[0] : null)
     .filter(row => row !== null) || []
 
-  return rows
+  // Sanitize rows to remove control characters
+  return sanitizeRows(rows)
 }
 
 /**
