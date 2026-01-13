@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Plus, Filter as FilterIcon, Loader2 } from 'lucide-react'
+import { Plus, Filter as FilterIcon, Loader2, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -25,6 +25,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { DateRangePicker } from '../forms/DateRangePicker'
 import { SimplifiedFilterModal } from '../performance-tracker/SimplifiedFilterModal'
 import { PipelineSelectorTable } from './PipelineSelectorTable'
@@ -80,26 +89,63 @@ export function AddPipelinesModal({
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
   const [products, setProducts] = useState<Array<{label: string, value: string}>>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
+  const [productPopoverOpen, setProductPopoverOpen] = useState(false)
 
-  // Fetch products on mount
+  // Team selection state
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
+  const [teams, setTeams] = useState<Array<{label: string, value: string}>>([])
+  const [loadingTeams, setLoadingTeams] = useState(false)
+
+  // PIC selection state
+  const [selectedPic, setSelectedPic] = useState<string | null>(null)
+  const [pics, setPics] = useState<Array<{label: string, value: string}>>([])
+  const [loadingPics, setLoadingPics] = useState(false)
+  const [picPopoverOpen, setPicPopoverOpen] = useState(false)
+
+  // Fetch products, teams, and pics on mount
   useEffect(() => {
-    async function loadProducts() {
+    async function loadMetadata() {
       setLoadingProducts(true)
+      setLoadingTeams(true)
+      setLoadingPics(true)
+
       try {
-        const response = await fetch('/api/focus-of-month/metadata/products')
-        const data = await response.json()
-        if (data.status === 'ok') {
-          setProducts(data.data)
+        const [productsResponse, teamsResponse, picsResponse] = await Promise.all([
+          fetch('/api/focus-of-month/metadata/products'),
+          fetch('/api/focus-of-month/metadata/teams'),
+          fetch('/api/focus-of-month/metadata/pics')
+        ])
+
+        const productsData = await productsResponse.json()
+        const teamsData = await teamsResponse.json()
+        const picsData = await picsResponse.json()
+
+        if (productsData.status === 'ok') {
+          setProducts(productsData.data)
         } else {
-          console.error('Failed to load products:', data.message)
+          console.error('Failed to load products:', productsData.message)
+        }
+
+        if (teamsData.status === 'ok') {
+          setTeams(teamsData.data)
+        } else {
+          console.error('Failed to load teams:', teamsData.message)
+        }
+
+        if (picsData.status === 'ok') {
+          setPics(picsData.data)
+        } else {
+          console.error('Failed to load PICs:', picsData.message)
         }
       } catch (error) {
-        console.error('Error loading products:', error)
+        console.error('Error loading metadata:', error)
       } finally {
         setLoadingProducts(false)
+        setLoadingTeams(false)
+        setLoadingPics(false)
       }
     }
-    loadProducts()
+    loadMetadata()
   }, [])
 
   // Date range state
@@ -159,7 +205,9 @@ export function AddPipelinesModal({
           },
           simplifiedFilter: filter.clauses.length > 0 ? filter : undefined,
           focusId, // For duplicate detection
-          targetedProduct: selectedProduct, // Use internal state instead of prop
+          targetedProduct: selectedProduct,
+          team: selectedTeam, // NEW
+          pic: selectedPic,   // NEW
         }),
       })
 
@@ -282,32 +330,149 @@ export function AddPipelinesModal({
               </div>
             </div>
 
-            {/* Product Selector - REQUIRED */}
+            {/* Product Selector - REQUIRED with Search */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h3 className="text-sm font-medium text-blue-900 mb-2">
                 Select Product to Target *
               </h3>
-              <Select
-                value={selectedProduct || ''}
-                onValueChange={(value) => setSelectedProduct(value)}
-                disabled={loadingProducts}
-              >
-                <SelectTrigger id="product" className="bg-white">
-                  <SelectValue placeholder={loadingProducts ? "Loading products..." : "Choose a product..."} />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((product) => (
-                    <SelectItem key={product.value} value={product.value}>
-                      {product.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={productPopoverOpen} onOpenChange={setProductPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={productPopoverOpen}
+                    className="w-full justify-between bg-white"
+                    disabled={loadingProducts}
+                  >
+                    {selectedProduct
+                      ? products.find((p) => p.value === selectedProduct)?.label
+                      : loadingProducts
+                      ? "Loading products..."
+                      : "Choose a product..."}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search products..." />
+                    <CommandList>
+                      <CommandEmpty>No product found.</CommandEmpty>
+                      <CommandGroup>
+                        <div className="max-h-[200px] overflow-y-auto">
+                          {products.map((product) => (
+                            <CommandItem
+                              key={product.value}
+                              value={product.value}
+                              onSelect={(currentValue) => {
+                                setSelectedProduct(currentValue)
+                                setProductPopoverOpen(false)
+                              }}
+                            >
+                              <Check
+                                className={`mr-2 h-4 w-4 ${
+                                  selectedProduct === product.value ? 'opacity-100' : 'opacity-0'
+                                }`}
+                              />
+                              {product.label}
+                            </CommandItem>
+                          ))}
+                        </div>
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               <p className="text-xs text-blue-700 mt-2">
                 This will show MIDs that don&apos;t have{' '}
                 <strong>{selectedProduct || 'this product'}</strong> yet. You can add
                 different products in multiple batches to the same Focus.
               </p>
+            </div>
+
+            {/* Team Selector - Optional */}
+            <div className={`${colors.background.muted} border border-gray-200 rounded-lg ${spacing.cardPadding}`}>
+              <h3 className={`text-sm font-medium ${colors.text.secondary} mb-2`}>Team (Optional)</h3>
+              <Select
+                value={selectedTeam || ''}
+                onValueChange={(value) => setSelectedTeam(value === '' ? null : value)}
+                disabled={loadingTeams}
+              >
+                <SelectTrigger className="bg-white">
+                  <SelectValue placeholder={loadingTeams ? "Loading teams..." : "All teams"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All teams</SelectItem>
+                  {teams.map((team) => (
+                    <SelectItem key={team.value} value={team.value}>
+                      {team.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* PIC Selector - Optional with Search */}
+            <div className={`${colors.background.muted} border border-gray-200 rounded-lg ${spacing.cardPadding}`}>
+              <h3 className={`text-sm font-medium ${colors.text.secondary} mb-2`}>PIC (Optional)</h3>
+              <Popover open={picPopoverOpen} onOpenChange={setPicPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={picPopoverOpen}
+                    className="w-full justify-between bg-white"
+                    disabled={loadingPics}
+                  >
+                    {selectedPic
+                      ? selectedPic
+                      : loadingPics
+                      ? "Loading PICs..."
+                      : "All PICs"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search PICs..." />
+                    <CommandList>
+                      <CommandEmpty>No PIC found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value=""
+                          onSelect={() => {
+                            setSelectedPic(null)
+                            setPicPopoverOpen(false)
+                          }}
+                        >
+                          <Check
+                            className={`mr-2 h-4 w-4 ${
+                              selectedPic === null ? 'opacity-100' : 'opacity-0'
+                            }`}
+                          />
+                          All PICs
+                        </CommandItem>
+                        <div className="max-h-[200px] overflow-y-auto">
+                          {pics.map((pic) => (
+                            <CommandItem
+                              key={pic.value}
+                              value={pic.value}
+                              onSelect={(currentValue) => {
+                                setSelectedPic(currentValue)
+                                setPicPopoverOpen(false)
+                              }}
+                            >
+                              <Check
+                                className={`mr-2 h-4 w-4 ${
+                                  selectedPic === pic.value ? 'opacity-100' : 'opacity-0'
+                                }`}
+                              />
+                              {pic.label}
+                            </CommandItem>
+                          ))}
+                        </div>
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Advanced Filters */}

@@ -24,6 +24,9 @@ const SPREADSHEET_ID = '1LGZxn4_pJwsS5LDBgkHT6BDU0E3XQmTsjMnR3ziuYSM'
 const SHEET_NAME = 'SEA_CS'
 const DEBOUNCE_SECONDS = 30 // Wait 30 seconds after last edit before syncing
 
+// Track changed rows for incremental sync
+const changedRows = new Set()
+
 // ========================================
 // Main Functions
 // ========================================
@@ -43,7 +46,10 @@ function onEdit(e) {
       return
     }
 
-    Logger.log('Edit detected in SEA_CS sheet')
+    // Track which row was edited
+    const row = e.range.getRow()
+    changedRows.add(row)
+    Logger.log('Row ' + row + ' modified, tracking for sync')
 
     // Clear any existing sync triggers to reset debounce timer
     const triggers = ScriptApp.getProjectTriggers()
@@ -96,6 +102,7 @@ function triggerSync() {
     }
 
     // Build webhook payload
+    const rowsArray = Array.from(changedRows)
     const payload = {
       token: WEBHOOK_TOKEN,
       spreadsheet_id: SPREADSHEET_ID,
@@ -103,6 +110,7 @@ function triggerSync() {
       trigger_type: 'edit',
       timestamp: new Date().toISOString(),
       row_count: sheet.getLastRow(),
+      changed_rows: rowsArray,  // ← NEW: Send changed row numbers
       user_email: Session.getActiveUser().getEmail()
     }
 
@@ -110,6 +118,7 @@ function triggerSync() {
     Logger.log('  - Spreadsheet: ' + payload.spreadsheet_id)
     Logger.log('  - Sheet: ' + payload.sheet_name)
     Logger.log('  - Rows: ' + payload.row_count)
+    Logger.log('  - Changed rows: ' + rowsArray.join(', '))  // ← NEW log
     Logger.log('  - User: ' + payload.user_email)
 
     // Send webhook request
@@ -141,6 +150,10 @@ function triggerSync() {
       } catch (e) {
         Logger.log('Response: ' + responseText)
       }
+
+      // Clear changed rows tracking after successful sync
+      changedRows.clear()
+      Logger.log('Cleared changed rows tracking')
     } else {
       Logger.log('⚠️ Sync request failed')
       Logger.log('Status code: ' + responseCode)
@@ -347,4 +360,357 @@ function showSetupInstructions() {
   Logger.log('  - Check View → Executions for error logs')
   Logger.log('')
   Logger.log('========================================')
+}
+
+// ========================================
+// Step-by-Step Test Functions
+// ========================================
+
+/**
+ * STEP 1: Test Fetch Data
+ *
+ * Fetches data from Google Sheets and checks for control characters
+ * that break JSON parsing
+ */
+function testFetchData() {
+  Logger.log('========================================')
+  Logger.log('STEP 1: Testing Google Sheets Fetch')
+  Logger.log('========================================')
+
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet()
+    const sheet = spreadsheet.getSheetByName(SHEET_NAME)
+
+    if (!sheet) {
+      Logger.log('❌ Sheet not found: ' + SHEET_NAME)
+      return
+    }
+
+    // Fetch all data (start from row 3, skip headers)
+    const lastRow = sheet.getLastRow()
+    const lastCol = 104 // A:CZ
+
+    Logger.log('Fetching data...')
+    Logger.log('  - Sheet: ' + SHEET_NAME)
+    Logger.log('  - Data rows: ' + (lastRow - 2) + ' (excluding headers)')
+    Logger.log('  - Columns: ' + lastCol)
+
+    const range = sheet.getRange(3, 1, Math.max(lastRow - 2, 1), lastCol)
+    const values = range.getValues()
+
+    Logger.log('')
+    Logger.log('✅ Fetched ' + values.length + ' rows')
+    Logger.log('First row has ' + values[0].length + ' columns')
+    Logger.log('')
+
+    // Check for control characters in first 10 rows
+    Logger.log('Checking for control characters in first 10 rows...')
+    let problematicRows = 0
+
+    for (let i = 0; i < Math.min(10, values.length); i++) {
+      const row = values[i]
+      const rowNum = i + 3
+
+      try {
+        // Try to stringify the row
+        JSON.stringify(row)
+        Logger.log('✅ Row ' + rowNum + ': Clean')
+      } catch (e) {
+        Logger.log('❌ Row ' + rowNum + ': Cannot stringify - ' + e.message)
+        problematicRows++
+
+        // Find which column has the issue
+        for (let j = 0; j < row.length; j++) {
+          const cell = row[j]
+          if (typeof cell === 'string') {
+            // Check for control characters
+            if (/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/.test(cell)) {
+              const colLetter = String.fromCharCode(65 + (j > 25 ? 26 : j))
+              Logger.log('   → Column ' + colLetter + ' (index ' + j + '): ' + cell.substring(0, 50))
+            }
+          }
+        }
+      }
+    }
+
+    Logger.log('')
+    if (problematicRows > 0) {
+      Logger.log('⚠️ Found ' + problematicRows + ' problematic row(s) in first 10')
+      Logger.log('')
+      Logger.log('NEXT STEPS:')
+      Logger.log('1. Run cleanSheetData() to remove control characters')
+      Logger.log('2. Re-run testFetchData() to verify clean')
+    } else {
+      Logger.log('✅ First 10 rows are clean!')
+      Logger.log('')
+      Logger.log('NEXT STEPS:')
+      Logger.log('1. Run testWebhookPayload() to test webhook')
+      Logger.log('2. Or run manualSync() to test full sync')
+    }
+
+    Logger.log('========================================')
+
+  } catch (error) {
+    Logger.log('❌ Error: ' + error.message)
+    Logger.log(error.stack)
+    Logger.log('========================================')
+  }
+}
+
+/**
+ * STEP 2: Clean Sheet Data
+ *
+ * Removes control characters from all cells in the sheet
+ * Run this if testFetchData() finds problematic rows
+ */
+function cleanSheetData() {
+  Logger.log('========================================')
+  Logger.log('STEP 2: Cleaning Sheet Data')
+  Logger.log('========================================')
+
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet()
+    const sheet = spreadsheet.getSheetByName(SHEET_NAME)
+
+    if (!sheet) {
+      Logger.log('❌ Sheet not found: ' + SHEET_NAME)
+      return
+    }
+
+    const lastRow = sheet.getLastRow()
+    const lastCol = 104 // A:CZ
+    const startRow = 3 // Skip headers
+
+    Logger.log('Sheet info:')
+    Logger.log('  - Total rows: ' + lastRow)
+    Logger.log('  - Columns: ' + lastCol)
+    Logger.log('  - Start row: ' + startRow + ' (skip headers)')
+    Logger.log('')
+    Logger.log('⏳ Cleaning cells... (this may take a while)')
+
+    let cleanedCount = 0
+    let checkedCount = 0
+
+    // Clean all cells
+    for (let row = startRow; row <= lastRow; row++) {
+      for (let col = 1; col <= lastCol; col++) {
+        checkedCount++
+        const cell = sheet.getRange(row, col)
+        const value = cell.getValue()
+
+        if (typeof value === 'string') {
+          // Remove control characters and normalize whitespace
+          const cleaned = value
+            .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '') // Remove control chars
+            .replace(/\n/g, ' ') // Replace newlines with space
+            .replace(/\r/g, '') // Remove carriage returns
+            .replace(/\t/g, ' ') // Replace tabs with space
+            .trim()
+
+          // Only update if changed
+          if (cleaned !== value) {
+            cell.setValue(cleaned)
+            cleanedCount++
+
+            // Log every 100 cleaned cells
+            if (cleanedCount % 100 === 0) {
+              Logger.log('  → Cleaned ' + cleanedCount + ' cells...')
+            }
+          }
+        }
+      }
+    }
+
+    Logger.log('')
+    Logger.log('✅ Cleaning complete!')
+    Logger.log('  - Checked: ' + checkedCount + ' cells')
+    Logger.log('  - Cleaned: ' + cleanedCount + ' cells')
+    Logger.log('')
+    Logger.log('NEXT STEPS:')
+    Logger.log('1. Run testFetchData() to verify data is clean')
+    Logger.log('========================================')
+
+  } catch (error) {
+    Logger.log('❌ Error: ' + error.message)
+    Logger.log(error.stack)
+    Logger.log('========================================')
+  }
+}
+
+/**
+ * STEP 3: Test Webhook Payload
+ *
+ * Creates a test webhook payload to verify it can be stringified
+ */
+function testWebhookPayload() {
+  Logger.log('========================================')
+  Logger.log('STEP 3: Testing Webhook Payload')
+  Logger.log('========================================')
+
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet()
+    const sheet = spreadsheet.getSheetByName(SHEET_NAME)
+
+    if (!sheet) {
+      Logger.log('❌ Sheet not found: ' + SHEET_NAME)
+      return
+    }
+
+    Logger.log('Fetching sample data...')
+    const range = sheet.getRange(3, 1, 5, 104) // First 5 data rows
+    const values = range.getValues()
+
+    Logger.log('✅ Fetched ' + values.length + ' rows')
+    Logger.log('')
+
+    // Create webhook payload (simulate what triggerSync sends)
+    const payload = {
+      token: WEBHOOK_TOKEN,
+      spreadsheet_id: SPREADSHEET_ID,
+      sheet_name: SHEET_NAME,
+      trigger_type: 'test',
+      timestamp: new Date().toISOString(),
+      row_count: sheet.getLastRow(),
+      changed_rows: [3, 4, 5], // Sample changed rows
+      user_email: Session.getActiveUser().getEmail(),
+      sample_data: values[0] // Include first row as sample
+    }
+
+    Logger.log('Creating webhook payload...')
+    Logger.log('  - Token: ' + payload.token.substring(0, 20) + '...')
+    Logger.log('  - Spreadsheet: ' + payload.spreadsheet_id)
+    Logger.log('  - Sheet: ' + payload.sheet_name)
+    Logger.log('  - Trigger: ' + payload.trigger_type)
+    Logger.log('  - Rows: ' + payload.row_count)
+    Logger.log('  - Changed rows: ' + payload.changed_rows.join(', '))
+    Logger.log('')
+
+    // Try to stringify
+    try {
+      const jsonStr = JSON.stringify(payload)
+      Logger.log('✅ Payload created successfully!')
+      Logger.log('  - Size: ' + jsonStr.length + ' characters')
+      Logger.log('  - Sample: ' + jsonStr.substring(0, 200) + '...')
+      Logger.log('')
+      Logger.log('NEXT STEPS:')
+      Logger.log('1. Run testSyncEndpoint() to test sending to webhook')
+      Logger.log('2. Or run manualSync() to test full sync')
+    } catch (e) {
+      Logger.log('❌ Cannot stringify payload: ' + e.message)
+      Logger.log('')
+      Logger.log('This means there are still control characters in the data.')
+      Logger.log('Run cleanSheetData() again and check for any missed cells.')
+    }
+
+    Logger.log('========================================')
+
+  } catch (error) {
+    Logger.log('❌ Error: ' + error.message)
+    Logger.log(error.stack)
+    Logger.log('========================================')
+  }
+}
+
+/**
+ * STEP 4: Test Sync Endpoint
+ *
+ * Sends a test request to the sync webhook endpoint
+ */
+function testSyncEndpoint() {
+  Logger.log('========================================')
+  Logger.log('STEP 4: Testing Sync Endpoint')
+  Logger.log('========================================')
+
+  try {
+    // Create test payload
+    const payload = {
+      token: WEBHOOK_TOKEN,
+      spreadsheet_id: SPREADSHEET_ID,
+      sheet_name: SHEET_NAME,
+      trigger_type: 'test',
+      timestamp: new Date().toISOString(),
+      row_count: 100,
+      changed_rows: [3, 4, 5],
+      user_email: Session.getActiveUser().getEmail()
+    }
+
+    Logger.log('Sending test request to webhook...')
+    Logger.log('  - URL: ' + WEBHOOK_URL)
+    Logger.log('  - Trigger: ' + payload.trigger_type)
+    Logger.log('  - Changed rows: ' + payload.changed_rows.join(', '))
+    Logger.log('')
+
+    const options = {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    }
+
+    const startTime = new Date().getTime()
+    const response = UrlFetchApp.fetch(WEBHOOK_URL, options)
+    const duration = new Date().getTime() - startTime
+
+    const responseCode = response.getResponseCode()
+    const responseText = response.getContentText()
+
+    Logger.log('Response received in ' + duration + 'ms')
+    Logger.log('Status: ' + responseCode)
+    Logger.log('')
+
+    if (responseCode === 200) {
+      Logger.log('✅ Webhook endpoint is working!')
+      try {
+        const responseData = JSON.parse(responseText)
+        Logger.log('Response: ' + JSON.stringify(responseData, null, 2))
+      } catch (e) {
+        Logger.log('Response: ' + responseText)
+      }
+      Logger.log('')
+      Logger.log('NEXT STEPS:')
+      Logger.log('1. Run manualSync() to test full sync with real data')
+    } else {
+      Logger.log('⚠️ Webhook returned error:')
+      Logger.log('  - Status: ' + responseCode)
+      Logger.log('  - Response: ' + responseText)
+      Logger.log('')
+      Logger.log('Common issues:')
+      Logger.log('  - 401: Token mismatch')
+      Logger.log('  - 403: Spreadsheet ID mismatch')
+      Logger.log('  - 423: Sync is paused for this sheet')
+      Logger.log('  - 500: Server error (check logs)')
+    }
+
+    Logger.log('========================================')
+
+  } catch (error) {
+    Logger.log('❌ Error: ' + error.message)
+    Logger.log(error.stack)
+    Logger.log('========================================')
+  }
+}
+
+/**
+ * Create custom menu when sheet opens
+ *
+ * Adds a "Sync Tools" menu to the Google Sheets UI
+ */
+function onOpen() {
+  const ui = SpreadsheetApp.getUi()
+  const menu = ui.createMenu('🔄 Sync Tools')
+
+  menu
+    .addItem('📊 Test Fetch Data', 'testFetchData')
+    .addItem('🧹 Clean Sheet Data', 'cleanSheetData')
+    .addSeparator()
+    .addItem('📦 Test Webhook Payload', 'testWebhookPayload')
+    .addItem('🌐 Test Sync Endpoint', 'testSyncEndpoint')
+    .addSeparator()
+    .addItem('🚀 Manual Sync (Full)', 'manualSync')
+    .addItem('🔌 Test Webhook Connection', 'testWebhookConnection')
+    .addSeparator()
+    .addItem('⚙️ Show Config', 'showConfig')
+    .addItem('📋 List Triggers', 'listTriggers')
+    .addItem('📖 Setup Instructions', 'showSetupInstructions')
+    .addToUi()
 }

@@ -23,6 +23,8 @@ interface FilterPipelinesRequest {
   }
   focusId?: string // Optional: for duplicate detection
   targetedProduct?: string // Optional: the product being targeted (e.g., "flexiblesticky")
+  team?: string      // Optional: team filter
+  pic?: string       // Optional: PIC filter
 }
 
 interface FilterPipelineResult {
@@ -59,7 +61,17 @@ export async function POST(request: NextRequest) {
       dateRange,
       focusId,
       targetedProduct,
+      team,
+      pic,
     } = body
+
+    // Add team and pic to filters if provided
+    if (team) {
+      filters.team = team
+    }
+    if (pic) {
+      filters.pic = pic
+    }
 
     // Validate date range
     if (!dateRange?.startDate || !dateRange?.endDate) {
@@ -113,7 +125,6 @@ export async function POST(request: NextRequest) {
         ${conditions ? `AND (${conditions})` : ''}
       GROUP BY pid, pubname, mid, medianame, pic
       ORDER BY rev_p1 DESC
-      LIMIT 500
     `
 
     console.log('[filter-pipelines] Executing SQL:', sql)
@@ -186,10 +197,7 @@ export async function POST(request: NextRequest) {
       status: 'ok',
       data: enrichedResults,
       total: enrichedResults.length,
-      message:
-        enrichedResults.length >= 500
-          ? 'Showing first 500 results. Please narrow your filters for more specific results.'
-          : undefined,
+      message: undefined,
     })
   } catch (error) {
     console.error('[filter-pipelines] Error:', error)
