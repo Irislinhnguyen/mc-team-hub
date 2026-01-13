@@ -324,10 +324,14 @@ function parseSheetRows(
 /**
  * Main sync function: sync quarterly sheet to database (APPEND-ONLY MODE)
  * @param quarterlySheetId - ID of quarterly sheet record
+ * @param userId - Optional: User ID of who triggered the sync
+ * @param userEmail - Optional: Email of user who triggered the sync
  * @param changedRows - Optional array of row numbers for incremental sync (NOT USED in append-only, kept for compatibility)
  */
 export async function syncQuarterlySheet(
   quarterlySheetId: string,
+  userId?: string,
+  userEmail?: string,
   changedRows?: number[]
 ): Promise<SyncResult> {
   const startTime = Date.now()
@@ -429,6 +433,8 @@ export async function syncQuarterlySheet(
 
     await supabase.from('pipeline_sync_log').insert({
       quarterly_sheet_id: quarterlySheetId,
+      user_id: userId || null,
+      user_email: userEmail || 'Webhook',
       sync_type: 'batch',
       sync_direction: 'sheet_to_db',
       target_sheet: sanitizedQuarterlySheet.sheet_name,
@@ -469,6 +475,8 @@ export async function syncQuarterlySheet(
     // Log failure
     await supabase.from('pipeline_sync_log').insert({
       quarterly_sheet_id: quarterlySheetId,
+      user_id: userId || null,
+      user_email: userEmail || 'Webhook',
       sync_type: 'batch',
       sync_direction: 'sheet_to_db',
       status: 'failed',
