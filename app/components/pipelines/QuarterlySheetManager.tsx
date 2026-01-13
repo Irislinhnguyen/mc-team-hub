@@ -19,6 +19,14 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 
@@ -38,6 +46,16 @@ interface QuarterlySheet {
   pipeline_count?: number
 }
 
+interface SyncResult {
+  success: boolean
+  total: number
+  created: number
+  updated: number
+  deleted: number
+  errors: string[]
+  duration_ms: number
+}
+
 interface QuarterlySheetManagerProps {
   sheets: QuarterlySheet[]
   onRefresh: () => void
@@ -47,6 +65,8 @@ export function QuarterlySheetManager({ sheets, onRefresh }: QuarterlySheetManag
   const { toast } = useToast()
   const [syncingSheets, setSyncingSheets] = useState<Set<string>>(new Set())
   const [updatingSheets, setUpdatingSheets] = useState<Set<string>>(new Set())
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
 
   const handleManualSync = async (sheetId: string) => {
     setSyncingSheets((prev) => new Set(prev).add(sheetId))
@@ -59,10 +79,16 @@ export function QuarterlySheetManager({ sheets, onRefresh }: QuarterlySheetManag
       const data = await response.json()
 
       if (data.success) {
+        // Capture sync result for modal
+        setSyncResult(data.result)
+        setShowSuccessModal(true)
+
+        // Also show toast for quick notification
         toast({
-          title: 'Sync completed',
-          description: `Created: ${data.result.created}, Updated: ${data.result.updated}, Deleted: ${data.result.deleted}`,
+          title: '✅ Sync completed',
+          description: `${data.result.created} created, ${data.result.updated} updated`,
         })
+
         onRefresh()
       } else {
         toast({
@@ -241,6 +267,9 @@ export function QuarterlySheetManager({ sheets, onRefresh }: QuarterlySheetManag
                           syncingSheets.has(sheet.id) && 'animate-spin'
                         )}
                       />
+                      {syncingSheets.has(sheet.id) && (
+                        <span className="ml-2 text-xs">Syncing...</span>
+                      )}
                     </Button>
 
                     {/* Pause/Resume button */}
@@ -276,6 +305,94 @@ export function QuarterlySheetManager({ sheets, onRefresh }: QuarterlySheetManag
           )}
         </TableBody>
       </Table>
+
+      {/* Sync Success Modal */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="text-2xl">✅</span>
+              Sync Completed
+            </DialogTitle>
+          </DialogHeader>
+
+          {syncResult && (
+            <div className="space-y-4">
+              {/* Stats Grid */}
+              <div className="grid grid-cols-3 gap-4">
+                {/* Created */}
+                <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="text-3xl font-bold text-green-600">
+                    {syncResult.created}
+                  </div>
+                  <div className="text-sm text-green-700 font-medium mt-1">
+                    Created
+                  </div>
+                </div>
+
+                {/* Updated */}
+                <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="text-3xl font-bold text-blue-600">
+                    {syncResult.updated}
+                  </div>
+                  <div className="text-sm text-blue-700 font-medium mt-1">
+                    Updated
+                  </div>
+                </div>
+
+                {/* Total */}
+                <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="text-3xl font-bold text-gray-600">
+                    {syncResult.total}
+                  </div>
+                  <div className="text-sm text-gray-700 font-medium mt-1">
+                    Total
+                  </div>
+                </div>
+              </div>
+
+              {/* Duration */}
+              <div className="flex items-center justify-center text-sm text-gray-600 bg-gray-50 py-2 rounded-lg">
+                ⏱️ Completed in {((syncResult.duration_ms || 0) / 1000).toFixed(2)}s
+              </div>
+
+              {/* Errors */}
+              {syncResult.errors && syncResult.errors.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="font-medium text-red-800 mb-2 flex items-center gap-2">
+                    <span>⚠️</span>
+                    <span>{syncResult.errors.length} Error(s)</span>
+                  </div>
+                  <div className="text-sm text-red-700 max-h-40 overflow-y-auto space-y-1">
+                    {syncResult.errors.map((error, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className="text-red-400">•</span>
+                        <span className="flex-1">{error}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Success Message */}
+              {syncResult.success && syncResult.errors.length === 0 && (
+                <div className="text-center py-3">
+                  <div className="inline-flex items-center gap-2 text-green-700 font-medium bg-green-50 px-4 py-2 rounded-lg">
+                    <span className="text-lg">✓</span>
+                    <span>All pipelines synced successfully!</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button onClick={() => setShowSuccessModal(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
