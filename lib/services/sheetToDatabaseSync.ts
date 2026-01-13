@@ -111,12 +111,24 @@ const SYNCABLE_FIELDS = [
  * Initialize Google Sheets API client
  */
 async function getGoogleSheetsClient() {
-  // Use file path instead of JSON string to avoid control character errors
-  // Google Auth natively handles file reading
-  const keyFilename = process.env.GOOGLE_APPLICATION_CREDENTIALS || './service-account.json'
+  // Use base64 encoded credentials - avoids all control character issues
+  const credentialsBase64 = process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64
+
+  if (!credentialsBase64) {
+    throw new Error('GOOGLE_APPLICATION_CREDENTIALS_BASE64 not set')
+  }
+
+  // Decode base64 to JSON string - this handles all characters safely
+  const credentialsJson = Buffer.from(credentialsBase64, 'base64').toString('utf-8')
+
+  const credentials = JSON.parse(credentialsJson)
+
+  if (!credentials.client_email) {
+    throw new Error('Missing Google credentials')
+  }
 
   const auth = new google.auth.GoogleAuth({
-    keyFilename,
+    credentials,
     scopes: [
       'https://www.googleapis.com/auth/spreadsheets.readonly',
       'https://www.googleapis.com/auth/drive.readonly'
