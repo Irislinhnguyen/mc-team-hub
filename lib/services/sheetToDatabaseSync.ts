@@ -237,10 +237,12 @@ async function fetchSpecificRows(
   sheetName: string,
   rowNumbers: number[]
 ): Promise<any[][]> {
+  console.log(`[FetchSpecificRows] Fetching ${rowNumbers.length} rows...`)
   const sheets = await getGoogleSheetsClient()
 
   // Build ranges for each row (A:CZ covers up to column 104)
   const ranges = rowNumbers.map(row => `${sheetName}!A${row}:CZ${row}`)
+  console.log(`[FetchSpecificRows] Ranges:`, ranges.slice(0, 3).join(', '), '...')
 
   const response = await sheets.spreadsheets.values.batchGet({
     spreadsheetId,
@@ -249,13 +251,20 @@ async function fetchSpecificRows(
     dateTimeRenderOption: 'SERIAL_NUMBER'
   })
 
+  console.log(`[FetchSpecificRows] Response received`)
+
   // Extract values from each range
-  const rows = response.data.valueRanges
+  const rawRows = response.data.valueRanges
     ?.map(range => range.values && range.values.length > 0 ? range.values[0] : null)
     .filter(row => row !== null) || []
 
+  console.log(`[FetchSpecificRows] Extracted ${rawRows.length} rows`)
+
   // Sanitize rows to remove control characters
-  return sanitizeRows(rows)
+  const sanitizedRows = sanitizeRows(rawRows)
+  console.log(`[FetchSpecificRows] ✅ Sanitized ${sanitizedRows.length} rows`)
+
+  return sanitizedRows
 }
 
 /**
@@ -341,7 +350,12 @@ export async function syncQuarterlySheet(
   const errors: string[] = []
 
   try {
+    console.log(`[Sync] ============================================`)
+    console.log(`[Sync] STARTING SYNC FOR: ${quarterlySheetId}`)
+    console.log(`[Sync] ============================================`)
+
     // Step 1: Fetch quarterly sheet config
+    console.log(`[Sync] Step 1: Fetching quarterly sheet config...`)
     const { data: quarterlySheet, error: qsError } = await supabase
       .from('quarterly_sheets')
       .select('*')
@@ -351,6 +365,8 @@ export async function syncQuarterlySheet(
     if (qsError || !quarterlySheet) {
       throw new Error(`Quarterly sheet not found: ${quarterlySheetId}`)
     }
+
+    console.log(`[Sync] ✅ Quarterly sheet found: ${quarterlySheet.sheet_name}`)
 
     // Sanitize database response to remove control characters
     const sanitizedQuarterlySheet = sanitizeDatabaseResponse(quarterlySheet) as typeof quarterlySheet
@@ -365,8 +381,15 @@ export async function syncQuarterlySheet(
     if (changedRows && changedRows.length > 0) {
       // INCREMENTAL SYNC: Fetch only changed rows (faster, less resource intensive)
       console.log(`[Sync] 🎯 Incremental sync: Fetching ${changedRows.length} changed rows from ${sanitizedQuarterlySheet.sheet_name}...`)
+
+      // CRITICAL: Sanitize spreadsheet_id to ensure it doesn't have control characters
+      const sanitizedSpreadsheetId = sanitizeCellValue(sanitizedQuarterlySheet.spreadsheet_id)
+      console.log(`[Sync] Spreadsheet ID: ${sanitizedSpreadsheetId}`)
+      console.log(`[Sync] Sheet name: ${sanitizedQuarterlySheet.sheet_name}`)
+      console.log(`[Sync] Changed rows:`, changedRows)
+
       sheetRows = await fetchSpecificRows(
-        sanitizedQuarterlySheet.spreadsheet_id,
+        sanitizedSpreadsheetId,
         sanitizedQuarterlySheet.sheet_name,
         changedRows
       )
@@ -524,6 +547,17 @@ export async function syncQuarterlySheet(
   } catch (error: any) {
     const duration = Date.now() - startTime
 
+    // CRITICAL: Sanitize error message before logging or inserting
+    const sanitizedMessage = (error.message || 'Unknown error')
+      .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '')
+      .replace(/\n/g, ' ')
+      .replace(/\r/g, '')
+      .replace(/\t/g, ' ')
+      .trim()
+
+    console.error(`[Sync] ❌ SYNC FAILED: ${sanitizedMessage}`)
+    console.error(`[Sync] Stack:`, error.stack)
+
     // Log failure
     await supabase.from('pipeline_sync_log').insert({
       quarterly_sheet_id: quarterlySheetId,
@@ -533,7 +567,7 @@ export async function syncQuarterlySheet(
       sync_direction: 'sheet_to_db',
       status: 'failed',
       error_type: 'unknown',
-      error_message: error.message,
+      error_message: sanitizedMessage,
       processing_duration_ms: duration
     })
 
