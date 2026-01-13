@@ -266,7 +266,7 @@ export function AddPipelinesModal({
       const suggestions = selectedResults.map((result) => ({
         pid: result.pid?.toString() || null,
         mid: result.mid.toString(),
-        product: result.targeted_product, // Use the targeted product
+        product: selectedProduct || result.targeted_product, // Use selectedProduct as primary source
         media_name: result.medianame || null,
         publisher_name: result.pubname || null,
         pic: result.pic || null,
@@ -285,6 +285,21 @@ export function AddPipelinesModal({
         },
       }))
 
+      // Debug logging
+      console.log('[AddPipelinesModal] 📤 Adding', selectedMids.size, 'pipelines to focus', focusId)
+      console.log('[AddPipelinesModal] 🏷️  selectedProduct:', selectedProduct)
+      console.log('[AddPipelinesModal] 🎯 targeted_product from first result:', selectedResults[0]?.targeted_product)
+      console.log('[AddPipelinesModal] 📦 First suggestion:', suggestions[0])
+
+      // Validate that all suggestions have required fields
+      const invalidSuggestions = suggestions.filter(s => !s.product || !s.mid)
+      if (invalidSuggestions.length > 0) {
+        console.error('[AddPipelinesModal] ❌ Invalid suggestions:', invalidSuggestions)
+        setError('Some suggestions are missing required fields (product, mid)')
+        setLoading(false)
+        return
+      }
+
       // Call API to add suggestions
       const response = await fetch(`/api/focus-of-month/${focusId}/suggestions`, {
         method: 'POST',
@@ -296,9 +311,14 @@ export function AddPipelinesModal({
 
       const data = await response.json()
 
+      console.log('[AddPipelinesModal] 📊 API Response status:', response.status)
+      console.log('[AddPipelinesModal] 📦 API Response body:', JSON.stringify(data, null, 2))
+
       if (data.status === 'ok') {
+        console.log('[AddPipelinesModal] ✅ Status OK, calling onSuccess()')
         onSuccess() // Close modal and refresh parent
       } else {
+        console.error('[AddPipelinesModal] ❌ Status NOT OK:', data.status, data.message)
         setError(data.message || 'Failed to add pipelines')
       }
     } catch (err) {

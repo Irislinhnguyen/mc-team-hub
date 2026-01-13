@@ -84,9 +84,13 @@ export async function POST(
 
     // Parse and validate request body
     const body = await request.json()
+    console.log('[SuggestionsAPI] 📥 Request body:', JSON.stringify(body, null, 2))
+
     const validation = addSuggestionsSchema.safeParse(body)
 
     if (!validation.success) {
+      console.error('[SuggestionsAPI] ❌ Validation failed:', validation.error.errors)
+      console.error('[SuggestionsAPI] 📝 Zod errors:', JSON.stringify(validation.error.format(), null, 2))
       return NextResponse.json(
         {
           status: 'error',
@@ -97,16 +101,21 @@ export async function POST(
       )
     }
 
+    console.log('[SuggestionsAPI] ✅ Validation passed, adding', validation.data.suggestions.length, 'suggestions')
+
     const requestData: AddSuggestionsRequest = validation.data
 
     const result = await addSuggestions(focusId, requestData, user.id)
 
     if (!result.success) {
+      console.error('[SuggestionsAPI] ❌ addSuggestions failed:', result.error)
       return NextResponse.json(
         { status: 'error', message: result.error },
         { status: 500 }
       )
     }
+
+    console.log('[SuggestionsAPI] ✅ Successfully added', result.suggestions?.length || 0, 'suggestions')
 
     return NextResponse.json({
       status: 'ok',
