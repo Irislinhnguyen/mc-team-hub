@@ -301,12 +301,15 @@ function parseSheetRows(
       // Add sheet row number
       sanitizedPipeline.sheet_row_number = sheetRowNumber
 
-      // Ensure key is set from Column A
+      // Ensure key is set from Column A (sanitize it!)
       if (!sanitizedPipeline.key) {
-        sanitizedPipeline.key = row[0].toString().trim()
+        sanitizedPipeline.key = sanitizeCellValue(row[0]?.toString()?.trim() || '')
       }
 
-      pipelines.push(sanitizedPipeline)
+      // CRITICAL: Sanitize again after adding new fields
+      const finalPipeline = sanitizeObject(sanitizedPipeline)
+
+      pipelines.push(finalPipeline)
     } catch (error: any) {
       console.error(`Row ${sheetRowNumber}: Failed to transform - ${error.message}`)
       continue
