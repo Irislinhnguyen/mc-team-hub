@@ -392,15 +392,15 @@ export function AddPipelinesModal({
             <div className={`${colors.background.muted} border border-gray-200 rounded-lg ${spacing.cardPadding}`}>
               <h3 className={`text-sm font-medium ${colors.text.secondary} mb-2`}>Team (Optional)</h3>
               <Select
-                value={selectedTeam || ''}
-                onValueChange={(value) => setSelectedTeam(value === '' ? null : value)}
+                value={selectedTeam || 'all'}
+                onValueChange={(value) => setSelectedTeam(value === 'all' ? null : value)}
                 disabled={loadingTeams}
               >
                 <SelectTrigger className="bg-white">
                   <SelectValue placeholder={loadingTeams ? "Loading teams..." : "All teams"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All teams</SelectItem>
+                  <SelectItem value="all">All teams</SelectItem>
                   {teams.map((team) => (
                     <SelectItem key={team.value} value={team.value}>
                       {team.label}
