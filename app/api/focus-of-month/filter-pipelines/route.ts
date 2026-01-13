@@ -65,10 +65,26 @@ export async function POST(request: NextRequest) {
       pic,
     } = body
 
+    // 🔧 Convert team display name to ID (e.g., "Web GV" → "WEB_GV")
+    // This is needed because the frontend sends display names but database uses IDs
+    const TEAM_LABEL_TO_ID_MAP: Record<string, string> = {
+      'Web GTI': 'WEB_GTI',
+      'Web GV': 'WEB_GV',
+      'App': 'APP'
+    }
+
+    const normalizedTeam = team ? (TEAM_LABEL_TO_ID_MAP[team] || team) : null
+
+    if (normalizedTeam && normalizedTeam !== team) {
+      console.log('[FilterPipelines] 🔧 Auto-converted team label:', team, '→', normalizedTeam)
+    }
+
     // Handle team filter: get PICs for this team from Supabase
-    if (team) {
+    if (normalizedTeam) {
+      console.log('[FilterPipelines] 🏢 Fetching PICs for team:', normalizedTeam)
+
       const teamConfigResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/focus-of-month/metadata/team-pics?team=${team}`,
+        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/focus-of-month/metadata/team-pics?team=${normalizedTeam}`,
         {
           headers: {
             Authorization: request.headers.get('authorization') || '',
@@ -78,15 +94,21 @@ export async function POST(request: NextRequest) {
 
       if (teamConfigResponse.ok) {
         const teamData = await teamConfigResponse.json()
-        if (teamData.status === 'ok' && teamData.data.length > 0) {
+        if (teamData.status === 'ok' && teamData.data && teamData.data.length > 0) {
           // Add PICs from team to filters (use 'pic' key for buildWhereClause)
+          console.log('[FilterPipelines] ✅ Found', teamData.data.length, 'PICs for team:', normalizedTeam)
           filters.pic = teamData.data
+        } else {
+          console.warn('[FilterPipelines] ⚠️  No PICs found for team:', normalizedTeam)
         }
+      } else {
+        console.error('[FilterPipelines] ❌ Team-pics API failed:', teamConfigResponse.status)
       }
     }
 
     // Add individual pic filter if provided (will override team PICs if both set)
     if (pic) {
+      console.log('[FilterPipelines] 👤 Individual PIC filter:', pic)
       filters.pic = pic
     }
 
