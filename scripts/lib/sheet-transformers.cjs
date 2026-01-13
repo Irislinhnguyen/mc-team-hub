@@ -108,7 +108,24 @@ function transformRowToPipeline(row, userId, group, fiscalYear = 2025) {
     ? './pipeline-column-mapping-cs.cjs'
     : './pipeline-column-mapping.cjs'  // Sales
 
-  const { COLUMN_MAPPING, MONTHLY_COLUMNS, VALID_STATUSES, DEFAULT_VALUES } = require(mappingFile)
+  let COLUMN_MAPPING, MONTHLY_COLUMNS, VALID_STATUSES, DEFAULT_VALUES
+
+  try {
+    // Try loading from .cjs file (works in local/dev)
+    ;({ COLUMN_MAPPING, MONTHLY_COLUMNS, VALID_STATUSES, DEFAULT_VALUES } = require(mappingFile))
+  } catch (e) {
+    // Fallback: Check if constants are provided by parent module (works in Vercel production)
+    // The parent module (sheetToDatabaseSync.ts) exports these as module.exports
+    try {
+      const parentModule = require('../services/sheetToDatabaseSync')
+      COLUMN_MAPPING = parentModule.getColumnMapping()
+      MONTHLY_COLUMNS = parentModule.getMonthlyColumns()
+      VALID_STATUSES = parentModule.getValidStatuses()
+      DEFAULT_VALUES = parentModule.getDefaultValues()
+    } catch (e2) {
+      throw new Error(`Cannot load column mapping for ${group}. Tried ${mappingFile} and parent module. Original error: ${e.message}`)
+    }
+  }
 
   const pipeline = {
     user_id: userId,
@@ -261,7 +278,16 @@ function extractMonthlyForecasts(row, pipelineId, startYear = 2025, group = 'sal
     ? './pipeline-column-mapping-cs.cjs'
     : './pipeline-column-mapping.cjs'
 
-  const { MONTHLY_COLUMNS } = require(mappingFile)
+  let MONTHLY_COLUMNS
+
+  try {
+    // Try loading from .cjs file (works in local/dev)
+    ;({ MONTHLY_COLUMNS } = require(mappingFile))
+  } catch (e) {
+    // Fallback: Use parent module constants (works in Vercel production)
+    const parentModule = require('../services/sheetToDatabaseSync')
+    MONTHLY_COLUMNS = parentModule.getMonthlyColumns()
+  }
 
   const forecasts = []
 

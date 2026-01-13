@@ -16,7 +16,84 @@ import { createClient } from '@supabase/supabase-js'
 
 const { transformRowToPipeline, extractMonthlyForecasts } = require('@/scripts/lib/sheet-transformers.cjs')
 
-// Supabase client with service role key (bypasses RLS)
+// ========================================
+// CS Column Mapping Constants
+// ========================================
+
+/**
+ * Column mapping for SEA_CS Google Sheet
+ * Inlined from scripts/lib/pipeline-column-mapping-cs.cjs
+ * to avoid dynamic require in production
+ */
+const COLUMN_MAPPING_CS = {
+  // Basic Info (0-22)
+  0: { field: 'key', type: 'string', required: true },
+  1: { field: 'classification', type: 'string' },
+  2: { field: 'poc', type: 'string', required: true },
+  3: { field: 'team', type: 'string' },
+  5: { field: 'pid', type: 'string' },
+  6: { field: 'publisher', type: 'string', required: true },
+  7: { field: 'mid', type: 'string' },
+  8: { field: 'domain', type: 'string' },
+  9: { field: 'channel', type: 'string' },
+  10: { field: 'region', type: 'string' },
+  11: { field: 'competitors', type: 'string' },
+  13: { field: 'description', type: 'string' },
+  14: { field: 'product', type: 'string' },
+  15: { field: 'day_gross', type: 'decimal' },
+  16: { field: 'day_net_rev', type: 'decimal' },
+  17: { field: 'imp', type: 'bigint' },
+  18: { field: 'ecpm', type: 'decimal' },
+  19: { field: 'max_gross', type: 'decimal' },
+  20: { field: 'revenue_share', type: 'decimal' },
+  22: { field: 'action_date', type: 'date' },
+  // CS-Specific: Action Fields (23-25)
+  23: { field: 'action_detail', type: 'string' },
+  24: { field: 'action_progress', type: 'string' },
+  25: { field: 'next_action', type: 'string' },
+  // Status & Timeline (27-34)
+  27: { field: 'starting_date', type: 'date' },
+  28: { field: 'status', type: 'string', default: '【E】' },
+  29: { field: 'progress_percent', type: 'integer' },
+  30: { field: 'proposal_date', type: 'date' },
+  31: { field: 'interested_date', type: 'date' },
+  32: { field: 'acceptance_date', type: 'date' },
+  // CS-Specific: Status Transition Dates (33-34)
+  33: { field: 'ready_to_deliver_date', type: 'date' },
+  34: { field: 'closed_date', type: 'date' },
+  // Quarter Summary (35-36)
+  35: { field: 'q_gross', type: 'decimal' },
+  36: { field: 'q_net_rev', type: 'decimal' },
+}
+
+const MONTHLY_COLUMNS_CS = {
+  endDates: { start: 49, count: 15, field: 'end_date' },
+  deliveryDays: { start: 64, count: 15, field: 'delivery_days' },
+  validation: { start: 79, count: 15, field: 'validation_flag' }
+}
+
+const VALID_STATUSES_CS = [
+  '【S】', '【S-】', '【A】', '【B】', '【C+】', '【C】', '【C-】', '【D】', '【E】', '【Z】'
+]
+
+const DEFAULT_VALUES_CS = {
+  status: '【E】',
+  progress_percent: 0,
+  forecast_type: 'estimate',
+  metadata: {}
+}
+
+// Exports for sheet-transformers.cjs to use
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    getColumnMapping: () => COLUMN_MAPPING_CS,
+    getMonthlyColumns: () => MONTHLY_COLUMNS_CS,
+    getValidStatuses: () => VALID_STATUSES_CS,
+    getDefaultValues: () => DEFAULT_VALUES_CS
+  }
+}
+
+// Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
