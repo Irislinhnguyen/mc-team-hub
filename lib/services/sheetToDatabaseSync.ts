@@ -13,8 +13,7 @@
 
 import { google } from 'googleapis'
 import { createClient } from '@supabase/supabase-js'
-
-const { transformRowToPipeline, extractMonthlyForecasts } = require('@/scripts/lib/sheet-transformers.cjs')
+import { transformRowToPipeline, extractMonthlyForecasts } from './sheetTransformers'
 
 // ========================================
 // CS Column Mapping Constants
@@ -83,14 +82,12 @@ const DEFAULT_VALUES_CS = {
   metadata: {}
 }
 
-// Exports for sheet-transformers.cjs to use
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    getColumnMapping: () => COLUMN_MAPPING_CS,
-    getMonthlyColumns: () => MONTHLY_COLUMNS_CS,
-    getValidStatuses: () => VALID_STATUSES_CS,
-    getDefaultValues: () => DEFAULT_VALUES_CS
-  }
+// Export column mapping constants for sheetTransformers.ts to use
+export {
+  COLUMN_MAPPING_CS,
+  MONTHLY_COLUMNS_CS,
+  VALID_STATUSES_CS,
+  DEFAULT_VALUES_CS
 }
 
 // Supabase client
