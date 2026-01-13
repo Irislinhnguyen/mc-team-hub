@@ -59,9 +59,9 @@ const suggestionSchema = z.object({
   media_name: z.string().optional(),
   publisher_name: z.string().optional(),
   pic: z.string().optional(),
-  last_30d_requests: z.number().optional(),
-  six_month_avg_requests: z.number().optional(),
-  thirty_day_avg_revenue: z.number().optional(),
+  last_30d_requests: z.number().nullish(), // Allow both null and undefined
+  six_month_avg_requests: z.number().nullish(), // Allow both null and undefined
+  thirty_day_avg_revenue: z.number().nullish(), // Allow both null and undefined
   query_lab_data: z.record(z.any()).optional(),
 })
 
