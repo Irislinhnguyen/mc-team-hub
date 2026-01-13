@@ -40,28 +40,36 @@ function generateWebhookToken(): string {
  */
 export async function GET() {
   try {
-    const { data, error } = await supabase
+    const { data: sheets, error: sheetsError } = await supabase
       .from('quarterly_sheets')
-      .select(
-        `
-        *,
-        pipeline_count:pipelines(count)
-      `
-      )
+      .select('*')
       .order('year', { ascending: false })
       .order('quarter', { ascending: false })
 
-    if (error) throw error
+    if (sheetsError) throw sheetsError
 
-    // Transform pipeline_count from {count: number} | null to number
-    const transformedData = (data || []).map((sheet: any) => ({
-      ...sheet,
-      pipeline_count: sheet.pipeline_count?.count || 0
-    }))
+    // Count pipelines for each sheet separately
+    const sheetsWithCounts = await Promise.all(
+      (sheets || []).map(async (sheet: any) => {
+        const { count, error: countError } = await supabase
+          .from('pipelines')
+          .select('*', { count: 'exact', head: true })
+          .eq('quarterly_sheet_id', sheet.id)
+
+        if (countError) {
+          console.error(`Error counting pipelines for sheet ${sheet.id}:`, countError)
+        }
+
+        return {
+          ...sheet,
+          pipeline_count: count || 0
+        }
+      })
+    )
 
     return NextResponse.json({
       success: true,
-      data: transformedData
+      data: sheetsWithCounts
     })
   } catch (error: any) {
     console.error('[Quarterly Sheets API] GET error:', error)
