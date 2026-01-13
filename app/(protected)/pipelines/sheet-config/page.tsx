@@ -9,6 +9,7 @@
 
 import { useState, useEffect } from 'react'
 import { QuarterlySheetManager } from '@/app/components/pipelines/QuarterlySheetManager'
+import { AddQuarterlySheetModal } from '@/app/components/pipelines/AddQuarterlySheetModal'
 
 interface QuarterlySheet {
   id: string
@@ -90,11 +91,14 @@ export default function SheetConfigPage() {
   return (
     <div className="container mx-auto py-8">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#1565C0]">Quarterly Sheets Configuration</h1>
-        <p className="text-muted-foreground">
-          Manage Google Sheets sync for each quarter. Click sync to update pipelines from specific sheets.
-        </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-[#1565C0]">Quarterly Sheets Configuration</h1>
+          <p className="text-muted-foreground">
+            Manage Google Sheets sync for each quarter. Click sync to update pipelines from specific sheets.
+          </p>
+        </div>
+        <AddQuarterlySheetModal onSheetAdded={fetchSheets} />
       </div>
 
       {/* Quarterly Sheets Table */}
@@ -105,7 +109,7 @@ export default function SheetConfigPage() {
             Add a quarterly sheet to start syncing your pipeline data.
           </p>
           <p className="text-xs text-muted-foreground">
-            Quarterly sheets can be registered via the database or API.
+            Click the "Add Quarterly Sheet" button to register a new sheet.
           </p>
         </div>
       ) : (

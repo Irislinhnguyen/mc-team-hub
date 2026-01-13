@@ -2,6 +2,7 @@
  * Individual Quarterly Sheet API
  *
  * PUT: Update quarterly sheet (e.g., pause/resume sync)
+ * DELETE: Delete quarterly sheet and all associated pipelines
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -88,6 +89,67 @@ export async function PUT(
     })
   } catch (error: any) {
     console.error('[Quarterly Sheets API] PUT error:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message
+      },
+      { status: 500 }
+    )
+  }
+}
+
+/**
+ * DELETE /api/pipelines/quarterly-sheets/[id]
+ *
+ * Delete quarterly sheet and all associated pipelines
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { id } = params
+
+    // First, delete all pipelines associated with this sheet
+    const { error: pipelinesDeleteError } = await supabase
+      .from('pipelines')
+      .delete()
+      .eq('quarterly_sheet_id', id)
+
+    if (pipelinesDeleteError) {
+      console.error('[Quarterly Sheets API] Failed to delete pipelines:', pipelinesDeleteError)
+      // Continue anyway - try to delete the sheet
+    }
+
+    // Delete the quarterly sheet
+    const { error: sheetDeleteError } = await supabase
+      .from('quarterly_sheets')
+      .delete()
+      .eq('id', id)
+
+    if (sheetDeleteError) {
+      if (sheetDeleteError.code === 'PGRST116') {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Quarterly sheet not found'
+          },
+          { status: 404 }
+        )
+      }
+
+      throw sheetDeleteError
+    }
+
+    console.log(`[Quarterly Sheets API] Deleted ${id}`)
+
+    return NextResponse.json({
+      success: true,
+      message: 'Quarterly sheet deleted successfully'
+    })
+  } catch (error: any) {
+    console.error('[Quarterly Sheets API] DELETE error:', error)
     return NextResponse.json(
       {
         success: false,

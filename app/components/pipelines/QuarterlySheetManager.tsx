@@ -8,7 +8,7 @@
 
 import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { RefreshCw, ExternalLink, Copy, Pause, Play, Trash2 } from 'lucide-react'
+import { RefreshCw, ExternalLink, Copy, Pause, Play, Trash2, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
+import { EditQuarterlySheetModal } from './EditQuarterlySheetModal'
 
 interface QuarterlySheet {
   id: string
@@ -67,6 +68,15 @@ export function QuarterlySheetManager({ sheets, onRefresh }: QuarterlySheetManag
   const [updatingSheets, setUpdatingSheets] = useState<Set<string>>(new Set())
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
+
+  // Edit modal state
+  const [editingSheet, setEditingSheet] = useState<QuarterlySheet | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+
+  // Delete confirmation state
+  const [deletingSheet, setDeletingSheet] = useState<QuarterlySheet | null>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const handleManualSync = async (sheetId: string) => {
     setSyncingSheets((prev) => new Set(prev).add(sheetId))
@@ -159,6 +169,55 @@ export function QuarterlySheetManager({ sheets, onRefresh }: QuarterlySheetManag
       title: 'Token copied',
       description: 'Webhook token copied to clipboard',
     })
+  }
+
+  const handleEdit = (sheet: QuarterlySheet) => {
+    setEditingSheet(sheet)
+    setShowEditModal(true)
+  }
+
+  const handleDelete = (sheet: QuarterlySheet) => {
+    setDeletingSheet(sheet)
+    setShowDeleteDialog(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!deletingSheet) return
+
+    setIsDeleting(true)
+
+    try {
+      const response = await fetch(`/api/pipelines/quarterly-sheets/${deletingSheet.id}`, {
+        method: 'DELETE',
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: '✅ Sheet Deleted',
+          description: 'Quarterly sheet and all associated pipelines have been deleted',
+        })
+
+        setShowDeleteDialog(false)
+        setDeletingSheet(null)
+        onRefresh()
+      } else {
+        toast({
+          title: 'Delete failed',
+          description: data.error || 'Unknown error',
+          variant: 'destructive',
+        })
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Delete failed',
+        description: error.message || 'Network error',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const getSyncStatusBadge = (sheet: QuarterlySheet) => {
@@ -298,6 +357,25 @@ export function QuarterlySheetManager({ sheets, onRefresh }: QuarterlySheetManag
                         <Copy className="h-4 w-4" />
                       </Button>
                     )}
+
+                    {/* Edit button */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(sheet)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+
+                    {/* Delete button */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(sheet)}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -389,6 +467,60 @@ export function QuarterlySheetManager({ sheets, onRefresh }: QuarterlySheetManag
           <DialogFooter>
             <Button onClick={() => setShowSuccessModal(false)}>
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Quarterly Sheet Modal */}
+      <EditQuarterlySheetModal
+        sheet={editingSheet}
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        onSheetUpdated={onRefresh}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Quarterly Sheet?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>Q{deletingSheet?.quarter} {deletingSheet?.year} ({deletingSheet?.group?.toUpperCase()})</strong>?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-sm text-red-800">
+                ⚠️ <strong>Warning:</strong> This will delete:
+              </p>
+              <ul className="list-disc list-inside text-sm text-red-700 mt-2 space-y-1">
+                <li>The quarterly sheet configuration</li>
+                <li>All {deletingSheet?.pipeline_count || 0} associated pipelines</li>
+              </ul>
+              <p className="text-sm text-red-800 mt-3">
+                This action <strong>cannot be undone</strong>.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Sheet'}
             </Button>
           </DialogFooter>
         </DialogContent>
