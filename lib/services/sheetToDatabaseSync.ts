@@ -411,13 +411,62 @@ export async function syncQuarterlySheet(
 
     console.log(`[Sync] Ready to append ${toCreate.length} pipelines to database`)
 
+    // CRITICAL: Test if we can stringify the entire batch before inserting
+    try {
+      JSON.stringify(toCreate)
+      console.log('[Sync] ✅ All pipelines can be stringified (batch test passed)')
+    } catch (e: any) {
+      console.error('[Sync] ❌ Cannot stringify batch of pipelines!')
+      console.error('[Sync] Error:', e.message)
+
+      // Find which pipeline is problematic
+      for (let i = 0; i < toCreate.length; i++) {
+        try {
+          JSON.stringify(toCreate[i])
+        } catch (e2: any) {
+          console.error(`[Sync] ❌ Pipeline at index ${i} (row ${toCreate[i].sheet_row_number}) cannot be stringified`)
+          console.error('[Sync] Key:', toCreate[i].key)
+
+          // Find which field is problematic
+          for (const key in toCreate[i]) {
+            try {
+              JSON.stringify({ [key]: toCreate[i][key] })
+            } catch (e3) {
+              console.error(`[Sync] ❌ Field "${key}" has control characters:`, toCreate[i][key])
+            }
+          }
+        }
+      }
+
+      throw new Error('Cannot stringify pipelines for database insert')
+    }
+
     // Step 5: Execute insert operations (CREATE only)
     let createdCount = 0
 
     for (const pipeline of toCreate) {
       try {
+        // CRITICAL: Test stringification before each insert
+        try {
+          JSON.stringify(pipeline)
+        } catch (e: any) {
+          console.error(`[Sync] ❌ Cannot stringify pipeline ${pipeline.key} (row ${pipeline.sheet_row_number})`)
+          errors.push(`Cannot stringify pipeline ${pipeline.key}: ${e.message}`)
+          continue
+        }
+
         // Sanitize pipeline object before insert
         const sanitized = sanitizeObject(pipeline)
+
+        // Test again after sanitization
+        try {
+          JSON.stringify(sanitized)
+        } catch (e: any) {
+          console.error(`[Sync] ❌ Cannot stringify sanitized pipeline ${pipeline.key} (row ${pipeline.sheet_row_number})`)
+          errors.push(`Cannot stringify sanitized pipeline ${pipeline.key}: ${e.message}`)
+          continue
+        }
+
         const { error } = await supabase.from('pipelines').insert(sanitized)
 
         if (error) {

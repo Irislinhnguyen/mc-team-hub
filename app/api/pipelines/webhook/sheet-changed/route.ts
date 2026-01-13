@@ -48,7 +48,7 @@ async function authenticateWebhookToken(token: string) {
 /**
  * Process sync and return result
  */
-async function processSyncAsync(quarterlySheetId: string, changedRows?: number[]) {
+async function processSyncAsync(quarterlySheetId: string, changedRows?: number[], userEmail?: string) {
   const startTime = Date.now()
 
   try {
@@ -57,7 +57,14 @@ async function processSyncAsync(quarterlySheetId: string, changedRows?: number[]
       console.log(`[Webhook] 🎯 Incremental sync: ${changedRows.length} changed rows: ${changedRows.join(', ')}`)
     }
 
-    const result = await syncQuarterlySheet(quarterlySheetId, changedRows)
+    // CRITICAL FIX: Pass arguments in correct order
+    // syncQuarterlySheet(quarterlySheetId, userId?, userEmail?, changedRows?)
+    const result = await syncQuarterlySheet(
+      quarterlySheetId,
+      undefined, // userId - not available from webhook
+      userEmail, // userEmail from payload
+      changedRows // changedRows from payload
+    )
 
     const duration = Date.now() - startTime
 
@@ -143,7 +150,7 @@ export async function POST(request: NextRequest) {
     // Note: This may take 5-10 seconds for incremental sync, 2-5 minutes for full sync
     let result
     try {
-      result = await processSyncAsync(quarterlySheet.id, payload.changed_rows)
+      result = await processSyncAsync(quarterlySheet.id, payload.changed_rows, payload.user_email)
     } catch (syncError: any) {
       console.error('[Webhook] Sync process error:', syncError.message)
       console.error('[Webhook] Error stack:', syncError.stack)
