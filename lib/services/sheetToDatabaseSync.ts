@@ -111,21 +111,12 @@ const SYNCABLE_FIELDS = [
  * Initialize Google Sheets API client
  */
 async function getGoogleSheetsClient() {
-  // CRITICAL: Sanitize credentials JSON to remove control characters
-  const credentialsJson = (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || '{}')
-    .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '') // Remove control chars
-    .replace(/\n/g, '') // Remove newlines in JSON
-    .replace(/\r/g, '') // Remove carriage returns
-    .trim()
-
-  const credentials = JSON.parse(credentialsJson)
-
-  if (!credentials.client_email) {
-    throw new Error('Missing Google credentials')
-  }
+  // Use file path instead of JSON string to avoid control character errors
+  // Google Auth natively handles file reading
+  const keyFilename = process.env.GOOGLE_APPLICATION_CREDENTIALS || './service-account.json'
 
   const auth = new google.auth.GoogleAuth({
-    credentials,
+    keyFilename,
     scopes: [
       'https://www.googleapis.com/auth/spreadsheets.readonly',
       'https://www.googleapis.com/auth/drive.readonly'
