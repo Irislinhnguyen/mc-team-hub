@@ -550,28 +550,31 @@ export async function syncQuarterlySheet(
 
     const { data: existingPipelines, error: fetchError } = await supabase
       .from('pipelines')
-      .select('key, proposal_date')
+      .select('id, key, proposal_date')
       .eq('quarterly_sheet_id', quarterlySheetId)
 
     if (fetchError) {
       console.error('[Sync] ⚠️  Warning: Could not fetch existing pipelines:', fetchError.message)
-      // Continue anyway - upsert will still work
+      // Continue anyway - we'll try to insert all
     }
 
-    // Build set of existing keys for quick lookup
-    const existingKeys = new Set(
-      existingPipelines?.map(p => `${p.key}_${p.proposal_date || 'null'}`) || []
+    // Build map for quick lookup: key -> id
+    const existingMap = new Map(
+      existingPipelines?.map(p => [
+        `${p.key}_${p.proposal_date || 'null'}`,
+        p.id
+      ]) || []
     )
 
-    console.log(`[Sync] Found ${existingKeys.size} existing pipelines in this quarterly sheet`)
+    console.log(`[Sync] Found ${existingMap.size} existing pipelines in this quarterly sheet`)
 
-    // Step 6: Execute UPSERT operations
-    let createdCount = 0
-    let updatedCount = 0
+    // Step 6: Split into two groups - UPDATE existing, INSERT new
+    const toUpdate: any[] = []
+    const toCreate: any[] = []
 
     for (const pipeline of toUpsert) {
       try {
-        // CRITICAL: Test stringification before each upsert
+        // CRITICAL: Test stringification
         try {
           JSON.stringify(pipeline)
         } catch (e: any) {
@@ -580,7 +583,7 @@ export async function syncQuarterlySheet(
           continue
         }
 
-        // Sanitize pipeline object before upsert
+        // Sanitize pipeline object
         const sanitized = sanitizeObject(pipeline)
 
         // Test again after sanitization
@@ -592,39 +595,76 @@ export async function syncQuarterlySheet(
           continue
         }
 
-        // Check if this is a create or update
+        // Check if exists and split into groups
         const pipelineKey = `${sanitized.key}_${sanitized.proposal_date || 'null'}`
-        const isExisting = existingKeys.has(pipelineKey)
+        const existingId = existingMap.get(pipelineKey)
 
-        // Use upsert with the new composite unique constraint
-        // onConflict: key, proposal_date, quarterly_sheet_id
-        const { error: upsertError } = await supabase
-          .from('pipelines')
-          .upsert(sanitized, {
-            onConflict: 'key,proposal_date,quarterly_sheet_id',
-            ignoreDuplicates: false
-          })
-
-        if (upsertError) {
-          errors.push(`Upsert failed for row ${pipeline.sheet_row_number} (${pipeline.key}): ${upsertError.message}`)
+        if (existingId) {
+          // Add ID for update
+          toUpdate.push({ ...sanitized, id: existingId })
         } else {
-          if (isExisting) {
-            updatedCount++
-            console.log(`[Sync] ✅ Updated pipeline: ${pipeline.key} (row ${pipeline.sheet_row_number})`)
-          } else {
-            createdCount++
-            console.log(`[Sync] ✅ Created pipeline: ${pipeline.key} (row ${pipeline.sheet_row_number})`)
-          }
+          // New pipeline
+          toCreate.push(sanitized)
         }
       } catch (error: any) {
-        errors.push(`Upsert failed for row ${pipeline.sheet_row_number} (${pipeline.key}): ${error.message}`)
+        errors.push(`Failed to process pipeline ${pipeline.key}: ${error.message}`)
       }
     }
 
-    console.log(`[Sync] ✅ Upsert completed: ${createdCount} created, ${updatedCount} updated`)
+    console.log(`[Sync] ✅ Split: ${toCreate.length} new, ${toUpdate.length} existing`)
+
+    // Step 7: Batch UPDATE existing pipelines (using upsert with primary key)
+    let updatedCount = 0
+
+    if (toUpdate.length > 0) {
+      console.log(`[Sync] 🔄 Updating ${toUpdate.length} existing pipelines...`)
+
+      const batchSize = 100
+      for (let i = 0; i < toUpdate.length; i += batchSize) {
+        const batch = toUpdate.slice(i, i + batchSize)
+
+        const { error: updateError } = await supabase
+          .from('pipelines')
+          .upsert(batch, {
+            onConflict: 'id' // Use primary key for update
+          })
+
+        if (updateError) {
+          errors.push(`Batch update failed (${batch.length} pipelines): ${updateError.message}`)
+        } else {
+          updatedCount += batch.length
+          console.log(`[Sync] ✅ Batch UPDATE: ${batch.length} updated`)
+        }
+      }
+    }
+
+    // Step 8: Batch INSERT new pipelines
+    let createdCount = 0
+
+    if (toCreate.length > 0) {
+      console.log(`[Sync] ➕ Creating ${toCreate.length} new pipelines...`)
+
+      const batchSize = 100
+      for (let i = 0; i < toCreate.length; i += batchSize) {
+        const batch = toCreate.slice(i, i + batchSize)
+
+        const { error: insertError } = await supabase
+          .from('pipelines')
+          .insert(batch)
+
+        if (insertError) {
+          errors.push(`Batch insert failed (${batch.length} pipelines): ${insertError.message}`)
+        } else {
+          createdCount += batch.length
+          console.log(`[Sync] ✅ Batch INSERT: ${batch.length} created`)
+        }
+      }
+    }
+
+    console.log(`[Sync] ✅ Sync completed: ${createdCount} created, ${updatedCount} updated`)
 
 
-    // Step 6: Log sync result
+    // Step 9: Log sync result
     const duration = Date.now() - startTime
 
     await supabase.from('pipeline_sync_log').insert({
