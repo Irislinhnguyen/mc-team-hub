@@ -781,7 +781,7 @@ function SuggestionsTable({
               {/* Remark Input */}
               <TableCell>
                 <Input
-                  value={remarkDrafts[suggestion.id] ?? suggestion.user_remark || ''}
+                  value={remarkDrafts[suggestion.id] ?? (suggestion.user_remark || '')}
                   onChange={(e) => {
                     const newValue = e.target.value
                     // Update local state immediately for real-time feedback
@@ -822,6 +822,7 @@ function SuggestionsTable({
           ))}
         </TableBody>
       </Table>
+    </div>
     </div>
   )
 }
