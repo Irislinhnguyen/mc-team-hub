@@ -569,8 +569,9 @@ export async function syncQuarterlySheet(
     console.log(`[Sync] Found ${existingMap.size} existing pipelines in this quarterly sheet`)
 
     // Step 6: Split into two groups - UPDATE existing, INSERT new
-    const toUpdate: any[] = []
-    const toCreate: any[] = []
+    // Use Maps to prevent duplicates
+    const toUpdateMap = new Map<string, any>() // id -> pipeline
+    const toCreateMap = new Map<string, any>() // key_proposalDate -> pipeline
 
     for (const pipeline of toUpsert) {
       try {
@@ -600,18 +601,22 @@ export async function syncQuarterlySheet(
         const existingId = existingMap.get(pipelineKey)
 
         if (existingId) {
-          // Add ID for update
-          toUpdate.push({ ...sanitized, id: existingId })
+          // Add ID for update - use existingId as key to prevent duplicates
+          toUpdateMap.set(existingId, { ...sanitized, id: existingId })
         } else {
-          // New pipeline
-          toCreate.push(sanitized)
+          // New pipeline - use composite key to prevent duplicates
+          toCreateMap.set(pipelineKey, sanitized)
         }
       } catch (error: any) {
         errors.push(`Failed to process pipeline ${pipeline.key}: ${error.message}`)
       }
     }
 
-    console.log(`[Sync] ✅ Split: ${toCreate.length} new, ${toUpdate.length} existing`)
+    // Convert Maps back to arrays
+    const toUpdate = Array.from(toUpdateMap.values())
+    const toCreate = Array.from(toCreateMap.values())
+
+    console.log(`[Sync] ✅ Split: ${toCreate.length} new, ${toUpdate.length} existing (deduplicated)`)
 
     // Step 7: Batch UPDATE existing pipelines (using upsert with primary key)
     let updatedCount = 0
