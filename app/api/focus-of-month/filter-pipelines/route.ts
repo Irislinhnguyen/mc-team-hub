@@ -73,6 +73,8 @@ export async function POST(request: NextRequest) {
       'App': 'APP'
     }
 
+    console.log('[FilterPipelines] 📥 Request body - team:', team, 'pic:', pic, 'targetedProduct:', targetedProduct)
+
     const normalizedTeam = team ? (TEAM_LABEL_TO_ID_MAP[team] || team) : null
 
     if (normalizedTeam && normalizedTeam !== team) {
@@ -83,8 +85,11 @@ export async function POST(request: NextRequest) {
     if (normalizedTeam) {
       console.log('[FilterPipelines] 🏢 Fetching PICs for team:', normalizedTeam)
 
+      const teamConfigUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/focus-of-month/metadata/team-pics?team=${normalizedTeam}`
+      console.log('[FilterPipelines] 🔗 Team-pics API URL:', teamConfigUrl)
+
       const teamConfigResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/focus-of-month/metadata/team-pics?team=${normalizedTeam}`,
+        teamConfigUrl,
         {
           headers: {
             Authorization: request.headers.get('authorization') || '',
@@ -92,17 +97,23 @@ export async function POST(request: NextRequest) {
         }
       )
 
+      console.log('[FilterPipelines] 📊 Team-pics API response status:', teamConfigResponse.status)
+
       if (teamConfigResponse.ok) {
         const teamData = await teamConfigResponse.json()
+        console.log('[FilterPipelines] 📦 Team-pics API response body:', JSON.stringify(teamData, null, 2))
+
         if (teamData.status === 'ok' && teamData.data && teamData.data.length > 0) {
           // Add PICs from team to filters (use 'pic' key for buildWhereClause)
           console.log('[FilterPipelines] ✅ Found', teamData.data.length, 'PICs for team:', normalizedTeam)
+          console.log('[FilterPipelines] 🏷️  PICs:', teamData.data)
           filters.pic = teamData.data
         } else {
-          console.warn('[FilterPipelines] ⚠️  No PICs found for team:', normalizedTeam)
+          console.warn('[FilterPipelines] ⚠️  No PICs found for team:', normalizedTeam, '- Response:', teamData)
         }
       } else {
-        console.error('[FilterPipelines] ❌ Team-pics API failed:', teamConfigResponse.status)
+        const errorText = await teamConfigResponse.text()
+        console.error('[FilterPipelines] ❌ Team-pics API failed:', teamConfigResponse.status, '-', errorText)
       }
     }
 
@@ -115,6 +126,9 @@ export async function POST(request: NextRequest) {
     // Remove team from filters before passing to buildWhereClause
     // since we've already converted it to PICs above
     delete filters.team
+
+    // Log the final filters object before building WHERE clause
+    console.log('[FilterPipelines] 🔍 Final filters object:', JSON.stringify(filters, null, 2))
 
     // Validate date range
     if (!dateRange?.startDate || !dateRange?.endDate) {
@@ -131,8 +145,12 @@ export async function POST(request: NextRequest) {
       simplifiedFilter,
     })
 
+    console.log('[FilterPipelines] 📝 WHERE clause generated:', whereClause)
+
     // Remove leading "WHERE" if present
     const conditions = whereClause.replace(/^WHERE\s+/i, '')
+
+    console.log('[FilterPipelines] ✂️  Conditions after removing WHERE:', conditions)
 
     // Build default condition: exclude MIDs that already have the targeted product
     // This is ALWAYS applied when targetedProduct is set
@@ -170,10 +188,37 @@ export async function POST(request: NextRequest) {
       ORDER BY rev_p1 DESC
     `
 
-    console.log('[filter-pipelines] Executing SQL:', sql)
+    console.log('[FilterPipelines] 🚀 Executing SQL:')
+    console.log(sql)
+    console.log('[FilterPipelines] 📊 SQL Default Condition (exclude MIDs with product):', defaultCondition.trim())
+    console.log('[FilterPipelines] 📊 SQL User Filters:', conditions.trim())
 
     // Execute BigQuery query
     const results = await BigQueryService.executeQuery(sql)
+
+    console.log('[FilterPipelines] 📈 BigQuery returned', results.length, 'results')
+
+    // Check if vn_anhtn appears in results (for debugging)
+    const vn_anhtnResults = results.filter((r: any) => r.pic === 'vn_anhtn' || r.pic === 'VN_anhtn')
+    if (vn_anhtnResults.length > 0) {
+      console.error('[FilterPipelines] ❌ vn_anhtn/VN_anhtn found in', vn_anhtnResults.length, 'results!')
+      console.error('[FilterPipelines] 🚨 This indicates the PIC filter is NOT working correctly')
+      vn_anhtnResults.forEach((r: any) => {
+        console.error('[FilterPipelines] 🚨 vn_anhtn result:', JSON.stringify({
+          mid: r.mid,
+          pic: r.pic,
+          medianame: r.medianame,
+          product: r.targeted_product,
+          rev_p1: r.rev_p1
+        }))
+      })
+    } else {
+      console.log('[FilterPipelines] ✅ No vn_anhtn/VN_anhtn in results - PIC filter working correctly')
+    }
+
+    // Show unique PICs in results
+    const uniquePics = [...new Set(results.map((r: any) => r.pic))]
+    console.log('[FilterPipelines] 🏷️  Unique PICs in results:', uniquePics.length, '-', uniquePics.join(', '))
 
     // Post-process: Check for duplicates and active pipelines
     const supabase = await createClient()
