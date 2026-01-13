@@ -103,6 +103,15 @@ function triggerSync() {
 
     // Build webhook payload
     const rowsArray = Array.from(changedRows)
+
+    // Get user email safely
+    let userEmail = 'unknown'
+    try {
+      userEmail = Session.getActiveUser().getEmail()
+    } catch (e) {
+      // Could not get email - might be running in a context without user
+    }
+
     const payload = {
       token: WEBHOOK_TOKEN,
       spreadsheet_id: SPREADSHEET_ID,
@@ -111,7 +120,7 @@ function triggerSync() {
       timestamp: new Date().toISOString(),
       row_count: sheet.getLastRow(),
       changed_rows: rowsArray,  // ← NEW: Send changed row numbers
-      user_email: Session.getActiveUser().getEmail()
+      user_email: userEmail
     }
 
     Logger.log('Payload:')
@@ -548,7 +557,10 @@ function testWebhookPayload() {
   Logger.log('========================================')
 
   try {
+    Logger.log('Getting active spreadsheet...')
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet()
+
+    Logger.log('Getting sheet: ' + SHEET_NAME)
     const sheet = spreadsheet.getSheetByName(SHEET_NAME)
 
     if (!sheet) {
@@ -556,12 +568,21 @@ function testWebhookPayload() {
       return
     }
 
+    Logger.log('✅ Sheet found')
     Logger.log('Fetching sample data...')
     const range = sheet.getRange(3, 1, 5, 104) // First 5 data rows
     const values = range.getValues()
 
     Logger.log('✅ Fetched ' + values.length + ' rows')
     Logger.log('')
+
+    // Get user email safely
+    let userEmail = 'test@example.com'
+    try {
+      userEmail = Session.getActiveUser().getEmail()
+    } catch (e) {
+      Logger.log('⚠️ Could not get user email, using test email')
+    }
 
     // Create webhook payload (simulate what triggerSync sends)
     const payload = {
@@ -572,7 +593,7 @@ function testWebhookPayload() {
       timestamp: new Date().toISOString(),
       row_count: sheet.getLastRow(),
       changed_rows: [3, 4, 5], // Sample changed rows
-      user_email: Session.getActiveUser().getEmail(),
+      user_email: userEmail,
       sample_data: values[0] // Include first row as sample
     }
 
@@ -622,6 +643,14 @@ function testSyncEndpoint() {
   Logger.log('========================================')
 
   try {
+    // Get user email safely
+    let userEmail = 'test@example.com'
+    try {
+      userEmail = Session.getActiveUser().getEmail()
+    } catch (e) {
+      Logger.log('⚠️ Could not get user email, using test email')
+    }
+
     // Create test payload
     const payload = {
       token: WEBHOOK_TOKEN,
@@ -631,7 +660,7 @@ function testSyncEndpoint() {
       timestamp: new Date().toISOString(),
       row_count: 100,
       changed_rows: [3, 4, 5],
-      user_email: Session.getActiveUser().getEmail()
+      user_email: userEmail
     }
 
     Logger.log('Sending test request to webhook...')

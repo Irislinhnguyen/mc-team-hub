@@ -65,13 +65,34 @@ export async function POST(request: NextRequest) {
       pic,
     } = body
 
-    // Add team and pic to filters if provided
+    // Handle team filter: get PICs for this team from Supabase
     if (team) {
-      filters.team = team
+      const teamConfigResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/focus-of-month/metadata/team-pics?team=${team}`,
+        {
+          headers: {
+            Authorization: request.headers.get('authorization') || '',
+          },
+        }
+      )
+
+      if (teamConfigResponse.ok) {
+        const teamData = await teamConfigResponse.json()
+        if (teamData.status === 'ok' && teamData.data.length > 0) {
+          // Add PICs from team to filters (use 'pic' key for buildWhereClause)
+          filters.pic = teamData.data
+        }
+      }
     }
+
+    // Add individual pic filter if provided (will override team PICs if both set)
     if (pic) {
       filters.pic = pic
     }
+
+    // Remove team from filters before passing to buildWhereClause
+    // since we've already converted it to PICs above
+    delete filters.team
 
     // Validate date range
     if (!dateRange?.startDate || !dateRange?.endDate) {
