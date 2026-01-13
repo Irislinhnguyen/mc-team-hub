@@ -41,7 +41,7 @@ export default function SheetConfigPage() {
       const data = await response.json()
 
       if (data.success) {
-        setSheets(data.sheets || [])
+        setSheets(data.data || [])
       } else {
         setError(data.error || 'Failed to fetch quarterly sheets')
       }
