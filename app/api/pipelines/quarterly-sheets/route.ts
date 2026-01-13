@@ -53,9 +53,15 @@ export async function GET() {
 
     if (error) throw error
 
+    // Transform pipeline_count from {count: number} | null to number
+    const transformedData = (data || []).map((sheet: any) => ({
+      ...sheet,
+      pipeline_count: sheet.pipeline_count?.count || 0
+    }))
+
     return NextResponse.json({
       success: true,
-      data: data || []
+      data: transformedData
     })
   } catch (error: any) {
     console.error('[Quarterly Sheets API] GET error:', error)
