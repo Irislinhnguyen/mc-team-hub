@@ -823,7 +823,6 @@ function SuggestionsTable({
         </TableBody>
       </Table>
     </div>
-    </div>
   )
 }
 
