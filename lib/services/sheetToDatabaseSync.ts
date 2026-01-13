@@ -667,6 +667,18 @@ export async function syncQuarterlySheet(
     // Step 9: Log sync result
     const duration = Date.now() - startTime
 
+    // Calculate actual failed pipelines (not just batch errors)
+    const totalExpected = toCreate.length + toUpdate.length
+    const totalSynced = createdCount + updatedCount
+    const actualFailed = totalExpected - totalSynced
+
+    // Only mark as partial if pipelines actually failed to sync
+    const hasRealFailures = actualFailed > 0
+    const statusToLog = hasRealFailures ? 'partial' : 'success'
+
+    console.log(`[Sync] 📊 Final stats: ${totalSynced}/${totalExpected} synced, ${actualFailed} failed`)
+    console.log(`[Sync] 📊 Status: ${statusToLog}`)
+
     await supabase.from('pipeline_sync_log').insert({
       quarterly_sheet_id: quarterlySheetId,
       user_id: userId || null,
@@ -674,7 +686,7 @@ export async function syncQuarterlySheet(
       sync_type: 'batch',
       sync_direction: 'sheet_to_db',
       target_sheet: sanitizedQuarterlySheet.sheet_name,
-      status: errors.length > 0 ? 'partial' : 'success',
+      status: statusToLog,
       rows_processed: sanitizedSheetPipelines.length,
       rows_created: createdCount,
       rows_updated: updatedCount, // UPSERT mode: tracks both creates and updates
@@ -687,9 +699,9 @@ export async function syncQuarterlySheet(
       .from('quarterly_sheets')
       .update({
         last_sync_at: new Date().toISOString(),
-        last_sync_status: errors.length > 0 ? 'partial' : 'success',
-        last_sync_error: errors.length > 0
-          ? errors.map(e => sanitizeCellValue(e)).join('; ')
+        last_sync_status: statusToLog,
+        last_sync_error: hasRealFailures
+          ? `${actualFailed} pipelines failed to sync. ${errors.map(e => sanitizeCellValue(e)).join('; ')}`
           : null
       })
       .eq('id', quarterlySheetId)
