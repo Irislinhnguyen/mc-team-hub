@@ -21,6 +21,8 @@ const updateSuggestionSchema = z.object({
   user_status: z.enum(['pending', 'created', 'cannot_create', 'skipped']).optional(),
   cannot_create_reason: z.string().max(500).optional(),
   user_remark: z.string().max(500).optional(),
+  pipeline_created: z.boolean().optional(), // Allow manual override
+  quarter: z.string().optional(), // Quarter of most recent month
 })
 
 export async function PATCH(

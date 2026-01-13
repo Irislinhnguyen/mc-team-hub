@@ -105,6 +105,7 @@ export interface FocusSuggestion {
   // Pipeline Matching
   pipeline_created: boolean
   matched_pipeline_id: string | null
+  quarter: string | null // Quarter of most recent month (e.g., "Q1 2025")
 
   // User Actions
   user_status: SuggestionStatus | null
@@ -232,6 +233,8 @@ export interface UpdateSuggestionRequest {
   user_status?: SuggestionStatus
   cannot_create_reason?: string
   user_remark?: string
+  pipeline_created?: boolean // Allow manual override
+  quarter?: string // Quarter of most recent month
 }
 
 /**

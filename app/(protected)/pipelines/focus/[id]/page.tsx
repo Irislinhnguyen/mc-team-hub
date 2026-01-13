@@ -48,6 +48,19 @@ function debounce<T extends (...args: any[]) => any>(
   }
 }
 
+// Helper to generate quarter options (3 years back from current)
+function generateQuarters(yearsBack: number): string[] {
+  const quarters: string[] = []
+  const currentYear = new Date().getFullYear()
+
+  for (let year = currentYear; year >= currentYear - yearsBack; year--) {
+    for (let q = 1; q <= 4; q++) {
+      quarters.push(`Q${q} ${year}`)
+    }
+  }
+  return quarters
+}
+
 const TABS = ['Suggestions', 'Dashboard', 'Activity']
 
 export default function FocusDetailPage() {
@@ -465,14 +478,15 @@ function SuggestionsTable({
       })
 
       if (response.ok) {
-        // Refresh focus to reload suggestions
-        window.location.reload()
+        // Optimistic update - remove from state
+        setSuggestions((prev) => prev.filter((s) => s.id !== suggestionId))
+        toast({ title: 'Suggestion deleted successfully' })
       } else {
-        alert('Failed to delete suggestion')
+        toast({ title: 'Failed to delete suggestion', variant: 'destructive' })
       }
     } catch (error) {
       console.error('Error deleting suggestion:', error)
-      alert('Failed to delete suggestion')
+      toast({ title: 'Failed to delete suggestion', variant: 'destructive' })
     }
   }
 
@@ -490,11 +504,15 @@ function SuggestionsTable({
         )
       )
 
-      // Refresh focus to reload suggestions
-      window.location.reload()
+      // Optimistic update
+      setSuggestions((prev) =>
+        prev.filter((s) => !selectedSuggestions.has(s.id))
+      )
+      setSelectedSuggestions(new Set())
+      toast({ title: 'Deleted successfully' })
     } catch (error) {
       console.error('Error deleting suggestions:', error)
-      alert('Failed to delete suggestions')
+      toast({ title: 'Failed to delete suggestions', variant: 'destructive' })
     }
   }
 
@@ -555,6 +573,7 @@ function SuggestionsTable({
               <TableHead>PIC</TableHead>
               <TableHead className="text-right">30D Requests</TableHead>
               <TableHead>Pipeline Existed</TableHead>
+              <TableHead>Quarter</TableHead>
               <TableHead className="text-center">Cannot Create</TableHead>
               <TableHead>Remark</TableHead>
               <TableHead>Status</TableHead>
@@ -603,18 +622,45 @@ function SuggestionsTable({
 
               {/* Pipeline Existed */}
               <TableCell>
-                {suggestion.matched_pipeline_id ? (
-                  <Button
-                    variant="link"
-                    size="sm"
-                    onClick={() => onOpenPipelineDrawer(suggestion.matched_pipeline_id!)}
-                    className="text-blue-600 hover:text-blue-800 p-0 h-auto"
-                  >
-                    Yes <ExternalLink className="h-3 w-3 ml-1" />
-                  </Button>
-                ) : (
-                  <span className="text-sm text-gray-500">No</span>
-                )}
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={suggestion.pipeline_created || false}
+                    onCheckedChange={(checked) => {
+                      onUpdateStatus(suggestion.id, { pipeline_created: checked })
+                    }}
+                  />
+                  {suggestion.matched_pipeline_id && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => onOpenPipelineDrawer(suggestion.matched_pipeline_id!)}
+                      className="text-blue-600 hover:text-blue-800 p-0 h-auto"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              </TableCell>
+
+              {/* Quarter */}
+              <TableCell>
+                <Select
+                  value={suggestion.quarter || ''}
+                  onValueChange={(value) => {
+                    onUpdateStatus(suggestion.id, { quarter: value })
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-28">
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {generateQuarters(3).map((q) => (
+                      <SelectItem key={q} value={q}>
+                        {q}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </TableCell>
 
               {/* Cannot Create Checkbox */}

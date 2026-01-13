@@ -32,15 +32,6 @@ import type { SimplifiedFilter } from '@/lib/types/performanceTracker'
 import { subDays, format } from 'date-fns'
 import { typography, spacing, colors, composedStyles } from '@/lib/design-tokens'
 
-const PRODUCTS = [
-  { value: 'flexiblesticky', label: 'Flexible Sticky' },
-  { value: 'videoads', label: 'Video Ads' },
-  { value: 'standardbanner', label: 'Standard Banner' },
-  { value: 'richmedia', label: 'Rich Media' },
-  { value: 'inbanner', label: 'In-Banner Video' },
-  { value: 'native', label: 'Native' },
-]
-
 interface FilterPipelineResult {
   pid: number
   pubname: string
@@ -87,6 +78,29 @@ export function AddPipelinesModal({
 
   // Product selection state
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
+  const [products, setProducts] = useState<Array<{label: string, value: string}>>([])
+  const [loadingProducts, setLoadingProducts] = useState(false)
+
+  // Fetch products on mount
+  useEffect(() => {
+    async function loadProducts() {
+      setLoadingProducts(true)
+      try {
+        const response = await fetch('/api/focus-of-month/metadata/products')
+        const data = await response.json()
+        if (data.status === 'ok') {
+          setProducts(data.data)
+        } else {
+          console.error('Failed to load products:', data.message)
+        }
+      } catch (error) {
+        console.error('Error loading products:', error)
+      } finally {
+        setLoadingProducts(false)
+      }
+    }
+    loadProducts()
+  }, [])
 
   // Date range state
   const { startDate: defaultStart, endDate: defaultEnd } = getLastMonthRange()
@@ -276,12 +290,13 @@ export function AddPipelinesModal({
               <Select
                 value={selectedProduct || ''}
                 onValueChange={(value) => setSelectedProduct(value)}
+                disabled={loadingProducts}
               >
                 <SelectTrigger id="product" className="bg-white">
-                  <SelectValue placeholder="Choose a product..." />
+                  <SelectValue placeholder={loadingProducts ? "Loading products..." : "Choose a product..."} />
                 </SelectTrigger>
                 <SelectContent>
-                  {PRODUCTS.map((product) => (
+                  {products.map((product) => (
                     <SelectItem key={product.value} value={product.value}>
                       {product.label}
                     </SelectItem>

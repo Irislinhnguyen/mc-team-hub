@@ -1,11 +1,14 @@
 /**
- * Sheet to Database Sync Service
+ * Sheet to Database Sync Service (APPEND-ONLY MODE)
  *
  * Core sync algorithm for quarterly pipeline workflow:
  * - Fetches data from Google Sheets
- * - Compares with database state
- * - Detects changes (NEW, UPDATE, DELETE)
- * - Executes batch operations in transaction
+ * - APPENDS ALL pipelines to database (no matching, no updates, no deletes)
+ * - Each quarterly sheet is independent
+ * - Proposal dates are preserved to track pipeline lifecycle across quarters
+ *
+ * This ensures that when users copy ongoing pipelines from previous quarters,
+ * they are created as new records while maintaining the original proposal date.
  */
 
 import { google } from 'googleapis'
@@ -256,21 +259,9 @@ async function fetchSpecificRows(
 }
 
 /**
- * Generate composite key for pipeline matching
- * Uses: A (key) + B (classification) + C (poc) + I (domain) + O (description) + proposal_date
- * CRITICAL: Sanitize all parts to prevent JSON serialization errors
+ * NOTE: Composite key matching removed in append-only mode
+ * Each quarterly sheet is independent - no matching needed
  */
-function generateCompositeKey(pipeline: any): string {
-  const parts = [
-    sanitizeCellValue(pipeline.key || ''),
-    sanitizeCellValue(pipeline.classification || ''),
-    sanitizeCellValue(pipeline.poc || ''),
-    sanitizeCellValue(pipeline.domain || ''),
-    sanitizeCellValue(pipeline.description || ''),
-    sanitizeCellValue(pipeline.proposal_date || '')
-  ]
-  return parts.join('|')
-}
 
 /**
  * Parse sheet rows into pipeline objects
@@ -301,18 +292,21 @@ function parseSheetRows(
       // Transform row using existing transformer
       const pipeline = transformRowToPipeline(row, userId, group, fiscalYear)
 
+      // CRITICAL: Sanitize entire pipeline object to prevent JSON parsing errors
+      const sanitizedPipeline = sanitizeObject(pipeline)
+
       // Add quarterly_sheet_id
-      pipeline.quarterly_sheet_id = quarterlySheetId
+      sanitizedPipeline.quarterly_sheet_id = quarterlySheetId
 
       // Add sheet row number
-      pipeline.sheet_row_number = sheetRowNumber
+      sanitizedPipeline.sheet_row_number = sheetRowNumber
 
       // Ensure key is set from Column A
-      if (!pipeline.key) {
-        pipeline.key = row[0].toString().trim()
+      if (!sanitizedPipeline.key) {
+        sanitizedPipeline.key = row[0].toString().trim()
       }
 
-      pipelines.push(pipeline)
+      pipelines.push(sanitizedPipeline)
     } catch (error: any) {
       console.error(`Row ${sheetRowNumber}: Failed to transform - ${error.message}`)
       continue
@@ -323,44 +317,14 @@ function parseSheetRows(
 }
 
 /**
- * Compare two pipeline objects to detect changes
+ * NOTE: hasChanges() and normalizeValue() removed in append-only mode
+ * No comparison needed - all pipelines are created new
  */
-function hasChanges(dbPipeline: any, sheetPipeline: any): boolean {
-  for (const field of SYNCABLE_FIELDS) {
-    const dbValue = normalizeValue(dbPipeline[field])
-    const sheetValue = normalizeValue(sheetPipeline[field])
-
-    if (dbValue !== sheetValue) {
-      return true
-    }
-  }
-
-  return false
-}
 
 /**
- * Normalize values for comparison
- */
-function normalizeValue(value: any): any {
-  // Null, undefined, empty string all become null
-  if (value === null || value === undefined || value === '') return null
-
-  // Trim strings AND remove control characters
-  if (typeof value === 'string') return sanitizeCellValue(value.trim())
-
-  // Handle dates (compare as ISO strings)
-  if (value instanceof Date) return value.toISOString().split('T')[0]
-
-  // Handle numbers (round to 4 decimal places)
-  if (typeof value === 'number') return Math.round(value * 10000) / 10000
-
-  return value
-}
-
-/**
- * Main sync function: sync quarterly sheet to database
+ * Main sync function: sync quarterly sheet to database (APPEND-ONLY MODE)
  * @param quarterlySheetId - ID of quarterly sheet record
- * @param changedRows - Optional array of row numbers for incremental sync
+ * @param changedRows - Optional array of row numbers for incremental sync (NOT USED in append-only, kept for compatibility)
  */
 export async function syncQuarterlySheet(
   quarterlySheetId: string,
@@ -391,18 +355,8 @@ export async function syncQuarterlySheet(
     // Step 2: Fetch sheet data from Google Sheets
     let sheetRows: any[][]
 
-    // TEMPORARY: Disable incremental sync due to JSON parsing errors
-    // Always use full sync for now until we can identify and fix the root cause
-    console.log(`[Sync] 📄 Full sync: Fetching all rows from ${sanitizedQuarterlySheet.sheet_name}...`)
-    sheetRows = await fetchSheetData(
-      sanitizedQuarterlySheet.spreadsheet_id,
-      sanitizedQuarterlySheet.sheet_name
-    )
-    console.log(`[Sync] Found ${sheetRows.length} rows in sheet`)
-
-    /* DISABLED: Incremental sync causing JSON parsing errors
     if (changedRows && changedRows.length > 0) {
-      // INCREMENTAL SYNC: Fetch only changed rows
+      // INCREMENTAL SYNC: Fetch only changed rows (faster, less resource intensive)
       console.log(`[Sync] 🎯 Incremental sync: Fetching ${changedRows.length} changed rows from ${sanitizedQuarterlySheet.sheet_name}...`)
       sheetRows = await fetchSpecificRows(
         sanitizedQuarterlySheet.spreadsheet_id,
@@ -419,7 +373,6 @@ export async function syncQuarterlySheet(
       )
       console.log(`[Sync] Found ${sheetRows.length} rows in sheet`)
     }
-    */
 
     // Step 3: Parse sheet rows
     // Get user_id (for now, use first user - TODO: make configurable)
@@ -443,222 +396,35 @@ export async function syncQuarterlySheet(
 
     console.log(`[Sync] Parsed ${sanitizedSheetPipelines.length} valid pipelines (sanitized)`)
 
-    // Step 4: Fetch current DB state for this quarter
-    console.log('[Sync] Fetching existing pipelines from database...')
-    const { data: dbPipelines, error: dbError } = await supabase
-      .from('pipelines')
-      .select('*')
-      .eq('quarterly_sheet_id', quarterlySheetId)
+    // Step 4: APPEND-ONLY MODE - Create all pipelines, no matching, no updates, no deletes
+    // Each quarterly sheet is independent - we just append everything from the sheet
+    console.log('[Sync] 📝 APPEND-ONLY MODE: Creating all pipelines from sheet...')
 
-    if (dbError) throw dbError
+    const toCreate = sanitizedSheetPipelines
 
-    console.log('[Sync] Sanitizing database pipelines...')
-    // Sanitize database response to remove control characters (CRITICAL FIX)
-    const sanitizedPipelines = sanitizeDatabaseResponse(dbPipelines) || []
+    console.log(`[Sync] Ready to append ${toCreate.length} pipelines to database`)
 
-    console.log(`[Sync] Found ${sanitizedPipelines.length} pipelines in DB (sanitized)`)
-
-    // Step 5: Build maps for comparison
-    // PRIMARY: Map by row number (quarterly_sheet_id + row_number)
-    // SECONDARY: Map by composite key for detecting moved pipelines
-    const sheetByRow = new Map(
-      sanitizedSheetPipelines.map((p) => [
-        `${quarterlySheetId}-${p.sheet_row_number}`,
-        p
-      ])
-    )
-
-    const sheetByComposite = new Map(
-      sanitizedSheetPipelines.map((p) => [
-        generateCompositeKey(p),
-        p
-      ])
-    )
-
-    const dbByRow = new Map(
-      sanitizedPipelines.map((p: any) => [
-        `${quarterlySheetId}-${p.sheet_row_number}`,
-        p
-      ])
-    )
-
-    const dbByComposite = new Map(
-      sanitizedPipelines.map((p: any) => [
-        generateCompositeKey(p),
-        p
-      ])
-    )
-
-    // Step 6: Detect changes
-    const toCreate: any[] = []
-    const toUpdate: Array<{ id: string; changes: any; reason: string }> = []
-    const toDelete: any[] = []
-    const matched = new Set<string>() // Track matched DB pipelines
-
-    // Find NEW and UPDATED (match by row number FIRST)
-    for (const sheetPipeline of sanitizedSheetPipelines) {
-      const rowKey = `${quarterlySheetId}-${sheetPipeline.sheet_row_number}`
-      const compositeKey = generateCompositeKey(sheetPipeline)
-
-      // Strategy 1: Match by row number (same position in sheet)
-      let dbPipeline = dbByRow.get(rowKey)
-      let matchReason = ''
-
-      if (dbPipeline) {
-        matchReason = 'row_number'
-        matched.add(dbPipeline.id)
-
-        // Check if composite key changed (key changed but same row)
-        const dbCompositeKey = generateCompositeKey(dbPipeline)
-        if (dbCompositeKey !== compositeKey) {
-          console.log(
-            `[Sync] Row ${sheetPipeline.sheet_row_number}: Key changed from "${dbCompositeKey}" to "${compositeKey}"`
-          )
-        }
-
-        // Update if data changed
-        if (hasChanges(dbPipeline, sheetPipeline)) {
-          toUpdate.push({
-            id: dbPipeline.id,
-            changes: sheetPipeline,
-            reason: 'row_number_match_with_changes'
-          })
-        }
-      } else {
-        // Strategy 2: Match by composite key (pipeline moved to different row)
-        dbPipeline = dbByComposite.get(compositeKey)
-
-        if (dbPipeline) {
-          matchReason = 'composite_key'
-          matched.add(dbPipeline.id)
-
-          console.log(
-            `[Sync] Pipeline moved: "${compositeKey}" from row ${dbPipeline.sheet_row_number} to row ${sheetPipeline.sheet_row_number}`
-          )
-
-          // Update with new row number and any data changes
-          toUpdate.push({
-            id: dbPipeline.id,
-            changes: sheetPipeline,
-            reason: 'composite_key_match_row_moved'
-          })
-        } else {
-          // Strategy 3: No match - create new pipeline
-          toCreate.push(sheetPipeline)
-        }
-      }
-    }
-
-    // Find DELETED (pipelines in DB but not in sheet)
-    for (const dbPipeline of sanitizedPipelines) {
-      if (!matched.has(dbPipeline.id)) {
-        toDelete.push(dbPipeline)
-      }
-    }
-
-    console.log(
-      `[Sync] Changes detected: ${toCreate.length} create, ${toUpdate.length} update, ${toDelete.length} delete`
-    )
-
-    // Step 7: Execute operations
+    // Step 5: Execute insert operations (CREATE only)
     let createdCount = 0
-    let updatedCount = 0
-    let deletedCount = 0
 
-    // Create new pipelines
-    if (toCreate.length > 0) {
-      for (const pipeline of toCreate) {
-        try {
-          // Sanitize pipeline object before insert
-          const sanitized = sanitizeObject(pipeline)
-          const { error } = await supabase.from('pipelines').insert(sanitized)
+    for (const pipeline of toCreate) {
+      try {
+        // Sanitize pipeline object before insert
+        const sanitized = sanitizeObject(pipeline)
+        const { error } = await supabase.from('pipelines').insert(sanitized)
 
-          if (error) {
-            errors.push(`Create failed for ${pipeline.key}: ${error.message}`)
-          } else {
-            createdCount++
-          }
-        } catch (error: any) {
-          errors.push(`Create failed for ${pipeline.key}: ${error.message}`)
+        if (error) {
+          errors.push(`Create failed for row ${pipeline.sheet_row_number} (${pipeline.key}): ${error.message}`)
+        } else {
+          createdCount++
+          console.log(`[Sync] ✅ Created pipeline: ${pipeline.key} (row ${pipeline.sheet_row_number})`)
         }
+      } catch (error: any) {
+        errors.push(`Create failed for row ${pipeline.sheet_row_number} (${pipeline.key}): ${error.message}`)
       }
     }
 
-    // Update existing pipelines
-    if (toUpdate.length > 0) {
-      for (const { id, changes } of toUpdate) {
-        try {
-          // Pick only syncable fields to update
-          const updates: any = {}
-          for (const field of SYNCABLE_FIELDS) {
-            if (changes[field] !== undefined) {
-              updates[field] = changes[field]
-            }
-          }
-
-          // Sanitize updates before applying
-          const sanitized = sanitizeObject(updates)
-
-          const { error } = await supabase
-            .from('pipelines')
-            .update(sanitized)
-            .eq('id', id)
-
-          if (error) {
-            errors.push(`Update failed for ${changes.key}: ${error.message}`)
-          } else {
-            updatedCount++
-          }
-        } catch (error: any) {
-          errors.push(`Update failed for ${changes.key}: ${error.message}`)
-        }
-      }
-    }
-
-    // Delete removed pipelines (move to deleted_pipelines)
-    if (toDelete.length > 0) {
-      for (const pipeline of toDelete) {
-        try {
-          // Fetch monthly forecasts
-          const { data: forecasts } = await supabase
-            .from('pipeline_monthly_forecast')
-            .select('*')
-            .eq('pipeline_id', pipeline.id)
-
-          // Sanitize forecasts (may contain control characters from DB)
-          const sanitizedForecasts = sanitizeDatabaseResponse(forecasts) || []
-
-          // Insert into deleted_pipelines
-          const deletedRecord = sanitizeObject({
-            ...pipeline,
-            original_created_at: pipeline.created_at,
-            original_updated_at: pipeline.updated_at,
-            deleted_at: new Date().toISOString(),
-            deletion_reason: 'removed_from_sheet',
-            deletion_source: 'webhook_sync',
-            quarterly_sheet_reference: quarterlySheetId,
-            monthly_forecasts_snapshot: sanitizedForecasts
-          })
-          await supabase.from('deleted_pipelines').insert(deletedRecord)
-
-          // Delete from pipelines
-          const { error } = await supabase
-            .from('pipelines')
-            .delete()
-            .eq('id', pipeline.id)
-
-          if (error) {
-            errors.push(`Delete failed for ${pipeline.key}: ${error.message}`)
-          } else {
-            deletedCount++
-          }
-        } catch (error: any) {
-          errors.push(`Delete failed for ${pipeline.key}: ${error.message}`)
-        }
-      }
-    }
-
-    // Step 8: Log sync result
+    // Step 6: Log sync result
     const duration = Date.now() - startTime
 
     await supabase.from('pipeline_sync_log').insert({
@@ -669,8 +435,8 @@ export async function syncQuarterlySheet(
       status: errors.length > 0 ? 'partial' : 'success',
       rows_processed: sanitizedSheetPipelines.length,
       rows_created: createdCount,
-      rows_updated: updatedCount,
-      rows_deleted: deletedCount,
+      rows_updated: 0, // Append-only mode: no updates
+      rows_deleted: 0, // Append-only mode: no deletes
       processing_duration_ms: duration
     })
 
@@ -686,12 +452,14 @@ export async function syncQuarterlySheet(
       })
       .eq('id', quarterlySheetId)
 
+    console.log(`[Sync] ✅ Append-only sync completed: ${createdCount} pipelines created in ${duration}ms`)
+
     return {
       success: errors.length === 0,
       total: sanitizedSheetPipelines.length,
       created: createdCount,
-      updated: updatedCount,
-      deleted: deletedCount,
+      updated: 0, // Append-only mode: no updates
+      deleted: 0, // Append-only mode: no deletes
       errors,
       duration_ms: duration
     }
