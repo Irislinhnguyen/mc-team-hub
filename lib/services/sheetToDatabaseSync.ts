@@ -694,14 +694,14 @@ export async function syncQuarterlySheet(
       })
       .eq('id', quarterlySheetId)
 
-    console.log(`[Sync] ✅ Append-only sync completed: ${createdCount} pipelines created in ${duration}ms`)
+    console.log(`[Sync] ✅ Sync completed: ${createdCount} created, ${updatedCount} updated in ${duration}ms`)
 
     return {
       success: errors.length === 0,
       total: sanitizedSheetPipelines.length,
       created: createdCount,
-      updated: 0, // Append-only mode: no updates
-      deleted: 0, // Append-only mode: no deletes
+      updated: updatedCount, // UPSERT mode: tracks both creates and updates
+      deleted: 0,
       errors,
       duration_ms: duration
     }

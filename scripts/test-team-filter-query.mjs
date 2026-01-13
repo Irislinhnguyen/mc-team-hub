@@ -3,13 +3,19 @@
  * Check what PICs belong to WEB_GV team and test SQL filtering
  */
 
+import dotenv from 'dotenv'
 import { createClient } from '@supabase/supabase-js'
+
+// Load environment variables from .env.local
+dotenv.config({ path: '.env.local' })
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('Missing Supabase credentials')
+  console.error('NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? '✓' : '✗')
+  console.error('SUPABASE_SERVICE_ROLE_KEY:', supabaseKey ? '✓' : '✗')
   process.exit(1)
 }
 
