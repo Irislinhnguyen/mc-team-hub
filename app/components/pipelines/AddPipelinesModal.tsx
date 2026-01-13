@@ -5,8 +5,8 @@
  * Modal for filtering and selecting pipelines to add to Focus
  */
 
-import { useState, useEffect } from 'react'
-import { Plus, Filter as FilterIcon, Loader2, Check } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Plus, Filter as FilterIcon, Loader2, Check, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -90,6 +90,7 @@ export function AddPipelinesModal({
   const [products, setProducts] = useState<Array<{label: string, value: string}>>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [productPopoverOpen, setProductPopoverOpen] = useState(false)
+  const [productSearchQuery, setProductSearchQuery] = useState('')
 
   // Team selection state
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
@@ -101,6 +102,23 @@ export function AddPipelinesModal({
   const [pics, setPics] = useState<Array<{label: string, value: string}>>([])
   const [loadingPics, setLoadingPics] = useState(false)
   const [picPopoverOpen, setPicPopoverOpen] = useState(false)
+  const [picSearchQuery, setPicSearchQuery] = useState('')
+
+  // Filter products based on search
+  const filteredProducts = useMemo(() => {
+    if (!productSearchQuery) return products
+    return products.filter((product) =>
+      product.label.toLowerCase().includes(productSearchQuery.toLowerCase())
+    )
+  }, [products, productSearchQuery])
+
+  // Filter PICs based on search
+  const filteredPics = useMemo(() => {
+    if (!picSearchQuery) return pics
+    return pics.filter((pic) =>
+      pic.label.toLowerCase().includes(picSearchQuery.toLowerCase())
+    )
+  }, [pics, picSearchQuery])
 
   // Fetch products, teams, and pics on mount
   useEffect(() => {
@@ -176,6 +194,8 @@ export function AddPipelinesModal({
       setError(null)
       setResultMessage(null)
       setSelectedProduct(null) // Clear product selection
+      setProductSearchQuery('') // Clear product search
+      setPicSearchQuery('') // Clear PIC search
     }
   }, [isOpen])
 
@@ -354,32 +374,42 @@ export function AddPipelinesModal({
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-full p-0 pointer-events-auto" align="start" style={{ pointerEvents: 'auto' }}>
-                    <Command className="pointer-events-auto">
-                      <CommandInput placeholder="Search products..." />
-                      <CommandList>
-                        <CommandEmpty>No product found.</CommandEmpty>
-                        <CommandGroup>
-                          <div className="max-h-[200px] overflow-y-auto">
-                            {products.map((product) => (
-                              <CommandItem
-                                key={product.value}
-                                value={product.value}
-                                onSelect={(currentValue) => {
-                                  setSelectedProduct(currentValue)
-                                  setProductPopoverOpen(false)
-                                }}
-                              >
-                                <Check
-                                  className={`mr-2 h-4 w-4 ${
-                                    selectedProduct === product.value ? 'opacity-100' : 'opacity-0'
-                                  }`}
-                                />
-                                {product.label}
-                              </CommandItem>
-                            ))}
+                    <Command shouldFilter={false} className="pointer-events-auto">
+                      <div className="flex items-center border-b px-3 pointer-events-auto">
+                        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                        <input
+                          placeholder="Search products..."
+                          className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
+                          value={productSearchQuery}
+                          onChange={(e) => setProductSearchQuery(e.target.value)}
+                        />
+                      </div>
+                      <CommandGroup className="max-h-[300px] overflow-y-auto overscroll-contain pointer-events-auto" style={{ pointerEvents: 'auto' }}>
+                        {filteredProducts.length === 0 ? (
+                          <div className="py-6 text-center text-sm text-muted-foreground">
+                            {productSearchQuery ? `No products found for "${productSearchQuery}"` : "No products available"}
                           </div>
-                        </CommandGroup>
-                      </CommandList>
+                        ) : (
+                          filteredProducts.map((product) => (
+                            <div
+                              key={product.value}
+                              className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                              onClick={() => {
+                                setSelectedProduct(product.value)
+                                setProductPopoverOpen(false)
+                                setProductSearchQuery('')
+                              }}
+                            >
+                              <Check
+                                className={`mr-2 h-4 w-4 ${
+                                  selectedProduct === product.value ? 'opacity-100' : 'opacity-0'
+                                }`}
+                              />
+                              {product.label}
+                            </div>
+                          ))
+                        )}
+                      </CommandGroup>
                     </Command>
                   </PopoverContent>
                 </Popover>
@@ -432,46 +462,58 @@ export function AddPipelinesModal({
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-full p-0 pointer-events-auto" align="start" style={{ pointerEvents: 'auto' }}>
-                    <Command className="pointer-events-auto">
-                      <CommandInput placeholder="Search PICs..." />
-                      <CommandList>
-                        <CommandEmpty>No PIC found.</CommandEmpty>
-                        <CommandGroup>
-                          <CommandItem
-                            value=""
-                            onSelect={() => {
-                              setSelectedPic(null)
-                              setPicPopoverOpen(false)
-                            }}
-                          >
-                            <Check
-                              className={`mr-2 h-4 w-4 ${
-                                selectedPic === null ? 'opacity-100' : 'opacity-0'
-                              }`}
-                            />
-                            All PICs
-                          </CommandItem>
-                          <div className="max-h-[200px] overflow-y-auto">
-                            {pics.map((pic) => (
-                              <CommandItem
-                                key={pic.value}
-                                value={pic.value}
-                                onSelect={(currentValue) => {
-                                  setSelectedPic(currentValue)
-                                  setPicPopoverOpen(false)
-                                }}
-                              >
-                                <Check
-                                  className={`mr-2 h-4 w-4 ${
-                                    selectedPic === pic.value ? 'opacity-100' : 'opacity-0'
-                                  }`}
-                                />
-                                {pic.label}
-                              </CommandItem>
-                            ))}
+                    <Command shouldFilter={false} className="pointer-events-auto">
+                      <div className="flex items-center border-b px-3 pointer-events-auto">
+                        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                        <input
+                          placeholder="Search PICs..."
+                          className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
+                          value={picSearchQuery}
+                          onChange={(e) => setPicSearchQuery(e.target.value)}
+                        />
+                      </div>
+                      <CommandGroup className="max-h-[300px] overflow-y-auto overscroll-contain pointer-events-auto" style={{ pointerEvents: 'auto' }}>
+                        {/* "All PICs" option */}
+                        <div
+                          className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                          onClick={() => {
+                            setSelectedPic(null)
+                            setPicPopoverOpen(false)
+                            setPicSearchQuery('')
+                          }}
+                        >
+                          <Check
+                            className={`mr-2 h-4 w-4 ${
+                              selectedPic === null ? 'opacity-100' : 'opacity-0'
+                            }`}
+                          />
+                          All PICs
+                        </div>
+                        {filteredPics.length === 0 ? (
+                          <div className="py-6 text-center text-sm text-muted-foreground">
+                            {picSearchQuery ? `No PICs found for "${picSearchQuery}"` : "No PICs available"}
                           </div>
-                        </CommandGroup>
-                      </CommandList>
+                        ) : (
+                          filteredPics.map((pic) => (
+                            <div
+                              key={pic.value}
+                              className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                              onClick={() => {
+                                setSelectedPic(pic.value)
+                                setPicPopoverOpen(false)
+                                setPicSearchQuery('')
+                              }}
+                            >
+                              <Check
+                                className={`mr-2 h-4 w-4 ${
+                                  selectedPic === pic.value ? 'opacity-100' : 'opacity-0'
+                                }`}
+                              />
+                              {pic.label}
+                            </div>
+                          ))
+                        )}
+                      </CommandGroup>
                     </Command>
                   </PopoverContent>
                 </Popover>
