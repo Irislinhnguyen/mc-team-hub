@@ -110,6 +110,7 @@ export default function FocusDetailPage() {
     updates: {
       user_status?: string
       cannot_create_reason?: string | null
+      cannot_create_reason_other?: string | null
       user_remark?: string | null
     }
   ) {
@@ -134,6 +135,26 @@ export default function FocusDetailPage() {
     } catch (error) {
       console.error('Error updating suggestion:', error)
       toast({ title: 'Failed to update', variant: 'destructive' })
+    }
+  }
+
+  // Handle delete suggestion
+  async function handleDeleteSuggestion(suggestionId: string) {
+    try {
+      const response = await fetch(`/api/focus-of-month/suggestions/${suggestionId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        // Remove from state
+        setSuggestions((prev) => prev.filter((s) => s.id !== suggestionId))
+        toast({ title: 'Suggestion deleted successfully' })
+      } else {
+        toast({ title: 'Failed to delete suggestion', variant: 'destructive' })
+      }
+    } catch (error) {
+      console.error('Error deleting suggestion:', error)
+      toast({ title: 'Failed to delete suggestion', variant: 'destructive' })
     }
   }
 
@@ -359,6 +380,7 @@ export default function FocusDetailPage() {
             suggestions={suggestions}
             onUpdateStatus={updateSuggestionStatus}
             onOpenPipelineDrawer={handleOpenPipelineDrawer}
+            onDeleteSuggestion={handleDeleteSuggestion}
           />
         )}
         {activeTab === 'Dashboard' && <DashboardTab focusId={focusId} />}
@@ -451,6 +473,7 @@ function SuggestionsTable({
   suggestions,
   onUpdateStatus,
   onOpenPipelineDrawer,
+  onDeleteSuggestion,
 }: {
   suggestions: FocusSuggestion[]
   onUpdateStatus: (
@@ -458,12 +481,20 @@ function SuggestionsTable({
     updates: {
       user_status?: string
       cannot_create_reason?: string | null
+      cannot_create_reason_other?: string | null
       user_remark?: string | null
     }
   ) => void
   onOpenPipelineDrawer: (pipelineId: string) => void
+  onDeleteSuggestion: (suggestionId: string) => void
 }) {
   const [editingCannotCreate, setEditingCannotCreate] = useState<string | null>(null)
+
+  // Track selected reasons locally for immediate UI feedback
+  const [selectedReasons, setSelectedReasons] = useState<Record<string, string>>({})
+
+  // Track remark drafts locally for real-time typing feedback
+  const [remarkDrafts, setRemarkDrafts] = useState<Record<string, string>>({})
 
   // Bulk selection state
   const [selectedSuggestions, setSelectedSuggestions] = useState<Set<string>>(new Set())
@@ -478,8 +509,8 @@ function SuggestionsTable({
       })
 
       if (response.ok) {
-        // Optimistic update - remove from state
-        setSuggestions((prev) => prev.filter((s) => s.id !== suggestionId))
+        // Call parent's delete handler to update state
+        onDeleteSuggestion(suggestionId)
         toast({ title: 'Suggestion deleted successfully' })
       } else {
         toast({ title: 'Failed to delete suggestion', variant: 'destructive' })
@@ -672,9 +703,16 @@ function SuggestionsTable({
                       if (checked) {
                         setEditingCannotCreate(suggestion.id)
                       } else {
+                        // Clear reason when unchecking
+                        setSelectedReasons(prev => {
+                          const newReasons = { ...prev }
+                          delete newReasons[suggestion.id]
+                          return newReasons
+                        })
                         onUpdateStatus(suggestion.id, {
                           user_status: 'pending',
                           cannot_create_reason: null,
+                          cannot_create_reason_other: null,
                         })
                         setEditingCannotCreate(null)
                       }
@@ -685,13 +723,15 @@ function SuggestionsTable({
                   {editingCannotCreate === suggestion.id && (
                     <div className="mt-2 min-w-[180px]">
                       <Select
-                        value={suggestion.cannot_create_reason || ''}
+                        value={suggestion.cannot_create_reason || selectedReasons[suggestion.id] || ''}
                         onValueChange={(reason) => {
+                          // Update local state immediately
+                          setSelectedReasons(prev => ({ ...prev, [suggestion.id]: reason }))
                           onUpdateStatus(suggestion.id, {
                             user_status: 'cannot_create',
                             cannot_create_reason: reason,
                           })
-                          setEditingCannotCreate(null)
+                          // Don't close edit mode - keep reason visible
                         }}
                       >
                         <SelectTrigger className="h-8 text-xs">
@@ -709,14 +749,31 @@ function SuggestionsTable({
                           <SelectItem value="Other">Other</SelectItem>
                         </SelectContent>
                       </Select>
+
+                      {/* Show "Other" text input when Other is selected */}
+                      {(suggestion.cannot_create_reason === 'Other' || selectedReasons[suggestion.id] === 'Other') && (
+                        <Input
+                          placeholder="Please specify..."
+                          className="h-8 text-xs mt-2"
+                          value={suggestion.cannot_create_reason_other || ''}
+                          onChange={(e) => {
+                            onUpdateStatus(suggestion.id, {
+                              cannot_create_reason_other: e.target.value,
+                            })
+                          }}
+                        />
+                      )}
                     </div>
                   )}
 
-                  {/* Show reason if set */}
+                  {/* Show reason if set and not in edit mode */}
                   {suggestion.cannot_create_reason && editingCannotCreate !== suggestion.id && (
-                    <span className="text-xs text-gray-600">
-                      {suggestion.cannot_create_reason}
-                    </span>
+                    <div className="text-xs text-gray-600 text-center">
+                      <div>{suggestion.cannot_create_reason}</div>
+                      {suggestion.cannot_create_reason === 'Other' && suggestion.cannot_create_reason_other && (
+                        <div className="text-gray-500 italic">{suggestion.cannot_create_reason_other}</div>
+                      )}
+                    </div>
                   )}
                 </div>
               </TableCell>
@@ -724,9 +781,13 @@ function SuggestionsTable({
               {/* Remark Input */}
               <TableCell>
                 <Input
-                  value={suggestion.user_remark || ''}
+                  value={remarkDrafts[suggestion.id] ?? suggestion.user_remark || ''}
                   onChange={(e) => {
-                    debouncedUpdateRemark(suggestion.id, e.target.value)
+                    const newValue = e.target.value
+                    // Update local state immediately for real-time feedback
+                    setRemarkDrafts(prev => ({ ...prev, [suggestion.id]: newValue }))
+                    // Debounced backend update
+                    debouncedUpdateRemark(suggestion.id, newValue)
                   }}
                   placeholder="Add remark..."
                   className="h-8 text-xs"
