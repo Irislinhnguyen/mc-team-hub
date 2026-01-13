@@ -377,7 +377,9 @@ function parseSheetRows(
     if (!row[0] && !row[1] && !row[2]) continue
 
     // Skip rows without key (Column A)
-    if (!row[0] || row[0].toString().trim() === '') {
+    // Fix: Check for null/undefined first, then check if empty string
+    // This allows keys like "0" or "0001" which are falsy but valid
+    if (row[0] == null || (typeof row[0] === 'string' && row[0].trim() === '')) {
       console.warn(`Row ${sheetRowNumber}: Skipping - no key in Column A`)
       continue
     }
