@@ -8,6 +8,7 @@ import { getServerUser } from '@/lib/auth/server'
 import { buildWhereClause } from '@/lib/services/analyticsQueries'
 import BigQueryService from '@/lib/services/bigquery'
 import { createClient } from '@/lib/supabase/server'
+import { getTeamConfigurations } from '@/lib/utils/teamMatcher'
 import type { SimplifiedFilter } from '@/lib/types/performanceTracker'
 
 // =====================================================
@@ -85,35 +86,26 @@ export async function POST(request: NextRequest) {
     if (normalizedTeam) {
       console.log('[FilterPipelines] 🏢 Fetching PICs for team:', normalizedTeam)
 
-      const teamConfigUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/focus-of-month/metadata/team-pics?team=${normalizedTeam}`
-      console.log('[FilterPipelines] 🔗 Team-pics API URL:', teamConfigUrl)
+      try {
+        // Call getTeamConfigurations directly instead of API (no auth needed)
+        const teamConfig = await getTeamConfigurations()
 
-      const teamConfigResponse = await fetch(
-        teamConfigUrl,
-        {
-          headers: {
-            Authorization: request.headers.get('authorization') || '',
-          },
-        }
-      )
+        // Find PICs for this team
+        const picMappings = teamConfig.picMappings || []
+        const picsForTeam = picMappings
+          .filter((m: any) => m.team_id === normalizedTeam)
+          .map((m: any) => m.pic_name)
 
-      console.log('[FilterPipelines] 📊 Team-pics API response status:', teamConfigResponse.status)
+        console.log('[FilterPipelines] 📦 Found', picsForTeam.length, 'PICs for team:', normalizedTeam)
+        console.log('[FilterPipelines] 🏷️  PICs:', picsForTeam)
 
-      if (teamConfigResponse.ok) {
-        const teamData = await teamConfigResponse.json()
-        console.log('[FilterPipelines] 📦 Team-pics API response body:', JSON.stringify(teamData, null, 2))
-
-        if (teamData.status === 'ok' && teamData.data && teamData.data.length > 0) {
-          // Add PICs from team to filters (use 'pic' key for buildWhereClause)
-          console.log('[FilterPipelines] ✅ Found', teamData.data.length, 'PICs for team:', normalizedTeam)
-          console.log('[FilterPipelines] 🏷️  PICs:', teamData.data)
-          filters.pic = teamData.data
+        if (picsForTeam.length > 0) {
+          filters.pic = picsForTeam
         } else {
-          console.warn('[FilterPipelines] ⚠️  No PICs found for team:', normalizedTeam, '- Response:', teamData)
+          console.warn('[FilterPipelines] ⚠️  No PICs found for team:', normalizedTeam)
         }
-      } else {
-        const errorText = await teamConfigResponse.text()
-        console.error('[FilterPipelines] ❌ Team-pics API failed:', teamConfigResponse.status, '-', errorText)
+      } catch (error) {
+        console.error('[FilterPipelines] ❌ Error fetching team PICs:', error)
       }
     }
 
