@@ -1,14 +1,17 @@
 /**
- * Sheet to Database Sync Service (APPEND-ONLY MODE)
+ * Sheet to Database Sync Service (UPSERT MODE)
  *
  * Core sync algorithm for quarterly pipeline workflow:
  * - Fetches data from Google Sheets
- * - APPENDS ALL pipelines to database (no matching, no updates, no deletes)
- * - Each quarterly sheet is independent
+ * - UPSERTS pipelines: CREATE new or UPDATE existing
+ * - Uses unique constraint: (key, proposal_date, quarterly_sheet_id)
+ * - Same sheet sync → UPDATE existing pipelines
+ * - Different sheet sync → CREATE all pipelines (different quarterly_sheet_id)
  * - Proposal dates are preserved to track pipeline lifecycle across quarters
  *
- * This ensures that when users copy ongoing pipelines from previous quarters,
- * they are created as new records while maintaining the original proposal date.
+ * This allows users to:
+ * - Sync the same sheet multiple times (updates existing pipelines)
+ * - Copy pipelines from Q1 to Q2 (creates new records in different quarter)
  */
 
 import { google } from 'googleapis'
@@ -411,16 +414,11 @@ function parseSheetRows(
 }
 
 /**
- * NOTE: hasChanges() and normalizeValue() removed in append-only mode
- * No comparison needed - all pipelines are created new
- */
-
-/**
- * Main sync function: sync quarterly sheet to database (APPEND-ONLY MODE)
+ * Main sync function: sync quarterly sheet to database (UPSERT MODE)
  * @param quarterlySheetId - ID of quarterly sheet record
  * @param userId - Optional: User ID of who triggered the sync
  * @param userEmail - Optional: Email of user who triggered the sync
- * @param changedRows - Optional array of row numbers for incremental sync (NOT USED in append-only, kept for compatibility)
+ * @param changedRows - Optional array of row numbers for incremental sync
  */
 export async function syncQuarterlySheet(
   quarterlySheetId: string,
@@ -508,50 +506,72 @@ export async function syncQuarterlySheet(
 
     console.log(`[Sync] Parsed ${sanitizedSheetPipelines.length} valid pipelines (sanitized)`)
 
-    // Step 4: APPEND-ONLY MODE - Create all pipelines, no matching, no updates, no deletes
-    // Each quarterly sheet is independent - we just append everything from the sheet
-    console.log('[Sync] 📝 APPEND-ONLY MODE: Creating all pipelines from sheet...')
+    // Step 4: UPSERT MODE - Create new or update existing pipelines
+    // Same sheet sync → UPDATE existing pipelines
+    // Different sheet sync → CREATE all pipelines
+    console.log('[Sync] 📝 UPSERT MODE: Creating new or updating existing pipelines...')
 
-    const toCreate = sanitizedSheetPipelines
+    const toUpsert = sanitizedSheetPipelines
 
-    console.log(`[Sync] Ready to append ${toCreate.length} pipelines to database`)
+    console.log(`[Sync] Ready to sync ${toUpsert.length} pipelines to database`)
 
-    // CRITICAL: Test if we can stringify the entire batch before inserting
+    // CRITICAL: Test if we can stringify the entire batch before upserting
     try {
-      JSON.stringify(toCreate)
+      JSON.stringify(toUpsert)
       console.log('[Sync] ✅ All pipelines can be stringified (batch test passed)')
     } catch (e: any) {
       console.error('[Sync] ❌ Cannot stringify batch of pipelines!')
       console.error('[Sync] Error:', e.message)
 
       // Find which pipeline is problematic
-      for (let i = 0; i < toCreate.length; i++) {
+      for (let i = 0; i < toUpsert.length; i++) {
         try {
-          JSON.stringify(toCreate[i])
+          JSON.stringify(toUpsert[i])
         } catch (e2: any) {
-          console.error(`[Sync] ❌ Pipeline at index ${i} (row ${toCreate[i].sheet_row_number}) cannot be stringified`)
-          console.error('[Sync] Key:', toCreate[i].key)
+          console.error(`[Sync] ❌ Pipeline at index ${i} (row ${toUpsert[i].sheet_row_number}) cannot be stringified`)
+          console.error('[Sync] Key:', toUpsert[i].key)
 
           // Find which field is problematic
-          for (const key in toCreate[i]) {
+          for (const key in toUpsert[i]) {
             try {
-              JSON.stringify({ [key]: toCreate[i][key] })
+              JSON.stringify({ [key]: toUpsert[i][key] })
             } catch (e3) {
-              console.error(`[Sync] ❌ Field "${key}" has control characters:`, toCreate[i][key])
+              console.error(`[Sync] ❌ Field "${key}" has control characters:`, toUpsert[i][key])
             }
           }
         }
       }
 
-      throw new Error('Cannot stringify pipelines for database insert')
+      throw new Error('Cannot stringify pipelines for database upsert')
     }
 
-    // Step 5: Execute insert operations (CREATE only)
-    let createdCount = 0
+    // Step 5: Fetch existing pipelines for this quarterly sheet to track created vs updated
+    console.log(`[Sync] 🔍 Checking existing pipelines in quarterly sheet ${quarterlySheetId}...`)
 
-    for (const pipeline of toCreate) {
+    const { data: existingPipelines, error: fetchError } = await supabase
+      .from('pipelines')
+      .select('key, proposal_date')
+      .eq('quarterly_sheet_id', quarterlySheetId)
+
+    if (fetchError) {
+      console.error('[Sync] ⚠️  Warning: Could not fetch existing pipelines:', fetchError.message)
+      // Continue anyway - upsert will still work
+    }
+
+    // Build set of existing keys for quick lookup
+    const existingKeys = new Set(
+      existingPipelines?.map(p => `${p.key}_${p.proposal_date || 'null'}`) || []
+    )
+
+    console.log(`[Sync] Found ${existingKeys.size} existing pipelines in this quarterly sheet`)
+
+    // Step 6: Execute UPSERT operations
+    let createdCount = 0
+    let updatedCount = 0
+
+    for (const pipeline of toUpsert) {
       try {
-        // CRITICAL: Test stringification before each insert
+        // CRITICAL: Test stringification before each upsert
         try {
           JSON.stringify(pipeline)
         } catch (e: any) {
@@ -560,7 +580,7 @@ export async function syncQuarterlySheet(
           continue
         }
 
-        // Sanitize pipeline object before insert
+        // Sanitize pipeline object before upsert
         const sanitized = sanitizeObject(pipeline)
 
         // Test again after sanitization
@@ -572,18 +592,37 @@ export async function syncQuarterlySheet(
           continue
         }
 
-        const { error } = await supabase.from('pipelines').insert(sanitized)
+        // Check if this is a create or update
+        const pipelineKey = `${sanitized.key}_${sanitized.proposal_date || 'null'}`
+        const isExisting = existingKeys.has(pipelineKey)
 
-        if (error) {
-          errors.push(`Create failed for row ${pipeline.sheet_row_number} (${pipeline.key}): ${error.message}`)
+        // Use upsert with the new composite unique constraint
+        // onConflict: key, proposal_date, quarterly_sheet_id
+        const { error: upsertError } = await supabase
+          .from('pipelines')
+          .upsert(sanitized, {
+            onConflict: 'key,proposal_date,quarterly_sheet_id',
+            ignoreDuplicates: false
+          })
+
+        if (upsertError) {
+          errors.push(`Upsert failed for row ${pipeline.sheet_row_number} (${pipeline.key}): ${upsertError.message}`)
         } else {
-          createdCount++
-          console.log(`[Sync] ✅ Created pipeline: ${pipeline.key} (row ${pipeline.sheet_row_number})`)
+          if (isExisting) {
+            updatedCount++
+            console.log(`[Sync] ✅ Updated pipeline: ${pipeline.key} (row ${pipeline.sheet_row_number})`)
+          } else {
+            createdCount++
+            console.log(`[Sync] ✅ Created pipeline: ${pipeline.key} (row ${pipeline.sheet_row_number})`)
+          }
         }
       } catch (error: any) {
-        errors.push(`Create failed for row ${pipeline.sheet_row_number} (${pipeline.key}): ${error.message}`)
+        errors.push(`Upsert failed for row ${pipeline.sheet_row_number} (${pipeline.key}): ${error.message}`)
       }
     }
+
+    console.log(`[Sync] ✅ Upsert completed: ${createdCount} created, ${updatedCount} updated`)
+
 
     // Step 6: Log sync result
     const duration = Date.now() - startTime
@@ -598,8 +637,8 @@ export async function syncQuarterlySheet(
       status: errors.length > 0 ? 'partial' : 'success',
       rows_processed: sanitizedSheetPipelines.length,
       rows_created: createdCount,
-      rows_updated: 0, // Append-only mode: no updates
-      rows_deleted: 0, // Append-only mode: no deletes
+      rows_updated: updatedCount, // UPSERT mode: tracks both creates and updates
+      rows_deleted: 0, // UPSERT mode: no deletes
       processing_duration_ms: duration
     })
 
