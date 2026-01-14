@@ -138,7 +138,7 @@ export function FocusSuggestionsTable({
 
   // Filter suggestions
   const filteredSuggestions = useMemo(() => {
-    return suggestions.filter((s) => {
+    const filtered = suggestions.filter((s) => {
       if (filters.pic && s.pic !== filters.pic) return false
       if (filters.status.length > 0 && !filters.status.includes(s.user_status || 'pending')) return false
       if (filters.product.length > 0 && !filters.product.includes(s.product)) return false
@@ -146,7 +146,12 @@ export function FocusSuggestionsTable({
       if (filters.quarter && s.quarter !== filters.quarter) return false
       return true
     })
+    console.log('[FocusSuggestionsTable] Filter calculated:', { total: suggestions.length, filtered: filtered.length, pics: uniquePics.length, products: uniqueProducts.length, quarters: uniqueQuarters.length })
+    return filtered
   }, [suggestions, filters])
+
+  // Debug: Log component render
+  console.log('[FocusSuggestionsTable] Component rendering, suggestions:', suggestions.length)
 
   // Handle select all (for filtered results)
   function handleSelectAll(checked: boolean) {
@@ -418,6 +423,7 @@ export function FocusSuggestionsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
+            {console.log('[FocusSuggestionsTable] About to render table rows, count:', filteredSuggestions.length) || null}
             {filteredSuggestions.map((suggestion) => (
               <TableRow key={suggestion.id}>
                 <TableCell className="w-[4%]">
