@@ -386,41 +386,41 @@ export function FocusSuggestionsTable({
         </div>
       )}
 
-      {/* Scrollable Table Container */}
+      {/* Scrollable Table Container - 600px for 15 rows */}
       <div
         className="overflow-x-auto overflow-y-auto border border-gray-200 rounded-b-lg"
         style={{
-          height: componentHeights.table.scrollArea,
-          minHeight: componentHeights.table.scrollArea,
+          height: '600px', // 15 rows * 40px per row = 600px
+          minHeight: '600px',
         }}
       >
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-white shadow-sm">
             <TableRow>
-              <TableHead className="w-[5%]">
+              <TableHead className="w-[4%]">
                 <Checkbox
                   checked={allSelected}
                   onCheckedChange={handleSelectAll}
                   aria-label="Select all"
                 />
               </TableHead>
-              <TableHead className="w-[8%]" style={composedStyles.tableHeader}>MID</TableHead>
-              <TableHead className="w-[12%]" style={composedStyles.tableHeader}>Media Name</TableHead>
-              <TableHead className="w-[10%]" style={composedStyles.tableHeader}>Product</TableHead>
-              <TableHead className="w-[10%]" style={composedStyles.tableHeader}>PIC</TableHead>
-              <TableHead className="w-[8%] text-right" style={composedStyles.tableHeader}>30D Requests</TableHead>
-              <TableHead className="w-[10%]" style={composedStyles.tableHeader}>Pipeline</TableHead>
-              <TableHead className="w-[10%]" style={composedStyles.tableHeader}>Quarter</TableHead>
-              <TableHead className="w-[12%] text-center" style={composedStyles.tableHeader}>Cannot Create</TableHead>
-              <TableHead className="w-[15%]" style={composedStyles.tableHeader}>Remark</TableHead>
-              <TableHead className="w-[8%]" style={composedStyles.tableHeader}>Status</TableHead>
-              <TableHead className="w-[5%]" style={composedStyles.tableHeader}>Actions</TableHead>
+              <TableHead className="w-[6%]" style={composedStyles.tableHeader}>MID</TableHead>
+              <TableHead className="w-[10%]" style={composedStyles.tableHeader}>Media Name</TableHead>
+              <TableHead className="w-[7%]" style={composedStyles.tableHeader}>Product</TableHead>
+              <TableHead className="w-[8%]" style={composedStyles.tableHeader}>PIC</TableHead>
+              <TableHead className="w-[6%] text-right" style={composedStyles.tableHeader}>30D Requests</TableHead>
+              <TableHead className="w-[7%]" style={composedStyles.tableHeader}>Pipeline</TableHead>
+              <TableHead className="w-[7%]" style={composedStyles.tableHeader}>Quarter</TableHead>
+              <TableHead className="w-[10%] text-center" style={composedStyles.tableHeader}>Cannot Create</TableHead>
+              <TableHead className="w-[30%]" style={composedStyles.tableHeader}>Remark</TableHead>
+              <TableHead className="w-[3%]" style={composedStyles.tableHeader}>Status</TableHead>
+              <TableHead className="w-[2%]" style={composedStyles.tableHeader}>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredSuggestions.map((suggestion) => (
               <TableRow key={suggestion.id}>
-                <TableCell className="w-[5%]">
+                <TableCell className="w-[4%]">
                   <Checkbox
                     checked={selectedSuggestions.has(suggestion.id)}
                     onCheckedChange={(checked) => {
@@ -436,9 +436,9 @@ export function FocusSuggestionsTable({
                   />
                 </TableCell>
 
-                <TableCell className="w-[8%]" style={composedStyles.tableData}>{suggestion.mid}</TableCell>
+                <TableCell className="w-[6%]" style={composedStyles.tableData}>{suggestion.mid}</TableCell>
 
-                <TableCell className="w-[12%]" style={composedStyles.tableData}>
+                <TableCell className="w-[10%]" style={composedStyles.tableData}>
                   <div className="flex items-center gap-2">
                     <span className="truncate" title={suggestion.media_name}>
                       {truncate(suggestion.media_name, 20)}
@@ -456,19 +456,19 @@ export function FocusSuggestionsTable({
                   </div>
                 </TableCell>
 
-                <TableCell className="w-[10%]">
+                <TableCell className="w-[7%]">
                   <Badge variant="outline" className="text-xs">
                     {suggestion.product}
                   </Badge>
                 </TableCell>
 
-                <TableCell className="w-[10%]" style={composedStyles.tableData}>{suggestion.pic || '-'}</TableCell>
+                <TableCell className="w-[8%]" style={composedStyles.tableData}>{suggestion.pic || '-'}</TableCell>
 
-                <TableCell className="w-[8%] text-right" style={composedStyles.tableData}>
+                <TableCell className="w-[6%] text-right" style={composedStyles.tableData}>
                   {suggestion.last_30d_requests?.toLocaleString() || 0}
                 </TableCell>
 
-                <TableCell className="w-[10%]" style={composedStyles.tableData}>
+                <TableCell className="w-[7%]" style={composedStyles.tableData}>
                   {suggestion.pipeline_created ? (
                     <Badge variant="default" className="bg-green-100 text-green-800">Yes</Badge>
                   ) : (
@@ -476,7 +476,7 @@ export function FocusSuggestionsTable({
                   )}
                 </TableCell>
 
-                <TableCell className="w-[10%]">
+                <TableCell className="w-[7%]">
                   <Select
                     value={suggestion.quarter || ''}
                     onValueChange={(value) => onUpdateStatus(suggestion.id, { quarter: value })}
@@ -494,7 +494,7 @@ export function FocusSuggestionsTable({
                   </Select>
                 </TableCell>
 
-                <TableCell className="w-[12%]">
+                <TableCell className="w-[10%]">
                   <div className="flex items-center justify-center gap-2">
                     <Checkbox
                       checked={suggestion.user_status === 'cannot_create'}
@@ -568,16 +568,15 @@ export function FocusSuggestionsTable({
                   )}
                 </TableCell>
 
-                <TableCell className="w-[15%]">
+                <TableCell className="w-[30%]">
                   {(suggestion as any).global_remark ? (
                     <div className="space-y-1">
-                      <p
-                        className="text-sm line-clamp-2"
-                        style={{ fontSize: typography.sizes.dataPoint, color: colors.text.primary }}
+                      <div
+                        className="text-sm overflow-y-auto max-h-16 p-2 bg-gray-50 rounded border border-gray-200"
                         title={(suggestion as any).global_remark}
                       >
                         {(suggestion as any).global_remark}
-                      </p>
+                      </div>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -599,7 +598,7 @@ export function FocusSuggestionsTable({
                   )}
                 </TableCell>
 
-                <TableCell className="w-[8%]">
+                <TableCell className="w-[3%]">
                   <div className="flex items-center gap-2">
                     {getStatusIcon(suggestion.user_status)}
                     <span className="text-xs capitalize" style={{ fontSize: typography.sizes.dataPoint }}>
@@ -608,7 +607,7 @@ export function FocusSuggestionsTable({
                   </div>
                 </TableCell>
 
-                <TableCell className="w-[5%]">
+                <TableCell className="w-[2%]">
                   <Button
                     variant="ghost"
                     size="sm"

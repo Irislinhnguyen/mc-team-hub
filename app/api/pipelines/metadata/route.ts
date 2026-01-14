@@ -42,6 +42,14 @@ export async function GET(request: NextRequest) {
     // Convert Map to plain object for JSON
     const pocTeamMapping = Object.fromEntries(pipelinePocToTeamMap)
 
+    // Build team → POCs mapping (reverse direction for efficient filtering)
+    const teamToPicMapping: Record<string, string[]> = {}
+    config.teams.forEach((team: any) => {
+      teamToPicMapping[team.team_id] = config.picMappings
+        .filter((m: any) => m.team_id === team.team_id)
+        .map((m: any) => m.pic_name)
+    })
+
     return NextResponse.json({
       teams: config.teams.map(t => ({
         team_id: t.team_id,
@@ -49,7 +57,8 @@ export async function GET(request: NextRequest) {
         description: t.description
       })),
       pocNames: uniquePOCs,
-      pocTeamMapping
+      pocTeamMapping,  // POC → team (existing)
+      teamToPicMapping  // team → POCs (NEW)
     })
   } catch (error) {
     console.error('[Pipelines Metadata API] Error:', error)

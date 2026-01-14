@@ -115,6 +115,7 @@ function PipelinesPageContent() {
   const teams = metadata.teams
   const pocNames = metadata.pocNames
   const pocTeamMap = metadata.pocTeamMapping
+  const teamToPicMap = metadata.teamToPicMapping
 
   // Initialize from URL params
   useEffect(() => {
@@ -184,12 +185,25 @@ function PipelinesPageContent() {
       )
     }
 
-    // Team filter (POC-based)
+    // Team filter (POC-based) - use forward mapping like Business Health
     if (filterTeams.length > 0) {
-      filtered = filtered.filter(p => {
-        const team = pocTeamMap[p.poc]
-        return team && filterTeams.includes(team)
+      // Build set of valid POCs from selected teams (efficient: O(1) lookup)
+      const validPocs = new Set<string>()
+      filterTeams.forEach(teamId => {
+        const picsForTeam = teamToPicMap[teamId] || []
+        console.log(`[Team Filter] Team ${teamId} has ${picsForTeam.length} POCs:`, picsForTeam)
+        picsForTeam.forEach(pic => validPocs.add(pic))
       })
+
+      console.log('[Team Filter] Valid POCs from selected teams:', Array.from(validPocs))
+
+      // Filter pipelines by POC
+      const beforeCount = filtered.length
+      filtered = filtered.filter(p => {
+        if (!p.poc) return false  // Skip pipelines without POC
+        return validPocs.has(p.poc)  // O(1) lookup
+      })
+      console.log(`[Team Filter] Pipelines: ${beforeCount} → ${filtered.length}`)
     }
 
     // Slot Type filter

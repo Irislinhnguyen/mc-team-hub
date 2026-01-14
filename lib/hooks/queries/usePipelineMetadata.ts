@@ -29,6 +29,7 @@ interface PipelineMetadata {
   }>
   pocNames: string[]
   pocTeamMapping: Record<string, string>
+  teamToPicMapping: Record<string, string[]>
 }
 
 export function usePipelineMetadata() {
@@ -58,7 +59,7 @@ export function usePipelineMetadata() {
   })
 
   return {
-    metadata: data ?? { teams: [], pocNames: [], pocTeamMapping: {} },
+    metadata: data ?? { teams: [], pocNames: [], pocTeamMapping: {}, teamToPicMapping: {} },
     loading: isLoading,
     error,
     refetch,
