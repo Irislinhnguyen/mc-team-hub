@@ -18,9 +18,9 @@ export async function GET(request: NextRequest) {
     // Use admin client to bypass RLS
     const supabase = createAdminClient()
 
-    // Get all unique POC names from pipeline_deals table
+    // Get all unique POC names from pipelines table
     const { data, error } = await supabase
-      .from('pipeline_deals')
+      .from('pipelines')
       .select('poc')
       .not('poc', 'is', null)
 
