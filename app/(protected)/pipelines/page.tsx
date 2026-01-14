@@ -140,26 +140,12 @@ function PipelinesPageContent() {
   const filteredPipelines = useMemo(() => {
     let filtered = groupPipelines
 
-    // Quarter and Year filter - based on proposal_date AND starting_date
-    // Show pipeline if EITHER:
-    // 1. proposal_date is in this quarter (native pipeline)
-    // 2. starting_date is in this quarter (active pipeline from previous quarter)
+    // Quarter and Year filter - based on fiscal_year and fiscal_quarter
+    // Each pipeline belongs to the quarter of its quarterly sheet
     if (filterYear && filterQuarter) {
       filtered = filtered.filter(p => {
-        // Check if proposed in this quarter
-        const proposalDate = p.proposal_date ? new Date(p.proposal_date) : null
-        const proposalQuarter = proposalDate ? getQuarterFromDate(proposalDate) : 0
-        const proposalYear = proposalDate?.getFullYear()
-        const matchesProposalQuarter = proposalYear === filterYear && proposalQuarter === filterQuarter
-
-        // Check if starting in this quarter (active pipeline)
-        const startingDate = p.starting_date ? new Date(p.starting_date) : null
-        const startingQuarter = startingDate ? getQuarterFromDate(startingDate) : 0
-        const startingYear = startingDate?.getFullYear()
-        const matchesStartingQuarter = startingYear === filterYear && startingQuarter === filterQuarter
-
-        // Show if EITHER proposed OR starting in this quarter
-        return matchesProposalQuarter || matchesStartingQuarter
+        // Filter by fiscal year and quarter from quarterly sheet
+        return p.fiscal_year === filterYear && p.fiscal_quarter === filterQuarter
       })
     }
 

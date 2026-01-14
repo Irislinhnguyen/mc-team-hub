@@ -415,6 +415,7 @@ export async function addSuggestions(
 
 /**
  * Get suggestions for a focus
+ * Also queries global remarks from pipeline_remarks table
  */
 export async function getSuggestions(
   focusId: string,
@@ -456,6 +457,46 @@ export async function getSuggestions(
     if (error) {
       console.error('Error fetching suggestions:', error)
       return { success: false, error: error.message }
+    }
+
+    // 📋 Query global remarks from pipeline_remarks table
+    if (data && data.length > 0) {
+      // Get all unique mid+product combos
+      const uniquePipelines = Array.from(
+        new Set(data.map((s) => `${s.mid}_${s.product}`))
+      )
+
+      // Build OR clause for Supabase query
+      const orConditions = uniquePipelines.map((key) => {
+        const [mid, product] = key.split('_')
+        return `mid.eq.${mid},product.eq.${product}`
+      }).join(',')
+
+      if (orConditions) {
+        const { data: globalRemarks } = await supabaseAdmin
+          .from('pipeline_remarks')
+          .select('mid, product, remark')
+          .or(orConditions)
+
+        // Create lookup map: mid_product -> remark
+        const remarkMap = new Map<string, string>()
+        if (globalRemarks) {
+          globalRemarks.forEach((r) => {
+            const key = `${r.mid}_${r.product}`
+            if (r.remark && r.remark.trim()) {
+              remarkMap.set(key, r.remark)
+            }
+          })
+        }
+
+        // Merge global remarks into suggestions
+        const enrichedSuggestions = data.map((s) => ({
+          ...s,
+          global_remark: remarkMap.get(`${s.mid}_${s.product}`) || null,
+        }))
+
+        return { success: true, suggestions: enrichedSuggestions as any }
+      }
     }
 
     return { success: true, suggestions: data }

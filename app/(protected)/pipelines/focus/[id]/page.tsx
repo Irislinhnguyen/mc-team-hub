@@ -28,6 +28,14 @@ import {
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
 import { EditFocusModal } from '@/app/components/pipelines/EditFocusModal'
 import { AddPipelinesModal } from '@/app/components/pipelines/AddPipelinesModal'
@@ -498,8 +506,14 @@ function SuggestionsTable({
   // Track selected reasons locally for immediate UI feedback
   const [selectedReasons, setSelectedReasons] = useState<Record<string, string>>({})
 
-  // Track remark drafts locally for real-time typing feedback
-  const [remarkDrafts, setRemarkDrafts] = useState<Record<string, string>>({})
+  // Global remark dialog state
+  const [remarkDialogOpen, setRemarkDialogOpen] = useState(false)
+  const [selectedPipelineForRemark, setSelectedPipelineForRemark] = useState<{
+    mid: string
+    product: string
+    currentRemark: string | null
+  } | null>(null)
+  const [remarkText, setRemarkText] = useState('')
 
   // Bulk selection state
   const [selectedSuggestions, setSelectedSuggestions] = useState<Set<string>>(new Set())
@@ -561,14 +575,45 @@ function SuggestionsTable({
     }
   }
 
-  // Debounced remark update
-  const debouncedUpdateRemark = useMemo(
-    () =>
-      debounce((suggestionId: string, remark: string) => {
-        onUpdateStatus(suggestionId, { user_remark: remark })
-      }, 500),
-    [onUpdateStatus]
-  )
+  // Open remark dialog for editing
+  function openRemarkDialog(suggestion: FocusSuggestion) {
+    setSelectedPipelineForRemark({
+      mid: suggestion.mid,
+      product: suggestion.product,
+      currentRemark: (suggestion as any).global_remark || null,
+    })
+    setRemarkText((suggestion as any).global_remark || '')
+    setRemarkDialogOpen(true)
+  }
+
+  // Save remark to pipeline_remarks table
+  async function saveRemark() {
+    if (!selectedPipelineForRemark) return
+
+    try {
+      const response = await fetch('/api/pipeline-remarks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mid: selectedPipelineForRemark.mid,
+          product: selectedPipelineForRemark.product,
+          remark: remarkText,
+        }),
+      })
+
+      if (response.ok) {
+        toast({ title: 'Remark saved successfully' })
+        setRemarkDialogOpen(false)
+        // Reload to get updated remarks
+        window.location.reload()
+      } else {
+        toast({ title: 'Failed to save remark', variant: 'destructive' })
+      }
+    } catch (error) {
+      console.error('Error saving remark:', error)
+      toast({ title: 'Failed to save remark', variant: 'destructive' })
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -784,20 +829,32 @@ function SuggestionsTable({
                 </div>
               </TableCell>
 
-              {/* Remark Input */}
+              {/* Remark Display */}
               <TableCell>
-                <Input
-                  value={remarkDrafts[suggestion.id] ?? (suggestion.user_remark || '')}
-                  onChange={(e) => {
-                    const newValue = e.target.value
-                    // Update local state immediately for real-time feedback
-                    setRemarkDrafts(prev => ({ ...prev, [suggestion.id]: newValue }))
-                    // Debounced backend update
-                    debouncedUpdateRemark(suggestion.id, newValue)
-                  }}
-                  placeholder="Add remark..."
-                  className="h-8 text-xs"
-                />
+                {(suggestion as any).global_remark ? (
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-700 line-clamp-2" title={(suggestion as any).global_remark}>
+                      {(suggestion as any).global_remark}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openRemarkDialog(suggestion)}
+                      className="h-7 px-2 text-xs"
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openRemarkDialog(suggestion)}
+                    className="h-8 text-xs"
+                  >
+                    Add Remark
+                  </Button>
+                )}
               </TableCell>
 
               {/* Status Badge */}
