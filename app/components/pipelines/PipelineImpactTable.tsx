@@ -18,6 +18,8 @@ interface PipelineImpactTableProps {
   filterSlotTypes?: string[]
   filterTeams?: string[]
   activeGroup: 'sales' | 'cs'
+  filterYear?: number
+  filterQuarter?: number
   onPipelineClick?: (pipelineId: string) => void
 }
 
@@ -63,6 +65,8 @@ export function PipelineImpactTable({
   filterSlotTypes = [],
   filterTeams = [],
   activeGroup,
+  filterYear,
+  filterQuarter,
   onPipelineClick
 }: PipelineImpactTableProps) {
   // Stabilize filter object reference for React Query cache
@@ -74,8 +78,10 @@ export function PipelineImpactTable({
     products: filterProducts,
     slotTypes: filterSlotTypes,
     teams: filterTeams,
-    group: activeGroup
-  }), [filterStatuses, filterPICs, filterProducts, filterSlotTypes, filterTeams, activeGroup])
+    group: activeGroup,
+    fiscalYear: filterYear,
+    fiscalQuarter: filterQuarter
+  }), [filterStatuses, filterPICs, filterProducts, filterSlotTypes, filterTeams, activeGroup, filterYear, filterQuarter])
 
   // Debounce filter changes to prevent excessive BigQuery calls
   // User can change 5 filters rapidly → only 1 API call after 300ms

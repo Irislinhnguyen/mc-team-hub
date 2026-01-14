@@ -41,6 +41,8 @@ interface PipelineImpactFilters {
   slotTypes?: string[]
   teams?: string[]
   group?: 'sales' | 'cs'
+  fiscalYear?: number
+  fiscalQuarter?: number
 }
 
 export function usePipelineImpact(filters: PipelineImpactFilters) {
@@ -56,7 +58,9 @@ export function usePipelineImpact(filters: PipelineImpactFilters) {
           products: filters.products || [],
           slotTypes: filters.slotTypes || [],
           teams: filters.teams || [],
-          group: filters.group
+          group: filters.group,
+          fiscalYear: filters.fiscalYear,
+          fiscalQuarter: filters.fiscalQuarter
         })
       })
 

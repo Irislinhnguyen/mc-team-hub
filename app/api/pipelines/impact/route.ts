@@ -30,6 +30,8 @@ interface ImpactRequest {
   slotTypes?: string[] // Filter by slot type: 'new' | 'existing'
   teams?: string[]   // Filter by team IDs (will be converted to PICs)
   group?: 'sales' | 'cs'  // Filter by pipeline group
+  fiscalYear?: number  // Filter by fiscal year
+  fiscalQuarter?: number  // Filter by fiscal quarter
 }
 
 interface PipelineImpact {
@@ -67,6 +69,8 @@ export async function POST(request: NextRequest) {
     const slotTypes = body.slotTypes || []
     const teams = body.teams || []
     const group = body.group  // Optional group filter
+    const fiscalYear = body.fiscalYear  // Optional fiscal year filter
+    const fiscalQuarter = body.fiscalQuarter  // Optional fiscal quarter filter
 
     // Use admin client to bypass RLS
     const supabase = createAdminClient()
@@ -98,6 +102,11 @@ export async function POST(request: NextRequest) {
     // Filter by group if specified
     if (group) {
       query = query.eq('group', group)
+    }
+
+    // Filter by fiscal year and quarter if specified
+    if (fiscalYear && fiscalQuarter) {
+      query = query.eq('fiscal_year', fiscalYear).eq('fiscal_quarter', fiscalQuarter)
     }
 
     // Apply PIC filter (combine direct PIC filter + team-based PICs)

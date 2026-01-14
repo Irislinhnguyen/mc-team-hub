@@ -84,11 +84,29 @@ function PipelinesPageContent() {
   const [filterTeams, setFilterTeams] = useState<string[]>([]) // Multi-select team filter
 
   // Time filter states - Quarter and Year
-  const currentYear = new Date().getFullYear()
-  const currentMonth = new Date().getMonth() + 1 // 1-12
-  const currentQuarter = Math.ceil(currentMonth / 3) // 1-4
-  const [filterYear, setFilterYear] = useState<number>(currentYear)
-  const [filterQuarter, setFilterQuarter] = useState<number>(currentQuarter)
+  // Get most recent quarterly sheet for default filter instead of current quarter
+  const [filterYear, setFilterYear] = useState<number>(2025)  // Fallback defaults
+  const [filterQuarter, setFilterQuarter] = useState<number>(4)  // Fallback defaults
+
+  // Fetch most recent quarterly sheet for default filter
+  useEffect(() => {
+    async function fetchDefaultQuarter() {
+      try {
+        const response = await fetch('/api/pipelines/quarterly-sheets')
+        const data = await response.json()
+        if (data.success && data.data && data.data.length > 0) {
+          // API already sorts by year DESC, quarter DESC - use first sheet
+          const latestSheet = data.data[0]
+          setFilterYear(latestSheet.year)
+          setFilterQuarter(latestSheet.quarter)
+        }
+      } catch (error) {
+        console.error('Failed to fetch default quarter:', error)
+        // Keep fallback defaults if fetch fails
+      }
+    }
+    fetchDefaultQuarter()
+  }, [])
 
   // Load team metadata and POC names via React Query hook
   // Cached for 24 hours (metadata rarely changes)
@@ -648,7 +666,7 @@ function PipelinesPageContent() {
                 pipelines={filteredPipelines}
                 onPipelineClick={handlePipelineClick}
               />
-              <PipelineReportCard pipelines={groupPipelines} />
+              <PipelineReportCard pipelines={filteredPipelines} />
             </div>
 
             <div className="mt-6">
@@ -659,6 +677,8 @@ function PipelinesPageContent() {
                 filterSlotTypes={filterSlotTypes}
                 filterTeams={filterTeams}
                 activeGroup={activeGroup}
+                filterYear={filterYear}
+                filterQuarter={filterQuarter}
                 onPipelineClick={(pipelineId) => {
                   const pipeline = pipelines.find(p => p.id === pipelineId)
                   if (pipeline) {
