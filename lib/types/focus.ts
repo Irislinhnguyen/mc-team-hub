@@ -110,6 +110,7 @@ export interface FocusSuggestion {
   // User Actions
   user_status: SuggestionStatus | null
   cannot_create_reason: string | null
+  cannot_create_reason_other: string | null
   user_remark: string | null
   completed_at: string | null
   completed_by: string | null
