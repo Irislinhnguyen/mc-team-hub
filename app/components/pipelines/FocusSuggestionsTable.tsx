@@ -644,6 +644,7 @@ export function FocusSuggestionsTable({
           </TableBody>
         </Table>
       </div>
+      {console.log('[FocusSuggestionsTable] Table completed, rendering Dialog...') || null}
 
       {/* Remark Dialog */}
       <Dialog open={remarkDialogOpen} onOpenChange={setRemarkDialogOpen}>
@@ -669,8 +670,10 @@ export function FocusSuggestionsTable({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {console.log('[FocusSuggestionsTable] Dialog rendered') || null}
 
       {/* Pipeline Detail Drawer */}
+      {console.log('[FocusSuggestionsTable] Checking PipelineDetailDrawer condition:', { pipelineDrawerOpen, hasPipeline: !!selectedPipeline }) || null}
       {pipelineDrawerOpen && selectedPipeline && (
         <PipelineDetailDrawer
           pipelineId={selectedPipeline.id}
@@ -678,6 +681,7 @@ export function FocusSuggestionsTable({
           onOpenChange={setPipelineDrawerOpen}
         />
       )}
+      {console.log('[FocusSuggestionsTable] Component END') || null}
     </div>
   )
 }
