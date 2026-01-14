@@ -50,10 +50,6 @@ export default function TeamSetupPage() {
     currentTeam: string | null
     newTeam: string
   } | null>(null)
-  const [pocDialogOpen, setPocDialogOpen] = useState(false)
-  const [selectedAssignment, setSelectedAssignment] = useState<PicAssignment | null>(null)
-  const [newPipelinePoc, setNewPipelinePoc] = useState('')
-  const [savingPoc, setSavingPoc] = useState(false)
   const [availablePocs, setAvailablePocs] = useState<string[]>([])
 
   useEffect(() => {
@@ -112,6 +108,35 @@ export default function TeamSetupPage() {
       currentTeam: currentTeamId,
       newTeam: newTeamId
     })
+  }
+
+  async function handlePOCChange(picName: string, newPOC: string) {
+    try {
+      const res = await fetch('/api/teams/update-pipeline-poc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          picName,
+          pipelinePocName: newPOC
+        })
+      })
+
+      const data = await res.json()
+      if (data.status === 'error') throw new Error(data.message)
+
+      // Update local state
+      setAssignments(prev =>
+        prev.map(a =>
+          a.pic_name === picName
+            ? { ...a, pipeline_poc_name: newPOC || null }
+            : a
+        )
+      )
+    } catch (err) {
+      console.error('Error updating Pipeline POC:', err)
+      alert(err instanceof Error ? err.message : 'Failed to update Pipeline POC')
+      await loadData() // Reload on error
+    }
   }
 
   async function confirmTeamChange() {
@@ -190,49 +215,6 @@ export default function TeamSetupPage() {
     } finally {
       setUpdating(null)
     }
-  }
-
-  async function savePipelinePOC() {
-    if (!selectedAssignment) return
-
-    setSavingPoc(true)
-    try {
-      const res = await fetch('/api/teams/update-pipeline-poc', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          picName: selectedAssignment.pic_name,
-          pipelinePocName: newPipelinePoc
-        })
-      })
-
-      const data = await res.json()
-      if (data.status === 'error') throw new Error(data.message)
-
-      // Update local state
-      setAssignments(prev =>
-        prev.map(a =>
-          a.pic_name === selectedAssignment.pic_name
-            ? { ...a, pipeline_poc_name: newPipelinePoc || null }
-            : a
-        )
-      )
-
-      setPocDialogOpen(false)
-      setSelectedAssignment(null)
-      setNewPipelinePoc('')
-    } catch (err) {
-      console.error('Error updating Pipeline POC:', err)
-      alert(err instanceof Error ? err.message : 'Failed to update Pipeline POC')
-    } finally {
-      setSavingPoc(false)
-    }
-  }
-
-  function openPOCEditDialog(assignment: PicAssignment) {
-    setSelectedAssignment(assignment)
-    setNewPipelinePoc(assignment.pipeline_poc_name || '')
-    setPocDialogOpen(true)
   }
 
   // Combine assigned and unassigned PICs
@@ -429,16 +411,16 @@ export default function TeamSetupPage() {
                   </select>
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <span>{pic.pipeline_poc_name || '-'}</span>
-                    <button
-                      onClick={() => openPOCEditDialog(pic)}
-                      className="text-blue-600 hover:text-blue-800"
-                      title="Edit Pipeline POC"
-                    >
-                      ✏️
-                    </button>
-                  </div>
+                  <select
+                    value={pic.pipeline_poc_name || ''}
+                    onChange={(e) => handlePOCChange(pic.pic_name, e.target.value)}
+                    className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">None</option>
+                    {availablePocs.map(poc => (
+                      <option key={poc} value={poc}>{poc}</option>
+                    ))}
+                  </select>
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-500">
                   {pic.updated_at
@@ -514,64 +496,6 @@ export default function TeamSetupPage() {
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
               >
                 Confirm Change
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Pipeline POC Edit Dialog */}
-      {pocDialogOpen && selectedAssignment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">
-              Edit Pipeline POC Mapping
-            </h3>
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  PIC Name
-                </label>
-                <input
-                  type="text"
-                  value={selectedAssignment.pic_name}
-                  disabled
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded bg-gray-100"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Pipeline POC Name
-                </label>
-                <select
-                  value={newPipelinePoc}
-                  onChange={(e) => setNewPipelinePoc(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">-- Select Pipeline POC --</option>
-                  {availablePocs.map(poc => (
-                    <option key={poc} value={poc}>{poc}</option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-gray-500">
-                  Map this BigQuery PIC to a Pipeline POC for team filtering in Pipelines
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setPocDialogOpen(false)}
-                disabled={savingPoc}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={savePipelinePOC}
-                disabled={savingPoc}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50"
-              >
-                {savingPoc ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
