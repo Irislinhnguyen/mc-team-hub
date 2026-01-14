@@ -105,11 +105,11 @@ function DropZone({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="SUM">SUM</SelectItem>
-                    <SelectItem value="AVG">AVG</SelectItem>
-                    <SelectItem value="COUNT">COUNT</SelectItem>
-                    <SelectItem value="MIN">MIN</SelectItem>
-                    <SelectItem value="MAX">MAX</SelectItem>
+                    <SelectItem key="agg-sum" value="SUM">SUM</SelectItem>
+                    <SelectItem key="agg-avg" value="AVG">AVG</SelectItem>
+                    <SelectItem key="agg-count" value="COUNT">COUNT</SelectItem>
+                    <SelectItem key="agg-min" value="MIN">MIN</SelectItem>
+                    <SelectItem key="agg-max" value="MAX">MAX</SelectItem>
                   </SelectContent>
                 </Select>
               )}

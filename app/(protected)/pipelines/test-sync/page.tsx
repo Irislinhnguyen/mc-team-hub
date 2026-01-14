@@ -132,8 +132,8 @@ export default function TestSyncPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="sales">Sales</SelectItem>
-                    <SelectItem value="cs">CS</SelectItem>
+                    <SelectItem key="group-sales" value="sales">Sales</SelectItem>
+                    <SelectItem key="group-cs" value="cs">CS</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

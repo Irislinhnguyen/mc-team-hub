@@ -138,9 +138,9 @@ export function AddQuarterlySheetModal({ onSheetAdded }: AddQuarterlySheetModalP
                   <SelectValue placeholder="Select year" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="2024">2024</SelectItem>
-                  <SelectItem value="2025">2025</SelectItem>
-                  <SelectItem value="2026">2026</SelectItem>
+                  <SelectItem key="year-2024" value="2024">2024</SelectItem>
+                  <SelectItem key="year-2025" value="2025">2025</SelectItem>
+                  <SelectItem key="year-2026" value="2026">2026</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -153,10 +153,10 @@ export function AddQuarterlySheetModal({ onSheetAdded }: AddQuarterlySheetModalP
                   <SelectValue placeholder="Select quarter" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">Q1</SelectItem>
-                  <SelectItem value="2">Q2</SelectItem>
-                  <SelectItem value="3">Q3</SelectItem>
-                  <SelectItem value="4">Q4</SelectItem>
+                  <SelectItem key="quarter-1" value="1">Q1</SelectItem>
+                  <SelectItem key="quarter-2" value="2">Q2</SelectItem>
+                  <SelectItem key="quarter-3" value="3">Q3</SelectItem>
+                  <SelectItem key="quarter-4" value="4">Q4</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -169,8 +169,8 @@ export function AddQuarterlySheetModal({ onSheetAdded }: AddQuarterlySheetModalP
                   <SelectValue placeholder="Select group" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="sales">Sales</SelectItem>
-                  <SelectItem value="cs">CS</SelectItem>
+                  <SelectItem key="group-sales" value="sales">Sales</SelectItem>
+                  <SelectItem key="group-cs" value="cs">CS</SelectItem>
                 </SelectContent>
               </Select>
             </div>

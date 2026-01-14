@@ -185,9 +185,9 @@ export function EditFocusModal({
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="published">Published</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
+                <SelectItem key="status-draft" value="draft">Draft</SelectItem>
+                <SelectItem key="status-published" value="published">Published</SelectItem>
+                <SelectItem key="status-archived" value="archived">Archived</SelectItem>
               </SelectContent>
             </Select>
             <p className={`text-xs ${colors.text.muted}`}>

@@ -405,7 +405,7 @@ export default function VisualQueryBuilder({
                           <SelectValue placeholder="Entity" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
+                          <SelectItem key="sort-none" value="none">None</SelectItem>
                           {CHILD_ENTITIES[queryConfig.entity]?.map(entity => (
                             <SelectItem key={entity} value={entity}>
                               {ENTITIES.find(e => e.id === entity)?.label}

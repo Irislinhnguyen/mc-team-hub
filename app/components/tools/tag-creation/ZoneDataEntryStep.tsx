@@ -832,8 +832,8 @@ export function ZoneDataEntryStep({
                             <SelectValue placeholder="GI" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="GI" className="text-xs">GI</SelectItem>
-                            <SelectItem value="GJ" className="text-xs">GJ</SelectItem>
+                            <SelectItem key="zone-gi" value="GI" className="text-xs">GI</SelectItem>
+                            <SelectItem key="zone-gj" value="GJ" className="text-xs">GJ</SelectItem>
                           </SelectContent>
                         </Select>
                       </td>

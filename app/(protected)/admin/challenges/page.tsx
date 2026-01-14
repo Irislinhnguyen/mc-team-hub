@@ -360,11 +360,11 @@ export default function AdminChallengesPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="scheduled">Scheduled</SelectItem>
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem key="status-draft" value="draft">Draft</SelectItem>
+                  <SelectItem key="status-scheduled" value="scheduled">Scheduled</SelectItem>
+                  <SelectItem key="status-open" value="open">Open</SelectItem>
+                  <SelectItem key="status-closed" value="closed">Closed</SelectItem>
+                  <SelectItem key="status-completed" value="completed">Completed</SelectItem>
                 </SelectContent>
               </Select>
             </div>

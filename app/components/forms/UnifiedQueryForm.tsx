@@ -225,11 +225,11 @@ export function UnifiedQueryForm({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="check">Check & Explain</SelectItem>
-                  <SelectItem value="compare">Compare</SelectItem>
-                  <SelectItem value="rank">Rank</SelectItem>
-                  <SelectItem value="suggest">Suggest</SelectItem>
-                  <SelectItem value="personal">Personal</SelectItem>
+                  <SelectItem key="query-check" value="check">Check & Explain</SelectItem>
+                  <SelectItem key="query-compare" value="compare">Compare</SelectItem>
+                  <SelectItem key="query-rank" value="rank">Rank</SelectItem>
+                  <SelectItem key="query-suggest" value="suggest">Suggest</SelectItem>
+                  <SelectItem key="query-personal" value="personal">Personal</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -343,8 +343,8 @@ export function UnifiedQueryForm({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="top">Top</SelectItem>
-                    <SelectItem value="bottom">Bottom</SelectItem>
+                    <SelectItem key="position-top" value="top">Top</SelectItem>
+                    <SelectItem key="position-bottom" value="bottom">Bottom</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -356,10 +356,10 @@ export function UnifiedQueryForm({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="5">Top 5</SelectItem>
-                    <SelectItem value="10">Top 10</SelectItem>
-                    <SelectItem value="20">Top 20</SelectItem>
-                    <SelectItem value="50">Top 50</SelectItem>
+                    <SelectItem key="limit-5" value="5">Top 5</SelectItem>
+                    <SelectItem key="limit-10" value="10">Top 10</SelectItem>
+                    <SelectItem key="limit-20" value="20">Top 20</SelectItem>
+                    <SelectItem key="limit-50" value="50">Top 50</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -499,10 +499,10 @@ export function UnifiedQueryForm({
                       <SelectValue placeholder="Select market" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Markets</SelectItem>
-                      <SelectItem value="TH">Thailand</SelectItem>
-                      <SelectItem value="VN">Vietnam</SelectItem>
-                      <SelectItem value="ID">Indonesia</SelectItem>
+                      <SelectItem key="market-all" value="">All Markets</SelectItem>
+                      <SelectItem key="market-th" value="TH">Thailand</SelectItem>
+                      <SelectItem key="market-vn" value="VN">Vietnam</SelectItem>
+                      <SelectItem key="market-id" value="ID">Indonesia</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

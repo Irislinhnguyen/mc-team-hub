@@ -124,7 +124,7 @@ export function PipelineReportCard({ pipelines }: PipelineReportCardProps) {
               <SelectValue placeholder="Select POC" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All POCs</SelectItem>
+              <SelectItem key="poc-all" value="all">All POCs</SelectItem>
               {uniquePOCs.map(poc => (
                 <SelectItem key={poc} value={poc}>{poc}</SelectItem>
               ))}

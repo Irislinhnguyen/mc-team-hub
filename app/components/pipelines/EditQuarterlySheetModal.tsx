@@ -187,9 +187,9 @@ export function EditQuarterlySheetModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="paused">Paused</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
+                  <SelectItem key="status-active" value="active">Active</SelectItem>
+                  <SelectItem key="status-paused" value="paused">Paused</SelectItem>
+                  <SelectItem key="status-archived" value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
             </div>

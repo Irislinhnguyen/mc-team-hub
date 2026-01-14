@@ -275,7 +275,7 @@ export function PipelineCreateDrawer({ open, onClose, onCreate, activeGroup, poc
                           {poc}
                         </SelectItem>
                       ))}
-                      <SelectItem value="Other (specify)">Other (specify)</SelectItem>
+                      <SelectItem key="product-other" value="Other (specify)">Other (specify)</SelectItem>
                     </SelectContent>
                   </Select>
                   {showCustomPoc && (
