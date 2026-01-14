@@ -452,7 +452,7 @@ export function AddPipelinesModal({
                     <SelectValue placeholder={loadingTeams ? "Loading teams..." : "All teams"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All teams</SelectItem>
+                    <SelectItem key="team-all" value="all">All teams</SelectItem>
                     {teams.map((team) => (
                       <SelectItem key={team.value} value={team.value}>
                         {team.label}

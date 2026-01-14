@@ -215,8 +215,8 @@ export function CreateFocusModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="sales">Sales</SelectItem>
-                  <SelectItem value="cs">CS</SelectItem>
+                  <SelectItem key="group-sales" value="sales">Sales</SelectItem>
+                  <SelectItem key="group-cs" value="cs">CS</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -236,7 +236,7 @@ export function CreateFocusModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Teams</SelectItem>
+                  <SelectItem key="team-all" value="all">All Teams</SelectItem>
                   {TEAMS.map((team) => (
                     <SelectItem key={team.id} value={team.id}>
                       {team.name}

@@ -98,17 +98,55 @@ export default function FocusDetailPage() {
     loadFocus()
   }, [focusId])
 
+  // Track suggestions state changes
+  useEffect(() => {
+    console.log('[Suggestions State Updated]', {
+      length: suggestions.length,
+      firstFew: suggestions.slice(0, 3).map(s => ({
+        id: s.id,
+        user_status: s.user_status,
+        pipeline_created: s.pipeline_created
+      }))
+    })
+  }, [suggestions])
+
+  // Calculate stats using useMemo for efficient recalculation
+  const stats = useMemo(() => {
+    const total = suggestions.length
+    const created = suggestions.filter((s) => s.user_status === 'created' || s.pipeline_created).length
+    const cannot_create = suggestions.filter((s) => s.user_status === 'cannot_create').length
+    const pending = suggestions.filter((s) => !s.user_status || s.user_status === 'pending').length
+
+    console.log('[Stats Recalculated]', { total, created, cannot_create, pending })
+
+    return { total, created, cannot_create, pending }
+  }, [suggestions])
+
   async function loadFocus() {
     try {
+      console.log('[loadFocus] Fetching focus:', focusId)
       const response = await fetch(`/api/focus-of-month/${focusId}`)
+
+      if (!response.ok) {
+        console.error('[loadFocus] Response not OK:', response.status, response.statusText)
+        setLoading(false)
+        return
+      }
+
       const data = await response.json()
+
+      console.log('[loadFocus] API Response status:', data.status)
+      console.log('[loadFocus] data.data?.suggestions:', data.data?.suggestions)
+      console.log('[loadFocus] Suggestions count:', data.data?.suggestions?.length || 0)
 
       if (data.status === 'ok') {
         setFocus(data.data)
         setSuggestions(data.data.suggestions || [])
+      } else {
+        console.error('[loadFocus] API returned error:', data.message || data.error)
       }
     } catch (error) {
-      console.error('Error loading focus:', error)
+      console.error('[loadFocus] Error loading focus:', error)
     } finally {
       setLoading(false)
     }
@@ -344,25 +382,25 @@ export default function FocusDetailPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatCard
           label="Total Suggestions"
-          value={suggestions.length}
+          value={stats.total}
           icon={<Clock className={`h-5 w-5 ${colors.text.muted}`} />}
           valueColor={colors.text.primary}
         />
         <StatCard
           label="Created"
-          value={suggestions.filter((s) => s.user_status === 'created' || s.pipeline_created).length}
+          value={stats.created}
           icon={<CheckCircle className="h-5 w-5 text-green-500" />}
           valueColor="text-green-600"
         />
         <StatCard
           label="Cannot Create"
-          value={suggestions.filter((s) => s.user_status === 'cannot_create').length}
+          value={stats.cannot_create}
           icon={<XCircle className="h-5 w-5 text-red-500" />}
           valueColor="text-red-600"
         />
         <StatCard
           label="Pending"
-          value={suggestions.filter((s) => !s.user_status || s.user_status === 'pending').length}
+          value={stats.pending}
           icon={<Clock className={`h-5 w-5 ${colors.text.muted}`} />}
           valueColor={colors.text.secondary}
         />
@@ -790,15 +828,15 @@ function SuggestionsTable({
                           <SelectValue placeholder="Select reason..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="No traffic">No traffic</SelectItem>
-                          <SelectItem value="Publisher declined">Publisher declined</SelectItem>
-                          <SelectItem value="Already using similar product">
+                          <SelectItem key="reason-no-traffic" value="No traffic">No traffic</SelectItem>
+                          <SelectItem key="reason-publisher-declined" value="Publisher declined">Publisher declined</SelectItem>
+                          <SelectItem key="reason-similar-product" value="Already using similar product">
                             Already using similar product
                           </SelectItem>
-                          <SelectItem value="Technical limitation">
+                          <SelectItem key="reason-technical" value="Technical limitation">
                             Technical limitation
                           </SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
+                          <SelectItem key="reason-other" value="Other">Other</SelectItem>
                         </SelectContent>
                       </Select>
 

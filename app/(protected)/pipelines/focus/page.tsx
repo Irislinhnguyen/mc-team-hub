@@ -142,7 +142,7 @@ export default function FocusOfMonthPage() {
               <SelectValue placeholder="Month" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Months</SelectItem>
+              <SelectItem value="all" key="filter-month-all">All Months</SelectItem>
               {MONTHS.map((month, idx) => (
                 <SelectItem key={month} value={(idx + 1).toString()}>
                   {month}
@@ -157,7 +157,7 @@ export default function FocusOfMonthPage() {
               <SelectValue placeholder="Year" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Years</SelectItem>
+              <SelectItem value="all" key="filter-year-all">All Years</SelectItem>
               {years.map((year) => (
                 <SelectItem key={year} value={year.toString()}>
                   {year}
@@ -172,7 +172,7 @@ export default function FocusOfMonthPage() {
               <SelectValue placeholder="Team" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Teams</SelectItem>
+              <SelectItem value="all" key="filter-team-all">All Teams</SelectItem>
               {TEAMS.map((team) => (
                 <SelectItem key={team.id} value={team.id}>
                   {team.name}
@@ -187,10 +187,10 @@ export default function FocusOfMonthPage() {
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="published">Published</SelectItem>
-              <SelectItem value="archived">Archived</SelectItem>
+              <SelectItem value="all" key="filter-status-all">All Status</SelectItem>
+              <SelectItem value="draft" key="filter-status-draft">Draft</SelectItem>
+              <SelectItem value="published" key="filter-status-published">Published</SelectItem>
+              <SelectItem value="archived" key="filter-status-archived">Archived</SelectItem>
             </SelectContent>
           </Select>
         </div>
