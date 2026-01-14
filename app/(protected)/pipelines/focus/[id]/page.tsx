@@ -114,6 +114,13 @@ export default function FocusDetailPage() {
       user_remark?: string | null
     }
   ) {
+    // Optimistic update - update UI immediately BEFORE API call
+    setSuggestions((prev) =>
+      prev.map((s) =>
+        s.id === suggestionId ? { ...s, ...updates } : s
+      )
+    )
+
     try {
       const response = await fetch(`/api/focus-of-month/suggestions/${suggestionId}`, {
         method: 'PATCH',
@@ -122,19 +129,17 @@ export default function FocusDetailPage() {
       })
 
       if (response.ok) {
-        // Optimistic update
-        setSuggestions((prev) =>
-          prev.map((s) =>
-            s.id === suggestionId ? { ...s, ...updates } : s
-          )
-        )
         toast({ title: 'Updated successfully' })
       } else {
-        toast({ title: 'Failed to update', variant: 'destructive' })
+        // Rollback on error - reload data
+        await loadFocus()
+        toast({ title: 'Failed to update, reloading...', variant: 'destructive' })
       }
     } catch (error) {
       console.error('Error updating suggestion:', error)
-      toast({ title: 'Failed to update', variant: 'destructive' })
+      // Rollback on error - reload data
+      await loadFocus()
+      toast({ title: 'Failed to update, reloading...', variant: 'destructive' })
     }
   }
 
@@ -699,6 +704,7 @@ function SuggestionsTable({
                 <div className="flex flex-col items-center gap-2">
                   <Checkbox
                     checked={suggestion.user_status === 'cannot_create'}
+                    disabled={suggestion.pipeline_created}
                     onCheckedChange={(checked) => {
                       if (checked) {
                         setEditingCannotCreate(suggestion.id)
