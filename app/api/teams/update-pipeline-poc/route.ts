@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: auth.error }, { status: 401 })
     }
 
-    const { picName, pipelinePocName } = await request.json()
+    const { picName, pipelinePocName, userEmail } = await request.json()
 
     if (!picName) {
       return NextResponse.json(
@@ -26,12 +26,13 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient()
 
-    // Update pipeline_poc_name in team_pic_mappings
+    // Update pipeline_poc_name in team_pic_mappings with audit fields
     const { error } = await supabase
       .from('team_pic_mappings')
       .update({
         pipeline_poc_name: pipelinePocName || null,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        updated_by_email: userEmail || null
       })
       .eq('pic_name', picName)
 

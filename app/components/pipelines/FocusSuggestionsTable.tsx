@@ -34,7 +34,7 @@ import { useToast } from '@/hooks/use-toast'
 import { PipelineDetailDrawer } from '@/app/components/pipelines/PipelineDetailDrawer'
 import type { FocusSuggestion } from '@/lib/types/focus'
 import type { Pipeline } from '@/lib/types/pipeline'
-import { typography, spacing, componentHeights, composedStyles, colors } from '@/lib/design-tokens'
+import { composedStyles } from '@/lib/design-tokens'
 
 // Cannot create reasons enum
 const CANNOT_CREATE_REASONS = [
@@ -87,21 +87,6 @@ export function FocusSuggestionsTable({
 }: FocusSuggestionsTableProps) {
   const { toast } = useToast()
 
-  // Filter state
-  const [filters, setFilters] = useState<{
-    pic: string | null
-    status: string[]
-    product: string[]
-    pipeline_created: boolean | null
-    quarter: string | null
-  }>({
-    pic: null,
-    status: [],
-    product: [],
-    pipeline_created: null,
-    quarter: null,
-  })
-
   // Cannot create editing state
   const [editingCannotCreate, setEditingCannotCreate] = useState<string | null>(null)
   const [selectedReasons, setSelectedReasons] = useState<Record<string, string>>({})
@@ -123,35 +108,10 @@ export function FocusSuggestionsTable({
   const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null)
   const [loadingPipeline, setLoadingPipeline] = useState(false)
 
-  // Get unique values for filters
-  const uniquePics = useMemo(() => {
-    return Array.from(new Set(suggestions.map((s) => s.pic).filter(Boolean)))
-  }, [suggestions])
-
-  const uniqueProducts = useMemo(() => {
-    return Array.from(new Set(suggestions.map((s) => s.product).filter(Boolean)))
-  }, [suggestions])
-
-  const uniqueQuarters = useMemo(() => {
-    return Array.from(new Set(suggestions.map((s) => s.quarter).filter(Boolean)))
-  }, [suggestions])
-
-  // Filter suggestions
-  const filteredSuggestions = useMemo(() => {
-    return suggestions.filter((s) => {
-      if (filters.pic && s.pic !== filters.pic) return false
-      if (filters.status.length > 0 && !filters.status.includes(s.user_status || 'pending')) return false
-      if (filters.product.length > 0 && !filters.product.includes(s.product)) return false
-      if (filters.pipeline_created !== null && !!s.pipeline_created !== filters.pipeline_created) return false
-      if (filters.quarter && s.quarter !== filters.quarter) return false
-      return true
-    })
-  }, [suggestions, filters])
-
-  // Handle select all (for filtered results)
+  // Handle select all
   function handleSelectAll(checked: boolean) {
     if (checked) {
-      setSelectedSuggestions(new Set(filteredSuggestions.map((s) => s.id)))
+      setSelectedSuggestions(new Set(suggestions.map((s) => s.id)))
     } else {
       setSelectedSuggestions(new Set())
     }
@@ -262,122 +222,13 @@ export function FocusSuggestionsTable({
     }
   }
 
-  const quarters = generateQuarters(3)
-  const allSelected = filteredSuggestions.length > 0 && selectedSuggestions.size === filteredSuggestions.length
+  const allSelected = suggestions.length > 0 && selectedSuggestions.size === suggestions.length
 
   return (
     <div className="space-y-4">
-      {/* Filter Bar */}
-      <div className={`flex flex-wrap items-center ${spacing.filterGap} ${spacing.filterPadding} bg-white border rounded-t-lg`}>
-        {/* PIC Filter */}
-        <Select value={filters.pic || 'all'} onValueChange={(v) => setFilters((f) => ({ ...f, pic: v === 'all' ? null : v }))}>
-          <SelectTrigger className="h-8 w-36">
-            <SelectValue placeholder={<span style={{ fontSize: typography.sizes.filterHeader }}>PIC</span>} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" key="pic-all">All PICs</SelectItem>
-            {uniquePics.map((pic) => (
-              <SelectItem key={pic} value={pic}>
-                {pic}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Status Filter */}
-        <Select
-          value={filters.status.length === 0 ? 'all' : filters.status.join(',')}
-          onValueChange={(v) => setFilters((f) => ({ ...f, status: v === 'all' ? [] : v.split(',') }))}
-        >
-          <SelectTrigger className="h-8 w-40">
-            <SelectValue placeholder={<span style={{ fontSize: typography.sizes.filterHeader }}>Status</span>} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" key="status-all">All Status</SelectItem>
-            <SelectItem value="pending" key="status-pending">Pending</SelectItem>
-            <SelectItem value="created" key="status-created">Created</SelectItem>
-            <SelectItem value="cannot_create" key="status-cannot-create">Cannot Create</SelectItem>
-            <SelectItem value="skipped" key="status-skipped">Skipped</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {/* Product Filter */}
-        <Select
-          value={filters.product.length === 0 ? 'all' : filters.product.join(',')}
-          onValueChange={(v) => setFilters((f) => ({ ...f, product: v === 'all' ? [] : v.split(',') }))}
-        >
-          <SelectTrigger className="h-8 w-40">
-            <SelectValue placeholder={<span style={{ fontSize: typography.sizes.filterHeader }}>Product</span>} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" key="product-all">All Products</SelectItem>
-            {uniqueProducts.map((product) => (
-              <SelectItem key={product} value={product}>
-                {product}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Pipeline Created Filter */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm" style={{ fontSize: typography.sizes.filterHeader }}>Pipeline:</span>
-          <Button
-            variant={filters.pipeline_created === null ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilters((f) => ({ ...f, pipeline_created: null }))}
-          >
-            All
-          </Button>
-          <Button
-            variant={filters.pipeline_created === true ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilters((f) => ({ ...f, pipeline_created: true }))}
-          >
-            Yes
-          </Button>
-          <Button
-            variant={filters.pipeline_created === false ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilters((f) => ({ ...f, pipeline_created: false }))}
-          >
-            No
-          </Button>
-        </div>
-
-        {/* Quarter Filter */}
-        <Select value={filters.quarter || 'all'} onValueChange={(v) => setFilters((f) => ({ ...f, quarter: v === 'all' ? null : v }))}>
-          <SelectTrigger className="h-8 w-36">
-            <SelectValue placeholder={<span style={{ fontSize: typography.sizes.filterHeader }}>Quarter</span>} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" key="quarter-all">All Quarters</SelectItem>
-            {quarters.map((q) => (
-              <SelectItem key={q} value={q}>
-                {q}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Clear Filters Button */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setFilters({ pic: null, status: [], product: [], pipeline_created: null, quarter: null })}
-        >
-          Clear Filters
-        </Button>
-
-        {/* Count Badge */}
-        <Badge variant="secondary" className="ml-auto">
-          {filteredSuggestions.length} / {suggestions.length}
-        </Badge>
-      </div>
-
       {/* Bulk Delete Bar (when items selected) */}
       {selectedSuggestions.size > 0 && (
-        <div className={`flex items-center justify-between ${spacing.filterPadding} bg-blue-50 border border-blue-200 rounded-lg`}>
+        <div className="flex items-center justify-between px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg">
           <span className="text-sm font-medium">{selectedSuggestions.size} suggestion(s) selected</span>
           <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
             <Trash2 className="w-4 h-4 mr-2" />
@@ -418,7 +269,7 @@ export function FocusSuggestionsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredSuggestions.map((suggestion) => (
+            {suggestions.map((suggestion) => (
               <TableRow key={suggestion.id}>
                 <TableCell className="w-[4%]">
                   <Checkbox

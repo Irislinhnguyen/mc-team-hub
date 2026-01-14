@@ -83,6 +83,21 @@ export default function FocusDetailPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('Suggestions')
 
+  // Filter state for Suggestions tab
+  const [filters, setFilters] = useState<{
+    pic: string | null
+    status: string[]
+    product: string[]
+    pipeline_created: boolean | null
+    quarter: string | null
+  }>({
+    pic: null,
+    status: [],
+    product: [],
+    pipeline_created: null,
+    quarter: null,
+  })
+
   // Add Pipelines Modal
   const [showAddPipelinesModal, setShowAddPipelinesModal] = useState(false)
 
@@ -121,6 +136,31 @@ export default function FocusDetailPage() {
 
     return { total, created, cannot_create, pending }
   }, [suggestions])
+
+  // Get unique values for filters
+  const uniquePics = useMemo(() => {
+    return Array.from(new Set(suggestions.map((s) => s.pic).filter(Boolean)))
+  }, [suggestions])
+
+  const uniqueProducts = useMemo(() => {
+    return Array.from(new Set(suggestions.map((s) => s.product).filter(Boolean)))
+  }, [suggestions])
+
+  const uniqueQuarters = useMemo(() => {
+    return Array.from(new Set(suggestions.map((s) => s.quarter).filter(Boolean)))
+  }, [suggestions])
+
+  // Filter suggestions based on current filters
+  const filteredSuggestions = useMemo(() => {
+    return suggestions.filter((s) => {
+      if (filters.pic && s.pic !== filters.pic) return false
+      if (filters.status.length > 0 && !filters.status.includes(s.user_status || 'pending')) return false
+      if (filters.product.length > 0 && !filters.product.includes(s.product)) return false
+      if (filters.pipeline_created !== null && !!s.pipeline_created !== filters.pipeline_created) return false
+      if (filters.quarter && s.quarter !== filters.quarter) return false
+      return true
+    })
+  }, [suggestions, filters])
 
   async function loadFocus() {
     try {
@@ -425,11 +465,123 @@ export default function FocusDetailPage() {
         </div>
       </div>
 
+      {/* Filter Container - only show for Suggestions tab */}
+      {activeTab === 'Suggestions' && (
+        <div className="px-4 py-3 bg-white border-b border-gray-200">
+          <div className="flex flex-wrap gap-3 items-end">
+            {/* PIC Filter */}
+            <Select value={filters.pic || 'all'} onValueChange={(v) => setFilters((f) => ({ ...f, pic: v === 'all' ? null : v }))}>
+              <SelectTrigger className="h-9 w-40">
+                <SelectValue placeholder="PIC" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" key="pic-all">All PICs</SelectItem>
+                {uniquePics.map((pic) => (
+                  <SelectItem key={pic} value={pic}>
+                    {pic}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Status Filter */}
+            <Select
+              value={filters.status.length === 0 ? 'all' : filters.status.join(',')}
+              onValueChange={(v) => setFilters((f) => ({ ...f, status: v === 'all' ? [] : v.split(',') }))}
+            >
+              <SelectTrigger className="h-9 w-40">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" key="status-all">All Status</SelectItem>
+                <SelectItem value="pending" key="status-pending">Pending</SelectItem>
+                <SelectItem value="created" key="status-created">Created</SelectItem>
+                <SelectItem value="cannot_create" key="status-cannot-create">Cannot Create</SelectItem>
+                <SelectItem value="skipped" key="status-skipped">Skipped</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Product Filter */}
+            <Select
+              value={filters.product.length === 0 ? 'all' : filters.product.join(',')}
+              onValueChange={(v) => setFilters((f) => ({ ...f, product: v === 'all' ? [] : v.split(',') }))}
+            >
+              <SelectTrigger className="h-9 w-40">
+                <SelectValue placeholder="Product" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" key="product-all">All Products</SelectItem>
+                {uniqueProducts.map((product) => (
+                  <SelectItem key={product} value={product}>
+                    {product}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Pipeline Created Filter */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Pipeline:</span>
+              <Button
+                variant={filters.pipeline_created === null ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilters((f) => ({ ...f, pipeline_created: null }))}
+              >
+                All
+              </Button>
+              <Button
+                variant={filters.pipeline_created === true ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilters((f) => ({ ...f, pipeline_created: true }))}
+              >
+                Yes
+              </Button>
+              <Button
+                variant={filters.pipeline_created === false ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilters((f) => ({ ...f, pipeline_created: false }))}
+              >
+                No
+              </Button>
+            </div>
+
+            {/* Quarter Filter */}
+            <Select value={filters.quarter || 'all'} onValueChange={(v) => setFilters((f) => ({ ...f, quarter: v === 'all' ? null : v }))}>
+              <SelectTrigger className="h-9 w-40">
+                <SelectValue placeholder="Quarter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" key="quarter-all">All Quarters</SelectItem>
+                {generateQuarters(3).map((q) => (
+                  <SelectItem key={q} value={q}>
+                    {q}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Clear Filters Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setFilters({ pic: null, status: [], product: [], pipeline_created: null, quarter: null })}
+            >
+              Clear Filters
+            </Button>
+
+            {/* Count Badge */}
+            <Badge variant="secondary" className="ml-auto">
+              {filteredSuggestions.length} / {suggestions.length}
+            </Badge>
+          </div>
+        </div>
+      )}
+
       {/* Tab Content */}
       <div className={`${colors.background.card} rounded-lg border`}>
         {activeTab === 'Suggestions' && (
           <FocusSuggestionsTable
-            suggestions={suggestions}
+            suggestions={filteredSuggestions}
             onUpdateStatus={updateSuggestionStatus}
             onOpenPipelineDrawer={handleOpenPipelineDrawer}
             onDeleteSuggestion={handleDeleteSuggestion}

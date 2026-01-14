@@ -112,23 +112,33 @@ export default function TeamSetupPage() {
 
   async function handlePOCChange(picName: string, newPOC: string) {
     try {
+      // Get user email (mock for now - you can get from auth session)
+      const userEmail = 'current.user@geniee.co.jp' // TODO: Get from actual auth
+      const now = new Date().toISOString()
+
       const res = await fetch('/api/teams/update-pipeline-poc', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           picName,
-          pipelinePocName: newPOC
+          pipelinePocName: newPOC,
+          userEmail
         })
       })
 
       const data = await res.json()
       if (data.status === 'error') throw new Error(data.message)
 
-      // Update local state
+      // Update local state with audit fields
       setAssignments(prev =>
         prev.map(a =>
           a.pic_name === picName
-            ? { ...a, pipeline_poc_name: newPOC || null }
+            ? {
+                ...a,
+                pipeline_poc_name: newPOC || null,
+                updated_at: now,
+                updated_by_email: userEmail
+              }
             : a
         )
       )
