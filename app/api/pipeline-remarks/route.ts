@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { mid, product, remark } = body
+    const { mid, product, remark, cannot_create_reason, cannot_create_reason_other } = body
 
     if (!mid || !product) {
       return NextResponse.json(
@@ -57,6 +57,8 @@ export async function POST(request: NextRequest) {
         .from('pipeline_remarks')
         .update({
           remark: remark?.trim() || null,
+          cannot_create_reason: cannot_create_reason || null,
+          cannot_create_reason_other: cannot_create_reason_other || null,
           updated_by: userData.id,
           updated_at: new Date().toISOString(),
         })
@@ -74,6 +76,8 @@ export async function POST(request: NextRequest) {
           mid,
           product,
           remark: remark?.trim() || null,
+          cannot_create_reason: cannot_create_reason || null,
+          cannot_create_reason_other: cannot_create_reason_other || null,
           updated_by: userData.id,
         })
         .select()

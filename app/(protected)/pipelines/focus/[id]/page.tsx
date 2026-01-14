@@ -40,6 +40,7 @@ import { useToast } from '@/hooks/use-toast'
 import { EditFocusModal } from '@/app/components/pipelines/EditFocusModal'
 import { AddPipelinesModal } from '@/app/components/pipelines/AddPipelinesModal'
 import { PipelineDetailDrawer } from '@/app/components/pipelines/PipelineDetailDrawer'
+import { FocusSuggestionsTable } from '@/app/components/pipelines/FocusSuggestionsTable'
 import type { Focus, FocusSuggestion } from '@/lib/types/focus'
 import type { Pipeline } from '@/lib/types/pipeline'
 import { typography, spacing, colors, composedStyles } from '@/lib/design-tokens'
@@ -389,7 +390,7 @@ export default function FocusDetailPage() {
       {/* Tab Content */}
       <div className={`${colors.background.card} rounded-lg border`}>
         {activeTab === 'Suggestions' && (
-          <SuggestionsTable
+          <FocusSuggestionsTable
             suggestions={suggestions}
             onUpdateStatus={updateSuggestionStatus}
             onOpenPipelineDrawer={handleOpenPipelineDrawer}

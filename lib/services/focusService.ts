@@ -475,25 +475,37 @@ export async function getSuggestions(
       if (orConditions) {
         const { data: globalRemarks } = await supabaseAdmin
           .from('pipeline_remarks')
-          .select('mid, product, remark')
+          .select('mid, product, remark, cannot_create_reason, cannot_create_reason_other')
           .or(orConditions)
 
-        // Create lookup map: mid_product -> remark
+        // Create lookup maps: mid_product -> data
         const remarkMap = new Map<string, string>()
+        const cannotCreateReasonMap = new Map<{ reason: string | null; other: string | null }>()
         if (globalRemarks) {
           globalRemarks.forEach((r) => {
             const key = `${r.mid}_${r.product}`
             if (r.remark && r.remark.trim()) {
               remarkMap.set(key, r.remark)
             }
+            // Store cannot_create_reason (even if null, to indicate we have a global value)
+            cannotCreateReasonMap.set(key, {
+              reason: r.cannot_create_reason || null,
+              other: r.cannot_create_reason_other || null
+            })
           })
         }
 
-        // Merge global remarks into suggestions
-        const enrichedSuggestions = data.map((s) => ({
-          ...s,
-          global_remark: remarkMap.get(`${s.mid}_${s.product}`) || null,
-        }))
+        // Merge global remarks and cannot_create_reason into suggestions
+        const enrichedSuggestions = data.map((s) => {
+          const key = `${s.mid}_${s.product}`
+          const globalReason = cannotCreateReasonMap.get(key)
+          return {
+            ...s,
+            global_remark: remarkMap.get(key) || null,
+            global_cannot_create_reason: globalReason?.reason || s.cannot_create_reason,
+            global_cannot_create_reason_other: globalReason?.other || s.cannot_create_reason_other,
+          }
+        })
 
         return { success: true, suggestions: enrichedSuggestions as any }
       }
@@ -535,6 +547,27 @@ export async function updateSuggestionStatus(
     if (error) {
       console.error('Error updating suggestion:', error)
       return { success: false, error: error.message }
+    }
+
+    // 🔄 Dual-write: Update pipeline_remarks for global cannot_create_reason sync
+    if (updates.cannot_create_reason !== undefined || updates.cannot_create_reason_other !== undefined) {
+      const { error: remarkError } = await supabaseAdmin
+        .from('pipeline_remarks')
+        .upsert({
+          mid: data.mid,
+          product: data.product,
+          cannot_create_reason: updates.cannot_create_reason || null,
+          cannot_create_reason_other: updates.cannot_create_reason_other || null,
+          updated_by: userUuid,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'mid,product'
+        })
+
+      if (remarkError) {
+        console.error('Error updating global pipeline remarks:', remarkError)
+        // Don't fail the request, just log the error
+      }
     }
 
     // Log activity
