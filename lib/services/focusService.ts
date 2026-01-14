@@ -39,6 +39,20 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 // =====================================================
 
 /**
+ * Get user UUID from email
+ * Helper function to convert email (from JWT) to UUID (for database foreign keys)
+ */
+async function getUserUuid(email: string): Promise<string> {
+  const { data } = await supabaseAdmin
+    .from('users')
+    .select('id')
+    .eq('email', email)
+    .single()
+
+  return data?.id || email // Fallback to email if not found
+}
+
+/**
  * Create a new focus
  */
 export async function createFocus(
@@ -46,10 +60,13 @@ export async function createFocus(
   userId: string
 ): Promise<{ success: boolean; focus?: Focus; error?: string }> {
   try {
+    // Convert email to UUID if needed
+    const userUuid = await getUserUuid(userId)
+
     const { data, error } = await supabaseAdmin
       .from('focus_of_month')
       .insert({
-        created_by: userId,
+        created_by: userUuid,
         focus_month: request.focus_month,
         focus_year: request.focus_year,
         group_type: request.group_type,
@@ -70,7 +87,7 @@ export async function createFocus(
     await logActivity({
       focus_id: data.id,
       activity_type: 'created',
-      logged_by: userId,
+      logged_by: userUuid,
       details: { title: data.title },
     })
 
@@ -166,6 +183,8 @@ export async function updateFocus(
   userId: string
 ): Promise<{ success: boolean; focus?: Focus; error?: string }> {
   try {
+    const userUuid = await getUserUuid(userId)
+
     const { data, error } = await supabaseAdmin
       .from('focus_of_month')
       .update(updates)
@@ -182,7 +201,7 @@ export async function updateFocus(
     await logActivity({
       focus_id: focusId,
       activity_type: 'published', // Simplification; can be more granular
-      logged_by: userId,
+      logged_by: userUuid,
       details: updates,
     })
 
@@ -201,12 +220,14 @@ export async function publishFocus(
   userId: string
 ): Promise<{ success: boolean; focus?: Focus; error?: string }> {
   try {
+    const userUuid = await getUserUuid(userId)
+
     const { data, error } = await supabaseAdmin
       .from('focus_of_month')
       .update({
         status: 'published',
         published_at: new Date().toISOString(),
-        published_by: userId,
+        published_by: userUuid,
       })
       .eq('id', focusId)
       .select()
@@ -232,6 +253,8 @@ export async function archiveFocus(
   userId: string
 ): Promise<{ success: boolean; focus?: Focus; error?: string }> {
   try {
+    const userUuid = await getUserUuid(userId)
+
     const { data, error } = await supabaseAdmin
       .from('focus_of_month')
       .update({ status: 'archived' })
@@ -248,7 +271,7 @@ export async function archiveFocus(
     await logActivity({
       focus_id: focusId,
       activity_type: 'archived',
-      logged_by: userId,
+      logged_by: userUuid,
     })
 
     return { success: true, focus: data }
@@ -293,6 +316,8 @@ export async function addSuggestions(
   userId: string
 ): Promise<{ success: boolean; suggestions?: FocusSuggestion[]; error?: string }> {
   try {
+    const userUuid = await getUserUuid(userId)
+
     // 📋 Query existing suggestions from ALL focuses to find metadata for reuse
     // Get all unique mid + product combinations from the request
     const uniqueMids = Array.from(new Set(request.suggestions.map((s) => s.mid)))
@@ -377,7 +402,7 @@ export async function addSuggestions(
     await logActivity({
       focus_id: focusId,
       activity_type: 'suggestion_added',
-      logged_by: userId,
+      logged_by: userUuid,
       details: { count: suggestions.length },
     })
 
@@ -449,12 +474,14 @@ export async function updateSuggestionStatus(
   userId: string
 ): Promise<{ success: boolean; suggestion?: FocusSuggestion; error?: string }> {
   try {
+    const userUuid = await getUserUuid(userId)
+
     const updateData: any = { ...updates }
 
     // If marking as completed, set completed_at and completed_by
     if (updates.user_status === 'created' || updates.user_status === 'cannot_create') {
       updateData.completed_at = new Date().toISOString()
-      updateData.completed_by = userId
+      updateData.completed_by = userUuid
     }
 
     const { data, error } = await supabaseAdmin
@@ -474,7 +501,7 @@ export async function updateSuggestionStatus(
       focus_id: data.focus_id,
       activity_type: 'suggestion_completed',
       suggestion_id: suggestionId,
-      logged_by: userId,
+      logged_by: userUuid,
       details: updates,
     })
 
@@ -493,6 +520,8 @@ export async function deleteSuggestion(
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const userUuid = await getUserUuid(userId)
+
     // Get suggestion first to log activity
     const { data: suggestion } = await supabaseAdmin
       .from('focus_suggestions')
@@ -516,7 +545,7 @@ export async function deleteSuggestion(
         focus_id: suggestion.focus_id,
         activity_type: 'suggestion_removed',
         suggestion_id: suggestionId,
-        logged_by: userId,
+        logged_by: userUuid,
       })
     }
 
@@ -634,15 +663,18 @@ export async function grantManagerRole(
   grantedBy: string
 ): Promise<{ success: boolean; role?: FocusManagerRole; error?: string }> {
   try {
+    const grantedByUuid = await getUserUuid(grantedBy)
+    const userUuid = await getUserUuid(request.user_id)
+
     const { data, error } = await supabaseAdmin
       .from('focus_manager_roles')
       .insert({
-        user_id: request.user_id,
+        user_id: userUuid,
         team_id: request.team_id || null,
         can_create: request.can_create ?? true,
         can_publish: request.can_publish ?? true,
         can_delete: request.can_delete ?? false,
-        granted_by: grantedBy,
+        granted_by: grantedByUuid,
       })
       .select()
       .single()
