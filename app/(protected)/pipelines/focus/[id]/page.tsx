@@ -428,16 +428,12 @@ export default function FocusDetailPage() {
       {/* Tab Content */}
       <div className={`${colors.background.card} rounded-lg border`}>
         {activeTab === 'Suggestions' && (
-          <>
-            {console.log('[FocusDetailPage] About to render FocusSuggestionsTable, suggestions:', suggestions.length) || null}
-            <FocusSuggestionsTable
-              suggestions={suggestions}
-              onUpdateStatus={updateSuggestionStatus}
-              onOpenPipelineDrawer={handleOpenPipelineDrawer}
-              onDeleteSuggestion={handleDeleteSuggestion}
-            />
-            {console.log('[FocusDetailPage] FocusSuggestionsTable rendered') || null}
-          </>
+          <FocusSuggestionsTable
+            suggestions={suggestions}
+            onUpdateStatus={updateSuggestionStatus}
+            onOpenPipelineDrawer={handleOpenPipelineDrawer}
+            onDeleteSuggestion={handleDeleteSuggestion}
+          />
         )}
         {activeTab === 'Dashboard' && <DashboardTab focusId={focusId} />}
         {activeTab === 'Activity' && <ActivityTab focusId={focusId} />}

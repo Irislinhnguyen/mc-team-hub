@@ -54,6 +54,7 @@ export default function TeamSetupPage() {
   const [selectedAssignment, setSelectedAssignment] = useState<PicAssignment | null>(null)
   const [newPipelinePoc, setNewPipelinePoc] = useState('')
   const [savingPoc, setSavingPoc] = useState(false)
+  const [availablePocs, setAvailablePocs] = useState<string[]>([])
 
   useEffect(() => {
     loadData()
@@ -80,8 +81,17 @@ export default function TeamSetupPage() {
         throw new Error(allPicsData.message)
       }
 
+      // Fetch all Pipeline POCs from pipeline_deals
+      const pocsRes = await fetch('/api/pipelines/pocs')
+      const pocsData = await pocsRes.json()
+
+      if (pocsData.error) {
+        throw new Error(pocsData.error)
+      }
+
       setAssignments(assignmentsData.data)
       setAllPics(allPicsData.data)
+      setAvailablePocs(pocsData.data || [])
     } catch (err) {
       console.error('Error loading data:', err)
       setError(err instanceof Error ? err.message : 'Failed to load data')
@@ -533,15 +543,18 @@ export default function TeamSetupPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Pipeline POC Name
                 </label>
-                <input
-                  type="text"
+                <select
                   value={newPipelinePoc}
                   onChange={(e) => setNewPipelinePoc(e.target.value)}
-                  placeholder="Enter Pipeline POC name"
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                >
+                  <option value="">-- Select Pipeline POC --</option>
+                  {availablePocs.map(poc => (
+                    <option key={poc} value={poc}>{poc}</option>
+                  ))}
+                </select>
                 <p className="mt-1 text-xs text-gray-500">
-                  Map this BigQuery PIC to a Pipeline POC name for team filtering in Pipelines
+                  Map this BigQuery PIC to a Pipeline POC for team filtering in Pipelines
                 </p>
               </div>
             </div>

@@ -138,7 +138,7 @@ export function FocusSuggestionsTable({
 
   // Filter suggestions
   const filteredSuggestions = useMemo(() => {
-    const filtered = suggestions.filter((s) => {
+    return suggestions.filter((s) => {
       if (filters.pic && s.pic !== filters.pic) return false
       if (filters.status.length > 0 && !filters.status.includes(s.user_status || 'pending')) return false
       if (filters.product.length > 0 && !filters.product.includes(s.product)) return false
@@ -146,12 +146,7 @@ export function FocusSuggestionsTable({
       if (filters.quarter && s.quarter !== filters.quarter) return false
       return true
     })
-    console.log('[FocusSuggestionsTable] Filter calculated:', { total: suggestions.length, filtered: filtered.length, pics: uniquePics.length, products: uniqueProducts.length, quarters: uniqueQuarters.length })
-    return filtered
   }, [suggestions, filters])
-
-  // Debug: Log component render
-  console.log('[FocusSuggestionsTable] Component rendering, suggestions:', suggestions.length)
 
   // Handle select all (for filtered results)
   function handleSelectAll(checked: boolean) {
@@ -423,12 +418,8 @@ export function FocusSuggestionsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {console.log('[FocusSuggestionsTable] About to render table rows, count:', filteredSuggestions.length) || null}
-            {filteredSuggestions.slice(0, 1).map((suggestion) => {
-              console.log('[FocusSuggestionsTable] Rendering row for suggestion.id:', suggestion.id)
-              return (
+            {filteredSuggestions.map((suggestion) => (
               <TableRow key={suggestion.id}>
-                {console.log('[Row] Checkbox cell') || null}
                 <TableCell className="w-[4%]">
                   <Checkbox
                     checked={selectedSuggestions.has(suggestion.id)}
@@ -445,10 +436,8 @@ export function FocusSuggestionsTable({
                   />
                 </TableCell>
 
-                {console.log('[Row] MID cell') || null}
                 <TableCell className="w-[6%]" style={composedStyles.tableData}>{suggestion.mid}</TableCell>
 
-                {console.log('[Row] Media Name cell') || null}
                 <TableCell className="w-[10%]" style={composedStyles.tableData}>
                   <div className="flex items-center gap-2">
                     <span className="truncate" title={suggestion.media_name}>
@@ -467,22 +456,18 @@ export function FocusSuggestionsTable({
                   </div>
                 </TableCell>
 
-                {console.log('[Row] Product cell') || null}
                 <TableCell className="w-[7%]">
                   <Badge variant="outline" className="text-xs">
                     {suggestion.product}
                   </Badge>
                 </TableCell>
 
-                {console.log('[Row] PIC cell') || null}
                 <TableCell className="w-[8%]" style={composedStyles.tableData}>{suggestion.pic || '-'}</TableCell>
 
-                {console.log('[Row] Requests cell') || null}
                 <TableCell className="w-[6%] text-right" style={composedStyles.tableData}>
                   {suggestion.last_30d_requests?.toLocaleString() || 0}
                 </TableCell>
 
-                {console.log('[Row] Pipeline Created cell') || null}
                 <TableCell className="w-[7%]" style={composedStyles.tableData}>
                   {suggestion.pipeline_created ? (
                     <Badge variant="default" className="bg-green-100 text-green-800">Yes</Badge>
@@ -491,7 +476,6 @@ export function FocusSuggestionsTable({
                   )}
                 </TableCell>
 
-                {console.log('[Row] Quarter Select cell') || null}
                 <TableCell className="w-[7%]">
                   <Select
                     value={suggestion.quarter || ''}
@@ -510,7 +494,6 @@ export function FocusSuggestionsTable({
                   </Select>
                 </TableCell>
 
-                {console.log('[Row] Cannot Create cell') || null}
                 <TableCell className="w-[10%]">
                   <div className="flex items-center justify-center gap-2">
                     <Checkbox
@@ -585,7 +568,6 @@ export function FocusSuggestionsTable({
                   )}
                 </TableCell>
 
-                {console.log('[Row] Remark cell') || null}
                 <TableCell className="w-[30%]">
                   {(suggestion as any).global_remark ? (
                     <div className="space-y-1">
@@ -616,7 +598,6 @@ export function FocusSuggestionsTable({
                   )}
                 </TableCell>
 
-                {console.log('[Row] Status cell') || null}
                 <TableCell className="w-[3%]">
                   <div className="flex items-center gap-2">
                     {getStatusIcon(suggestion.user_status)}
@@ -626,7 +607,6 @@ export function FocusSuggestionsTable({
                   </div>
                 </TableCell>
 
-                {console.log('[Row] Actions cell') || null}
                 <TableCell className="w-[2%]">
                   <Button
                     variant="ghost"
@@ -637,14 +617,11 @@ export function FocusSuggestionsTable({
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </TableCell>
-                {console.log('[Row] Row completed for suggestion:', suggestion.id) || null}
               </TableRow>
-              )
-            })}
+            ))}
           </TableBody>
         </Table>
       </div>
-      {console.log('[FocusSuggestionsTable] Table completed, rendering Dialog...') || null}
 
       {/* Remark Dialog */}
       <Dialog open={remarkDialogOpen} onOpenChange={setRemarkDialogOpen}>
@@ -670,10 +647,8 @@ export function FocusSuggestionsTable({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {console.log('[FocusSuggestionsTable] Dialog rendered') || null}
 
       {/* Pipeline Detail Drawer */}
-      {console.log('[FocusSuggestionsTable] Checking PipelineDetailDrawer condition:', { pipelineDrawerOpen, hasPipeline: !!selectedPipeline }) || null}
       {pipelineDrawerOpen && selectedPipeline && (
         <PipelineDetailDrawer
           pipelineId={selectedPipeline.id}
@@ -681,7 +656,6 @@ export function FocusSuggestionsTable({
           onOpenChange={setPipelineDrawerOpen}
         />
       )}
-      {console.log('[FocusSuggestionsTable] Component END') || null}
     </div>
   )
 }
