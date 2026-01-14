@@ -55,7 +55,7 @@ export async function PATCH(
 
     const updates: UpdateSuggestionRequest = validation.data
 
-    const result = await updateSuggestionStatus(suggestionId, updates, user.id)
+    const result = await updateSuggestionStatus(suggestionId, updates, user.sub)
 
     if (!result.success) {
       return NextResponse.json(
@@ -93,7 +93,7 @@ export async function DELETE(
 
     const suggestionId = params.suggestionId
 
-    const result = await deleteSuggestion(suggestionId, user.id)
+    const result = await deleteSuggestion(suggestionId, user.sub)
 
     if (!result.success) {
       return NextResponse.json(

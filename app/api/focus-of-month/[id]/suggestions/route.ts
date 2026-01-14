@@ -105,7 +105,7 @@ export async function POST(
 
     const requestData: AddSuggestionsRequest = validation.data
 
-    const result = await addSuggestions(focusId, requestData, user.id)
+    const result = await addSuggestions(focusId, requestData, user.sub)
 
     if (!result.success) {
       console.error('[SuggestionsAPI] ❌ addSuggestions failed:', result.error)

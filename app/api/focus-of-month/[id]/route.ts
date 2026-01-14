@@ -105,7 +105,7 @@ export async function PATCH(
 
     const updates: UpdateFocusRequest = validation.data
 
-    const result = await updateFocus(focusId, updates, user.id)
+    const result = await updateFocus(focusId, updates, user.sub)
 
     if (!result.success) {
       return NextResponse.json(

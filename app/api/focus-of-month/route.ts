@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         // Check if user has create permission
         const hasPermission = rolesResult.roles?.some(
           (r) =>
-            r.user_id === user.id &&
+            r.user_id === user.sub &&
             r.can_create
         )
 
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
 
     const focusData: CreateFocusRequest = validation.data
 
-    const result = await createFocus(focusData, user.id)
+    const result = await createFocus(focusData, user.sub)
 
     if (!result.success) {
       return NextResponse.json(

@@ -19,7 +19,7 @@ export async function POST(
 
     const focusId = params.id
 
-    const result = await publishFocus(focusId, user.id)
+    const result = await publishFocus(focusId, user.sub)
 
     if (!result.success) {
       return NextResponse.json(
