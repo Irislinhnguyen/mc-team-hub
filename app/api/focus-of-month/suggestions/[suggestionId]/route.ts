@@ -19,8 +19,9 @@ import { z } from 'zod'
 
 const updateSuggestionSchema = z.object({
   user_status: z.enum(['pending', 'created', 'cannot_create', 'skipped']).optional(),
-  cannot_create_reason: z.string().max(500).optional(),
-  user_remark: z.string().max(500).optional(),
+  cannot_create_reason: z.string().max(500).nullish(), // Allow null and undefined
+  cannot_create_reason_other: z.string().max(500).nullish(), // Allow "Other" reason detail
+  user_remark: z.string().max(500).nullish(), // Allow null for consistency
   pipeline_created: z.boolean().optional(), // Allow manual override
   quarter: z.string().optional(), // Quarter of most recent month
 })
