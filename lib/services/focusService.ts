@@ -285,6 +285,7 @@ export async function deleteFocus(
 
 /**
  * Add suggestions from Query Lab
+ * Preserves metadata (status, remarks, reasons) from previous focuses if the same pipeline was suggested before
  */
 export async function addSuggestions(
   focusId: string,
@@ -292,22 +293,59 @@ export async function addSuggestions(
   userId: string
 ): Promise<{ success: boolean; suggestions?: FocusSuggestion[]; error?: string }> {
   try {
-    // Prepare suggestion records
-    const suggestions = request.suggestions.map((s, index) => ({
-      focus_id: focusId,
-      pid: s.pid || null,
-      mid: s.mid,
-      product: s.product,
-      media_name: s.media_name || null,
-      publisher_name: s.publisher_name || null,
-      pic: s.pic || null,
-      last_30d_requests: s.last_30d_requests || null,
-      six_month_avg_requests: s.six_month_avg_requests || null,
-      thirty_day_avg_revenue: s.thirty_day_avg_revenue || null,
-      query_lab_data: s.query_lab_data || null,
-      display_order: index,
-      user_status: 'pending',
-    }))
+    // 📋 Query existing suggestions from ALL focuses to find metadata for reuse
+    // Get all unique mid + product combinations from the request
+    const uniqueMids = Array.from(new Set(request.suggestions.map((s) => s.mid)))
+    const uniqueProducts = Array.from(new Set(request.suggestions.map((s) => s.product)))
+
+    // Query existing suggestions ordered by created_at DESC (most recent first)
+    // We query by mids and products, then filter for exact matches in JavaScript
+    const { data: existingSuggestions } = await supabaseAdmin
+      .from('focus_suggestions')
+      .select('mid, product, user_status, cannot_create_reason, cannot_create_reason_other, user_remark, created_at')
+      .in('mid', uniqueMids)
+      .in('product', uniqueProducts)
+      .order('created_at', { ascending: false })
+
+    // Create map for quick lookup: key = "mid_product" → most recent suggestion
+    const suggestionMap = new Map<string, FocusSuggestion>()
+    if (existingSuggestions) {
+      for (const suggestion of existingSuggestions) {
+        const key = `${suggestion.mid}_${suggestion.product}`
+        // Only set if not already in map (keeps most recent due to ORDER BY)
+        if (!suggestionMap.has(key)) {
+          suggestionMap.set(key, suggestion as FocusSuggestion)
+        }
+      }
+    }
+
+    console.log('[addSuggestions] 📋 Found', suggestionMap.size, 'existing suggestions from previous focuses')
+
+    // Prepare suggestion records with preserved metadata from previous focuses
+    const suggestions = request.suggestions.map((s, index) => {
+      const key = `${s.mid}_${s.product}`
+      const existingSuggestion = suggestionMap.get(key)
+
+      return {
+        focus_id: focusId,
+        pid: s.pid || null,
+        mid: s.mid,
+        product: s.product,
+        media_name: s.media_name || null,
+        publisher_name: s.publisher_name || null,
+        pic: s.pic || null,
+        last_30d_requests: s.last_30d_requests || null,
+        six_month_avg_requests: s.six_month_avg_requests || null,
+        thirty_day_avg_revenue: s.thirty_day_avg_revenue || null,
+        query_lab_data: s.query_lab_data || null,
+        display_order: index,
+        // Preserve metadata from previous focus if exists
+        user_status: existingSuggestion?.user_status || 'pending',
+        cannot_create_reason: existingSuggestion?.cannot_create_reason || null,
+        cannot_create_reason_other: existingSuggestion?.cannot_create_reason_other || null,
+        user_remark: existingSuggestion?.user_remark || null,
+      }
+    })
 
     const { data, error } = await supabaseAdmin
       .from('focus_suggestions')

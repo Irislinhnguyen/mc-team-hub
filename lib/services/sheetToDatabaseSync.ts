@@ -552,7 +552,7 @@ export async function syncQuarterlySheet(
 
     const { data: existingPipelines, error: fetchError } = await supabase
       .from('pipelines')
-      .select('id, key, proposal_date')
+      .select('id, sheet_row_number, key')
       .eq('quarterly_sheet_id', quarterlySheetId)
 
     if (fetchError) {
@@ -560,15 +560,14 @@ export async function syncQuarterlySheet(
       // Continue anyway - we'll try to insert all
     }
 
-    // Build map for quick lookup: key -> id
-    const existingMap = new Map(
-      existingPipelines?.map(p => [
-        `${p.key}_${p.proposal_date || 'null'}`,
-        p.id
-      ]) || []
+    // Build map for quick lookup: sheet_row_number -> full record
+    // CRITICAL FIX: Use sheet_row_number as unique key instead of (key, proposal_date)
+    // Because each row in Google Sheets is unique and should only have 1 pipeline record
+    const existingRowMap = new Map(
+      existingPipelines?.map(p => [p.sheet_row_number, p]) || []
     )
 
-    console.log(`[Sync] Found ${existingMap.size} existing pipelines in this quarterly sheet`)
+    console.log(`[Sync] Found ${existingRowMap.size} existing pipelines in this quarterly sheet`)
 
     // Step 6: Split into two groups - UPDATE existing, INSERT new
     // Use Maps to prevent duplicates
@@ -599,15 +598,16 @@ export async function syncQuarterlySheet(
         }
 
         // Check if exists and split into groups
-        const pipelineKey = `${sanitized.key}_${sanitized.proposal_date || 'null'}`
-        const existingId = existingMap.get(pipelineKey)
+        // CRITICAL FIX: Check by sheet_row_number FIRST (not by key)
+        // Because each row in sheet is unique - UPDATE existing, INSERT new
+        const existingRecord = existingRowMap.get(sanitized.sheet_row_number)
 
-        if (existingId) {
-          // Add ID for update - use existingId as key to prevent duplicates
-          toUpdateMap.set(existingId, { ...sanitized, id: existingId })
+        if (existingRecord) {
+          // UPDATE existing record at this row number
+          toUpdateMap.set(existingRecord.id, { ...sanitized, id: existingRecord.id })
         } else {
-          // New pipeline - use composite key to prevent duplicates
-          toCreateMap.set(pipelineKey, sanitized)
+          // INSERT new record - use sheet_row_number as key to prevent duplicates
+          toCreateMap.set(sanitized.sheet_row_number, sanitized)
         }
       } catch (error: any) {
         errors.push(`Failed to process pipeline ${pipeline.key}: ${error.message}`)
