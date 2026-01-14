@@ -1,16 +1,15 @@
 'use client'
 
 /**
- * Team Setup Page - Table View
+ * Team Setup Page - Pipelines
  * Manage team assignments with full audit trail
  */
 
 import React, { useState, useEffect, useRef } from 'react'
-import { PageHeader } from '../../../components/performance-tracker/PageHeader'
-import { Skeleton } from '../../../../src/components/ui/skeleton'
+import { Skeleton } from '@/components/ui/skeleton'
 import TeamSetupCardSkeleton from '../../../components/performance-tracker/skeletons/TeamSetupCardSkeleton'
 import { DynamicTableSkeleton } from '../../../components/performance-tracker/skeletons/DynamicTableSkeleton'
-import type { ColumnConfig } from '../../../../lib/types/performanceTracker'
+import type { ColumnConfig } from '@/lib/types/performanceTracker'
 
 interface PicAssignment {
   pic_name: string
@@ -250,9 +249,12 @@ export default function TeamSetupPage() {
   if (loading) {
     return (
       <div className="p-8">
-        <PageHeader title="Team Setup" showCrossFilterToggle={false} contentRef={contentRef} />
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Team Setup</h1>
+          <p className="text-sm text-gray-500">Manage PIC team assignments and Pipeline POC mappings</p>
+        </div>
 
-        <div ref={contentRef}>
+        <div>
           {/* Team Summary Cards Skeleton */}
           <div className="mb-4 flex gap-3">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -276,7 +278,10 @@ export default function TeamSetupPage() {
   if (error) {
     return (
       <div className="p-8">
-        <PageHeader title="Team Setup" showCrossFilterToggle={false} />
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Team Setup</h1>
+          <p className="text-sm text-gray-500">Manage PIC team assignments and Pipeline POC mappings</p>
+        </div>
         <div className="flex flex-col items-center justify-center h-64">
           <div className="text-red-500 mb-4">Error: {error}</div>
           <button
@@ -301,9 +306,12 @@ export default function TeamSetupPage() {
 
   return (
     <div className="p-8">
-      <PageHeader title="Team Setup" showCrossFilterToggle={false} contentRef={contentRef} />
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Team Setup</h1>
+        <p className="text-sm text-gray-500">Manage PIC team assignments and Pipeline POC mappings</p>
+      </div>
 
-      <div ref={contentRef}>
+      <div>
         {/* Team Summary Cards - Single Row */}
         <div className="mb-4 flex gap-3">
         {teamSummaries.map(({ team, members }) => (
