@@ -886,6 +886,34 @@ function SuggestionsTable({
         </TableBody>
       </Table>
     </div>
+
+    {/* Remark Dialog */}
+    <Dialog open={remarkDialogOpen} onOpenChange={setRemarkDialogOpen}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Edit Pipeline Remark</DialogTitle>
+          <DialogDescription>
+            This remark will be shared across ALL focuses for this pipeline (mid: {selectedPipelineForRemark?.mid}, product: {selectedPipelineForRemark?.product})
+          </DialogDescription>
+        </DialogHeader>
+        <Textarea
+          value={remarkText}
+          onChange={(e) => setRemarkText(e.target.value)}
+          placeholder="Enter remark..."
+          rows={4}
+          className="my-4"
+        />
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setRemarkDialogOpen(false)}
+          >
+            Cancel
+          </Button>
+          <Button onClick={saveRemark}>Save Remark</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </div>
   )
 }

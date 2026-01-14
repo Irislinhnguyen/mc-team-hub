@@ -397,6 +397,11 @@ function parseSheetRows(
       // Add sheet row number
       sanitizedPipeline.sheet_row_number = sheetRowNumber
 
+      // CRITICAL: Set fiscal_quarter and fiscal_year from quarterly sheet metadata
+      // This ensures pipelines are correctly filtered by quarter in the UI
+      sanitizedPipeline.fiscal_quarter = sanitizedQuarterlySheet.quarter
+      sanitizedPipeline.fiscal_year = sanitizedQuarterlySheet.year
+
       // Ensure key is set from Column A (sanitize it!)
       if (!sanitizedPipeline.key) {
         sanitizedPipeline.key = sanitizeCellValue(row[0]?.toString()?.trim() || '')
