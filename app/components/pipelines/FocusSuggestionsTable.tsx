@@ -275,7 +275,7 @@ export function FocusSuggestionsTable({
             <SelectValue placeholder={<span style={{ fontSize: typography.sizes.filterHeader }}>PIC</span>} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All PICs</SelectItem>
+            <SelectItem value="all" key="pic-all">All PICs</SelectItem>
             {uniquePics.map((pic) => (
               <SelectItem key={pic} value={pic}>
                 {pic}
@@ -293,11 +293,11 @@ export function FocusSuggestionsTable({
             <SelectValue placeholder={<span style={{ fontSize: typography.sizes.filterHeader }}>Status</span>} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="created">Created</SelectItem>
-            <SelectItem value="cannot_create">Cannot Create</SelectItem>
-            <SelectItem value="skipped">Skipped</SelectItem>
+            <SelectItem value="all" key="status-all">All Status</SelectItem>
+            <SelectItem value="pending" key="status-pending">Pending</SelectItem>
+            <SelectItem value="created" key="status-created">Created</SelectItem>
+            <SelectItem value="cannot_create" key="status-cannot-create">Cannot Create</SelectItem>
+            <SelectItem value="skipped" key="status-skipped">Skipped</SelectItem>
           </SelectContent>
         </Select>
 
@@ -310,7 +310,7 @@ export function FocusSuggestionsTable({
             <SelectValue placeholder={<span style={{ fontSize: typography.sizes.filterHeader }}>Product</span>} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Products</SelectItem>
+            <SelectItem value="all" key="product-all">All Products</SelectItem>
             {uniqueProducts.map((product) => (
               <SelectItem key={product} value={product}>
                 {product}
@@ -351,7 +351,7 @@ export function FocusSuggestionsTable({
             <SelectValue placeholder={<span style={{ fontSize: typography.sizes.filterHeader }}>Quarter</span>} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Quarters</SelectItem>
+            <SelectItem value="all" key="quarter-all">All Quarters</SelectItem>
             {quarters.map((q) => (
               <SelectItem key={q} value={q}>
                 {q}
