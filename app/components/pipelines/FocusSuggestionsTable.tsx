@@ -404,17 +404,17 @@ export function FocusSuggestionsTable({
                   aria-label="Select all"
                 />
               </TableHead>
-              <TableHead className="w-[6%]" style={composedStyles.tableHeader}>MID</TableHead>
-              <TableHead className="w-[10%]" style={composedStyles.tableHeader}>Media Name</TableHead>
-              <TableHead className="w-[7%]" style={composedStyles.tableHeader}>Product</TableHead>
-              <TableHead className="w-[8%]" style={composedStyles.tableHeader}>PIC</TableHead>
-              <TableHead className="w-[6%] text-right" style={composedStyles.tableHeader}>30D Requests</TableHead>
-              <TableHead className="w-[7%]" style={composedStyles.tableHeader}>Pipeline</TableHead>
-              <TableHead className="w-[7%]" style={composedStyles.tableHeader}>Quarter</TableHead>
-              <TableHead className="w-[10%] text-center" style={composedStyles.tableHeader}>Cannot Create</TableHead>
-              <TableHead className="w-[30%]" style={composedStyles.tableHeader}>Remark</TableHead>
-              <TableHead className="w-[3%]" style={composedStyles.tableHeader}>Status</TableHead>
-              <TableHead className="w-[2%]" style={composedStyles.tableHeader}>Actions</TableHead>
+              <TableHead className={`w-[6%] ${composedStyles.tableHeader}`}>MID</TableHead>
+              <TableHead className={`w-[10%] ${composedStyles.tableHeader}`}>Media Name</TableHead>
+              <TableHead className={`w-[7%] ${composedStyles.tableHeader}`}>Product</TableHead>
+              <TableHead className={`w-[8%] ${composedStyles.tableHeader}`}>PIC</TableHead>
+              <TableHead className={`w-[6%] text-right ${composedStyles.tableHeader}`}>30D Requests</TableHead>
+              <TableHead className={`w-[7%] ${composedStyles.tableHeader}`}>Pipeline</TableHead>
+              <TableHead className={`w-[7%] ${composedStyles.tableHeader}`}>Quarter</TableHead>
+              <TableHead className={`w-[10%] text-center ${composedStyles.tableHeader}`}>Cannot Create</TableHead>
+              <TableHead className={`w-[30%] ${composedStyles.tableHeader}`}>Remark</TableHead>
+              <TableHead className={`w-[3%] ${composedStyles.tableHeader}`}>Status</TableHead>
+              <TableHead className={`w-[2%] ${composedStyles.tableHeader}`}>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -436,9 +436,9 @@ export function FocusSuggestionsTable({
                   />
                 </TableCell>
 
-                <TableCell className="w-[6%]" style={composedStyles.tableData}>{suggestion.mid}</TableCell>
+                <TableCell className={`w-[6%] ${composedStyles.tableData}`}>{suggestion.mid}</TableCell>
 
-                <TableCell className="w-[10%]" style={composedStyles.tableData}>
+                <TableCell className={`w-[10%] ${composedStyles.tableData}`}>
                   <div className="flex items-center gap-2">
                     <span className="truncate" title={suggestion.media_name}>
                       {truncate(suggestion.media_name, 20)}
@@ -462,13 +462,13 @@ export function FocusSuggestionsTable({
                   </Badge>
                 </TableCell>
 
-                <TableCell className="w-[8%]" style={composedStyles.tableData}>{suggestion.pic || '-'}</TableCell>
+                <TableCell className={`w-[8%] ${composedStyles.tableData}`}>{suggestion.pic || '-'}</TableCell>
 
-                <TableCell className="w-[6%] text-right" style={composedStyles.tableData}>
+                <TableCell className={`w-[6%] text-right ${composedStyles.tableData}`}>
                   {suggestion.last_30d_requests?.toLocaleString() || 0}
                 </TableCell>
 
-                <TableCell className="w-[7%]" style={composedStyles.tableData}>
+                <TableCell className={`w-[7%] ${composedStyles.tableData}`}>
                   {suggestion.pipeline_created ? (
                     <Badge variant="default" className="bg-green-100 text-green-800">Yes</Badge>
                   ) : (
