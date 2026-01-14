@@ -222,6 +222,7 @@ export function FocusSuggestionsTable({
     }
   }
 
+  const quarters = generateQuarters(3)
   const allSelected = suggestions.length > 0 && selectedSuggestions.size === suggestions.length
 
   return (

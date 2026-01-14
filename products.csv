@@ -1,0 +1,35 @@
+label,value
+Không xác định,Không xác định
+adrecover,adrecover
+adrefresh,adrefresh
+app_appopen,app_appopen
+app_floatingad,app_floatingad
+app_interstitial,app_interstitial
+app_native,app_native
+app_reward,app_reward
+app_standardbanner,app_standardbanner
+app_tracking,app_tracking
+as,as
+audioad,audioad
+autoad,autoad
+directcampaign,directcampaign
+flexiblesticky,flexiblesticky
+floatingad,floatingad
+flyad,flyad
+ga,ga
+in-underimage,in-underimage
+inpage,inpage
+interstitial,interstitial
+layouteditor,layouteditor
+mixed_videosticky_wipead,mixed_videosticky_wipead
+native,native
+offerwall,offerwall
+overlay,overlay
+reward,reward
+standardbanner,standardbanner
+sticky,sticky
+toggleoverlay,toggleoverlay
+tracking,tracking
+video,video
+video inread,video inread
+wipead,wipead
