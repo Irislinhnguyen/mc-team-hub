@@ -505,7 +505,7 @@ export default function FocusDetailPage() {
               onValueChange={(v) => setFilters((f) => ({ ...f, pipeline_created: v === 'all' ? null : v === 'yes' }))}
             >
               <SelectTrigger className="h-9 w-32">
-                <SelectValue placeholder="Pipeline" />
+                <SelectValue placeholder="All" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>

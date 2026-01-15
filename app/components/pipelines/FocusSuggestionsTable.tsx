@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { ArrowLeft, ExternalLink, Loader2, CirclePlus, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -98,7 +98,8 @@ function FocusSuggestionsTable({
     product: string
     currentRemark: string | null
   } | null>(null)
-  const [remarkText, setRemarkText] = useState('')
+  // Use ref for textarea to avoid re-renders on every keystroke
+  const remarkTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Bulk selection state
   const [selectedSuggestions, setSelectedSuggestions] = useState<Set<string>>(new Set())
@@ -146,13 +147,21 @@ function FocusSuggestionsTable({
       product: suggestion.product,
       currentRemark: (suggestion as any).global_remark || null,
     })
-    setRemarkText((suggestion as any).global_remark || '')
     setRemarkDialogOpen(true)
+    // Set textarea value after dialog opens (uncontrolled input)
+    setTimeout(() => {
+      if (remarkTextareaRef.current) {
+        remarkTextareaRef.current.value = (suggestion as any).global_remark || ''
+      }
+    }, 0)
   }
 
   // Save remark
   async function saveRemark() {
     if (!selectedPipelineForRemark) return
+
+    // Get value from textarea ref instead of state
+    const remarkValue = remarkTextareaRef.current?.value || ''
 
     const response = await fetch('/api/pipeline-remarks', {
       method: 'POST',
@@ -160,7 +169,7 @@ function FocusSuggestionsTable({
       body: JSON.stringify({
         mid: selectedPipelineForRemark.mid,
         product: selectedPipelineForRemark.product,
-        remark: remarkText,
+        remark: remarkValue,
       }),
     })
 
@@ -442,8 +451,7 @@ function FocusSuggestionsTable({
             </DialogDescription>
           </DialogHeader>
           <Textarea
-            value={remarkText}
-            onChange={(e) => setRemarkText(e.target.value)}
+            ref={remarkTextareaRef}
             placeholder="Enter remark..."
             rows={4}
             className="my-4 resize-none"
