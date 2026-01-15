@@ -32,7 +32,7 @@ export async function GET(
 
     const { data, error } = await supabase
       .from('quarterly_sheets')
-      .select('id, spreadsheet_id, sheet_name, sheet_url, fiscal_year, fiscal_quarter, group')
+      .select('id, spreadsheet_id, sheet_name, sheet_url, year, quarter, group')
       .eq('id', id)
       .single()
 
