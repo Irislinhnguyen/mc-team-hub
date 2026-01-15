@@ -34,7 +34,7 @@ import { useToast } from '@/hooks/use-toast'
 import { PipelineDetailDrawer } from '@/app/components/pipelines/PipelineDetailDrawer'
 import type { FocusSuggestion } from '@/lib/types/focus'
 import type { Pipeline } from '@/lib/types/pipeline'
-import { composedStyles } from '@/lib/design-tokens'
+import { typography, composedStyles } from '@/lib/design-tokens'
 
 // Cannot create reasons enum
 const CANNOT_CREATE_REASONS = [
@@ -503,9 +503,12 @@ export function FocusSuggestionsTable({
       {/* Pipeline Detail Drawer */}
       {pipelineDrawerOpen && selectedPipeline && (
         <PipelineDetailDrawer
-          pipelineId={selectedPipeline.id}
+          pipeline={selectedPipeline}
           open={pipelineDrawerOpen}
-          onOpenChange={setPipelineDrawerOpen}
+          onClose={() => {
+            setPipelineDrawerOpen(false)
+            setSelectedPipeline(null)
+          }}
         />
       )}
     </div>

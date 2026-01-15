@@ -1,6 +1,19 @@
 /**
  * Design Tokens for Analytics Dashboard
  * Centralized typography and styling constants
+ *
+ * CORRECT USAGE:
+ * import { typography, colors, spacing, composedStyles } from '@/lib/design-tokens'
+ *
+ * - Font sizes: use inline style={{ fontSize: typography.sizes.xxx }}
+ * - Colors: use className={colors.text.primary}  (NOT style!)
+ * - Spacing: use className={spacing.cardPadding}
+ * - Composed styles: use className={composedStyles.pageTitle}
+ *
+ * COMMON MISTAKES TO AVOID:
+ * - style={{ color: colors.text.primary }}  // colors are className strings, not style objects
+ * - style={{ fontSize: colors.text.primary }}  // WRONG! Use typography.sizes.xxx
+ * - Forgot to import 'typography' when using typography.sizes.xxx
  */
 
 export const typography = {
