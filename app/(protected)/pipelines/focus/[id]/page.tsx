@@ -86,13 +86,11 @@ export default function FocusDetailPage() {
   // Filter state for Suggestions tab
   const [filters, setFilters] = useState<{
     pic: string | null
-    status: string[]
     product: string[]
     pipeline_created: boolean | null
     quarter: string | null
   }>({
     pic: null,
-    status: [],
     product: [],
     pipeline_created: null,
     quarter: null,
@@ -154,7 +152,6 @@ export default function FocusDetailPage() {
   const filteredSuggestions = useMemo(() => {
     return suggestions.filter((s) => {
       if (filters.pic && s.pic !== filters.pic) return false
-      if (filters.status.length > 0 && !filters.status.includes(s.user_status || 'pending')) return false
       if (filters.product.length > 0 && !filters.product.includes(s.product)) return false
       if (filters.pipeline_created !== null && !!s.pipeline_created !== filters.pipeline_created) return false
       if (filters.quarter && s.quarter !== filters.quarter) return false
@@ -484,23 +481,6 @@ export default function FocusDetailPage() {
               </SelectContent>
             </Select>
 
-            {/* Status Filter */}
-            <Select
-              value={filters.status.length === 0 ? 'all' : filters.status.join(',')}
-              onValueChange={(v) => setFilters((f) => ({ ...f, status: v === 'all' ? [] : v.split(',') }))}
-            >
-              <SelectTrigger className="h-9 w-40">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" key="status-all">All Status</SelectItem>
-                <SelectItem value="pending" key="status-pending">Pending</SelectItem>
-                <SelectItem value="created" key="status-created">Created</SelectItem>
-                <SelectItem value="cannot_create" key="status-cannot-create">Cannot Create</SelectItem>
-                <SelectItem value="skipped" key="status-skipped">Skipped</SelectItem>
-              </SelectContent>
-            </Select>
-
             {/* Product Filter */}
             <Select
               value={filters.product.length === 0 ? 'all' : filters.product.join(',')}
@@ -519,31 +499,20 @@ export default function FocusDetailPage() {
               </SelectContent>
             </Select>
 
-            {/* Pipeline Created Filter */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Pipeline:</span>
-              <Button
-                variant={filters.pipeline_created === null ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilters((f) => ({ ...f, pipeline_created: null }))}
-              >
-                All
-              </Button>
-              <Button
-                variant={filters.pipeline_created === true ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilters((f) => ({ ...f, pipeline_created: true }))}
-              >
-                Yes
-              </Button>
-              <Button
-                variant={filters.pipeline_created === false ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilters((f) => ({ ...f, pipeline_created: false }))}
-              >
-                No
-              </Button>
-            </div>
+            {/* Pipeline Filter */}
+            <Select
+              value={filters.pipeline_created === null ? 'all' : filters.pipeline_created ? 'yes' : 'no'}
+              onValueChange={(v) => setFilters((f) => ({ ...f, pipeline_created: v === 'all' ? null : v === 'yes' }))}
+            >
+              <SelectTrigger className="h-9 w-32">
+                <SelectValue placeholder="Pipeline" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="yes">Yes</SelectItem>
+                <SelectItem value="no">No</SelectItem>
+              </SelectContent>
+            </Select>
 
             {/* Quarter Filter */}
             <Select value={filters.quarter || 'all'} onValueChange={(v) => setFilters((f) => ({ ...f, quarter: v === 'all' ? null : v }))}>
@@ -564,7 +533,7 @@ export default function FocusDetailPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setFilters({ pic: null, status: [], product: [], pipeline_created: null, quarter: null })}
+              onClick={() => setFilters({ pic: null, product: [], pipeline_created: null, quarter: null })}
             >
               Clear Filters
             </Button>

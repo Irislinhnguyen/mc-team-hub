@@ -222,7 +222,7 @@ function FocusSuggestionsTable({
                 />
               </TableHead>
               <TableHead className={`w-[6%] ${composedStyles.tableHeader}`}>MID</TableHead>
-              <TableHead className={`w-[8%] ${composedStyles.tableHeader}`}>Media Name</TableHead>
+              <TableHead className={`w-[6%] ${composedStyles.tableHeader}`}>Media Name</TableHead>
               <TableHead className={`w-[7%] ${composedStyles.tableHeader}`}>Product</TableHead>
               <TableHead className={`w-[8%] ${composedStyles.tableHeader}`}>PIC</TableHead>
               <TableHead className={`w-[6%] text-right ${composedStyles.tableHeader}`}>30D Requests</TableHead>
@@ -253,9 +253,9 @@ function FocusSuggestionsTable({
 
                 <TableCell className={`w-[6%] ${composedStyles.tableData}`}>{suggestion.mid}</TableCell>
 
-                <TableCell className={`w-[8%] ${composedStyles.tableData}`}>
+                <TableCell className={`w-[6%] ${composedStyles.tableData}`}>
                   <div className="flex items-center gap-2">
-                    <span className="line-clamp-2 text-sm" title={suggestion.media_name}>
+                    <span className="line-clamp-2 text-xs" title={suggestion.media_name}>
                       {suggestion.media_name || '-'}
                     </span>
                     {suggestion.pipeline_id && (
@@ -397,11 +397,11 @@ function FocusSuggestionsTable({
                   )}
                 </TableCell>
 
-                <TableCell className={`w-[43%] ${composedStyles.tableData}`}>
+                <TableCell className={`w-[45%] ${composedStyles.tableData}`}>
                   {(suggestion as any).global_remark ? (
                     <div className="flex items-start gap-2 group">
                       <div
-                        className="text-sm overflow-y-auto p-3 bg-gray-50 rounded border border-gray-200 min-h-[60px] max-h-[80px] flex-1"
+                        className="text-xs overflow-y-auto p-2 bg-gray-50 rounded border border-gray-200 min-h-[60px] max-h-[100px] flex-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400"
                         title={(suggestion as any).global_remark}
                       >
                         {(suggestion as any).global_remark}
