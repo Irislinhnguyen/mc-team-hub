@@ -5,8 +5,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerUser } from '@/lib/auth/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { authenticateRequest } from '@/lib/auth/api-auth'
 
 // =====================================================
 // POST - Create/update global remark
@@ -14,9 +14,10 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getServerUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Authenticate using custom JWT (same pattern as other APIs)
+    const auth = await authenticateRequest(request)
+    if (!auth.success) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
     }
 
     const body = await request.json()
@@ -29,18 +30,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = await createClient()
-
-    // Get user UUID
-    const { data: userData } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', user.sub)
-      .single()
-
-    if (!userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
+    const supabase = createAdminClient()
 
     // Check if remark already exists
     const { data: existing } = await supabase
@@ -59,7 +49,7 @@ export async function POST(request: NextRequest) {
           remark: remark?.trim() || null,
           cannot_create_reason: cannot_create_reason || null,
           cannot_create_reason_other: cannot_create_reason_other || null,
-          updated_by: userData.id,
+          updated_by: auth.userId,
           updated_at: new Date().toISOString(),
         })
         .eq('id', existing.id)
@@ -78,7 +68,7 @@ export async function POST(request: NextRequest) {
           remark: remark?.trim() || null,
           cannot_create_reason: cannot_create_reason || null,
           cannot_create_reason_other: cannot_create_reason_other || null,
-          updated_by: userData.id,
+          updated_by: auth.userId,
         })
         .select()
         .single()
@@ -106,6 +96,12 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Authenticate using custom JWT (same pattern as other APIs)
+    const auth = await authenticateRequest(request)
+    if (!auth.success) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const mid = searchParams.get('mid')
     const product = searchParams.get('product')
@@ -117,7 +113,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { data, error } = await supabase
       .from('pipeline_remarks')

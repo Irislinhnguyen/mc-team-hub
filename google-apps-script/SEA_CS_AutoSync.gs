@@ -18,8 +18,8 @@
 // ✅ Updated with production domain
 const WEBHOOK_URL = 'https://mc-team-hub.vercel.app/api/pipelines/webhook/sheet-changed'
 
-// DO NOT CHANGE these values
-const WEBHOOK_TOKEN = 'eb0139d0ca52dd571b6ec8852fcd730af34d96abf245e27a6de7285f4c62fdef'
+// DO NOT CHANGE these values - MUST match database
+const WEBHOOK_TOKEN = '73b622d7437e6ef898b1b6e8774535ab45604d3b1a54fb1ef654d28415c57629'
 const SPREADSHEET_ID = '1LGZxn4_pJwsS5LDBgkHT6BDU0E3XQmTsjMnR3ziuYSM'
 const SHEET_NAME = 'SEA_CS'
 const DEBOUNCE_SECONDS = 30 // Wait 30 seconds after last edit before syncing
