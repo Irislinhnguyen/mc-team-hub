@@ -90,6 +90,7 @@ export function EditFocusModal({
       // Call API
       const response = await fetch(`/api/focus-of-month/${focus.id}`, {
         method: 'PATCH',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: formData.title,
