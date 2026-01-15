@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ArrowLeft, CheckCircle, XCircle, Clock, Trash2, ExternalLink, Loader2 } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -117,27 +117,6 @@ export function FocusSuggestionsTable({
     }
   }
 
-  // Handle individual suggestion deletion
-  async function handleDeleteSuggestion(suggestionId: string) {
-    if (!confirm('Delete this suggestion?')) return
-
-    try {
-      const response = await fetch(`/api/focus-of-month/suggestions/${suggestionId}`, {
-        method: 'DELETE',
-      })
-
-      if (response.ok) {
-        onDeleteSuggestion(suggestionId)
-        toast({ title: 'Suggestion deleted successfully' })
-      } else {
-        toast({ title: 'Failed to delete suggestion', variant: 'destructive' })
-      }
-    } catch (error) {
-      console.error('Error deleting suggestion:', error)
-      toast({ title: 'Failed to delete suggestion', variant: 'destructive' })
-    }
-  }
-
   // Handle bulk delete
   async function handleBulkDelete() {
     if (selectedSuggestions.size === 0) return
@@ -208,20 +187,6 @@ export function FocusSuggestionsTable({
     setLoadingPipeline(false)
   }
 
-  // Get status icon
-  function getStatusIcon(status: string | null) {
-    switch (status) {
-      case 'created':
-        return <CheckCircle className="w-4 h-4 text-green-600" />
-      case 'cannot_create':
-        return <XCircle className="w-4 h-4 text-red-600" />
-      case 'skipped':
-        return <Clock className="w-4 h-4 text-gray-600" />
-      default:
-        return <Clock className="w-4 h-4 text-yellow-600" />
-    }
-  }
-
   const quarters = generateQuarters(3)
   const allSelected = suggestions.length > 0 && selectedSuggestions.size === suggestions.length
 
@@ -257,16 +222,14 @@ export function FocusSuggestionsTable({
                 />
               </TableHead>
               <TableHead className={`w-[6%] ${composedStyles.tableHeader}`}>MID</TableHead>
-              <TableHead className={`w-[10%] ${composedStyles.tableHeader}`}>Media Name</TableHead>
+              <TableHead className={`w-[8%] ${composedStyles.tableHeader}`}>Media Name</TableHead>
               <TableHead className={`w-[7%] ${composedStyles.tableHeader}`}>Product</TableHead>
               <TableHead className={`w-[8%] ${composedStyles.tableHeader}`}>PIC</TableHead>
               <TableHead className={`w-[6%] text-right ${composedStyles.tableHeader}`}>30D Requests</TableHead>
               <TableHead className={`w-[7%] ${composedStyles.tableHeader}`}>Pipeline</TableHead>
               <TableHead className={`w-[7%] ${composedStyles.tableHeader}`}>Quarter</TableHead>
               <TableHead className={`w-[10%] text-center ${composedStyles.tableHeader}`}>Cannot Create</TableHead>
-              <TableHead className={`w-[30%] ${composedStyles.tableHeader}`}>Remark</TableHead>
-              <TableHead className={`w-[3%] ${composedStyles.tableHeader}`}>Status</TableHead>
-              <TableHead className={`w-[2%] ${composedStyles.tableHeader}`}>Actions</TableHead>
+              <TableHead className={`w-[43%] ${composedStyles.tableHeader}`}>Remark</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -290,16 +253,16 @@ export function FocusSuggestionsTable({
 
                 <TableCell className={`w-[6%] ${composedStyles.tableData}`}>{suggestion.mid}</TableCell>
 
-                <TableCell className={`w-[10%] ${composedStyles.tableData}`}>
+                <TableCell className={`w-[8%] ${composedStyles.tableData}`}>
                   <div className="flex items-center gap-2">
-                    <span className="truncate" title={suggestion.media_name}>
-                      {truncate(suggestion.media_name, 20)}
+                    <span className="line-clamp-2 text-sm" title={suggestion.media_name}>
+                      {suggestion.media_name || '-'}
                     </span>
                     {suggestion.pipeline_id && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 w-6 p-0"
+                        className="h-6 w-6 p-0 flex-shrink-0"
                         onClick={() => handlePipelineClick(suggestion)}
                       >
                         <ExternalLink className="w-3 h-3" />
@@ -321,20 +284,34 @@ export function FocusSuggestionsTable({
                 </TableCell>
 
                 <TableCell className={`w-[7%] ${composedStyles.tableData}`}>
-                  {suggestion.pipeline_created ? (
-                    <Badge variant="default" className="bg-green-100 text-green-800">Yes</Badge>
-                  ) : (
-                    <span className="text-gray-400">No</span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={suggestion.pipeline_created || false}
+                      onCheckedChange={(checked) => {
+                        onUpdateStatus(suggestion.id, { pipeline_created: checked })
+                      }}
+                    />
+                    {suggestion.pipeline_id && (
+                      <Button
+                        variant="link"
+                        size="sm"
+                        onClick={() => handlePipelineClick(suggestion)}
+                        className="text-blue-600 hover:text-blue-800 p-0 h-auto"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
 
                 <TableCell className="w-[7%]">
                   <Select
                     value={suggestion.quarter || ''}
                     onValueChange={(value) => onUpdateStatus(suggestion.id, { quarter: value })}
+                    disabled={!suggestion.pipeline_created}
                   >
                     <SelectTrigger className="h-8 w-28">
-                      <SelectValue placeholder="Select" />
+                      <SelectValue placeholder={suggestion.pipeline_created ? "Select" : "Locked"} />
                     </SelectTrigger>
                     <SelectContent>
                       {quarters.map((q) => (
@@ -420,11 +397,11 @@ export function FocusSuggestionsTable({
                   )}
                 </TableCell>
 
-                <TableCell className="w-[30%]">
+                <TableCell className={`w-[43%] ${composedStyles.tableData}`}>
                   {(suggestion as any).global_remark ? (
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       <div
-                        className="text-sm overflow-y-auto max-h-16 p-2 bg-gray-50 rounded border border-gray-200"
+                        className="text-sm overflow-y-auto p-3 bg-gray-50 rounded border border-gray-200 min-h-[60px] max-h-[80px]"
                         title={(suggestion as any).global_remark}
                       >
                         {(suggestion as any).global_remark}
@@ -433,7 +410,7 @@ export function FocusSuggestionsTable({
                         variant="ghost"
                         size="sm"
                         onClick={() => openRemarkDialog(suggestion)}
-                        className="h-7 px-2 text-xs"
+                        className="h-8 px-3 text-xs"
                       >
                         Edit
                       </Button>
@@ -443,31 +420,11 @@ export function FocusSuggestionsTable({
                       variant="outline"
                       size="sm"
                       onClick={() => openRemarkDialog(suggestion)}
-                      className="h-8 text-xs"
+                      className="h-9 text-xs"
                     >
                       Add Remark
                     </Button>
                   )}
-                </TableCell>
-
-                <TableCell className="w-[3%]">
-                  <div className="flex items-center gap-2">
-                    {getStatusIcon(suggestion.user_status)}
-                    <span className="text-xs capitalize" style={{ fontSize: typography.sizes.dataPoint }}>
-                      {suggestion.user_status?.replace('_', ' ') || 'pending'}
-                    </span>
-                  </div>
-                </TableCell>
-
-                <TableCell className="w-[2%]">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteSuggestion(suggestion.id)}
-                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
                 </TableCell>
               </TableRow>
             ))}
