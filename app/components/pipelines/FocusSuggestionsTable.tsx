@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, memo } from 'react'
-import { ArrowLeft, ExternalLink, Loader2, CirclePlus, Pencil } from 'lucide-react'
+import { useState } from 'react'
+import { ArrowLeft, ExternalLink, Loader2, CirclePlus, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -472,5 +472,4 @@ function FocusSuggestionsTable({
   )
 }
 
-// Wrap with memo to prevent unnecessary re-renders when typing in dialog
-export default memo(FocusSuggestionsTable)
+export default FocusSuggestionsTable
