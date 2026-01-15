@@ -192,6 +192,11 @@ export interface Pipeline {
   fiscal_quarter: number | null
   group: PipelineGroup // 'sales' or 'cs'
 
+  // Sync fields (required for quarterly workflow)
+  key: string | null
+  quarterly_sheet_id: string | null
+  sheet_row_number: number | null
+
   // ===== MERGED FROM pipeline_deals =====
 
   // Basic Info

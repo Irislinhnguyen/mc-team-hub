@@ -43,11 +43,13 @@ export async function GET(request: NextRequest) {
     const pocTeamMapping = Object.fromEntries(pipelinePocToTeamMap)
 
     // Build team → POCs mapping (reverse direction for efficient filtering)
+    // Use pipeline_poc_name since pipelines have POC names, not BigQuery PIC names
     const teamToPicMapping: Record<string, string[]> = {}
     config.teams.forEach((team: any) => {
       teamToPicMapping[team.team_id] = config.picMappings
         .filter((m: any) => m.team_id === team.team_id)
-        .map((m: any) => m.pic_name)
+        .map((m: any) => m.pipeline_poc_name)
+        .filter((poc: string | null) => poc != null) as string[]
     })
 
     return NextResponse.json({
