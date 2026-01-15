@@ -93,7 +93,7 @@ export function EditFocusModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: formData.title,
-          description: formData.description || null,
+          description: formData.description || '',
           status: formData.status,
         }),
       })
