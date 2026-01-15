@@ -460,7 +460,7 @@ function FocusSuggestionsTable({
             <Button variant="outline" onClick={() => setRemarkDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={saveRemark}>Save Remark</Button>
+            <Button onClick={() => saveRemark()}>Save Remark</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
