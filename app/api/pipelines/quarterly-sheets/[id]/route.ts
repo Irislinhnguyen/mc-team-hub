@@ -1,6 +1,7 @@
 /**
  * Individual Quarterly Sheet API
  *
+ * GET: Get quarterly sheet details
  * PUT: Update quarterly sheet (e.g., pause/resume sync)
  * DELETE: Delete quarterly sheet and all associated pipelines
  */
@@ -16,6 +17,50 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: { persistSession: false }
 })
+
+/**
+ * GET /api/pipelines/quarterly-sheets/[id]
+ *
+ * Get quarterly sheet details for linking to Google Sheets
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { id } = params
+
+    const { data, error } = await supabase
+      .from('quarterly_sheets')
+      .select('id, spreadsheet_id, sheet_name, sheet_url, fiscal_year, fiscal_quarter, group')
+      .eq('id', id)
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Quarterly sheet not found'
+          },
+          { status: 404 }
+        )
+      }
+      throw error
+    }
+
+    return NextResponse.json(data)
+  } catch (error: any) {
+    console.error('[Quarterly Sheets API] GET error:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message
+      },
+      { status: 500 }
+    )
+  }
+}
 
 /**
  * PUT /api/pipelines/quarterly-sheets/[id]
