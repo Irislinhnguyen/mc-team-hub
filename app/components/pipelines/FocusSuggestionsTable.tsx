@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { ArrowLeft, ExternalLink, Loader2 } from 'lucide-react'
+import { useState, useMemo, useTransition, useDeferredValue, startTransition, memo } from 'react'
+import { ArrowLeft, ExternalLink, Loader2, CirclePlus, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -79,7 +79,7 @@ interface FocusSuggestionsTableProps {
   onDeleteSuggestion: (suggestionId: string) => void
 }
 
-export function FocusSuggestionsTable({
+function FocusSuggestionsTable({
   suggestions,
   onUpdateStatus,
   onOpenPipelineDrawer,
@@ -99,6 +99,8 @@ export function FocusSuggestionsTable({
     currentRemark: string | null
   } | null>(null)
   const [remarkText, setRemarkText] = useState('')
+  // Use deferred value for better typing performance
+  const deferredRemarkText = useDeferredValue(remarkText)
 
   // Bulk selection state
   const [selectedSuggestions, setSelectedSuggestions] = useState<Set<string>>(new Set())
@@ -399,9 +401,9 @@ export function FocusSuggestionsTable({
 
                 <TableCell className={`w-[43%] ${composedStyles.tableData}`}>
                   {(suggestion as any).global_remark ? (
-                    <div className="space-y-2">
+                    <div className="flex items-start gap-2 group">
                       <div
-                        className="text-sm overflow-y-auto p-3 bg-gray-50 rounded border border-gray-200 min-h-[60px] max-h-[80px]"
+                        className="text-sm overflow-y-auto p-3 bg-gray-50 rounded border border-gray-200 min-h-[60px] max-h-[80px] flex-1"
                         title={(suggestion as any).global_remark}
                       >
                         {(suggestion as any).global_remark}
@@ -410,19 +412,19 @@ export function FocusSuggestionsTable({
                         variant="ghost"
                         size="sm"
                         onClick={() => openRemarkDialog(suggestion)}
-                        className="h-8 px-3 text-xs"
+                        className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 flex-shrink-0"
                       >
-                        Edit
+                        <Pencil className="w-4 h-4" />
                       </Button>
                     </div>
                   ) : (
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
                       onClick={() => openRemarkDialog(suggestion)}
-                      className="h-9 text-xs"
+                      className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                     >
-                      Add Remark
+                      <CirclePlus className="w-4 h-4" />
                     </Button>
                   )}
                 </TableCell>
@@ -446,7 +448,7 @@ export function FocusSuggestionsTable({
             onChange={(e) => setRemarkText(e.target.value)}
             placeholder="Enter remark..."
             rows={4}
-            className="my-4"
+            className="my-4 resize-none"
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setRemarkDialogOpen(false)}>
@@ -471,3 +473,6 @@ export function FocusSuggestionsTable({
     </div>
   )
 }
+
+// Wrap with memo to prevent unnecessary re-renders when typing in dialog
+export default memo(FocusSuggestionsTable)
