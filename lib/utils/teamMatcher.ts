@@ -282,6 +282,7 @@ export async function getAllPicAssignments(): Promise<Array<{
   pic_name: string
   team_id: string | null
   team_name: string | null
+  pipeline_poc_name: string | null
   updated_at: string | null
   updated_by_email: string | null
 }>> {
@@ -294,6 +295,7 @@ export async function getAllPicAssignments(): Promise<Array<{
       pic_name: mapping.pic_name,
       team_id: mapping.team_id,
       team_name: team?.team_name || mapping.team_id,
+      pipeline_poc_name: mapping.pipeline_poc_name,
       updated_at: mapping.updated_at,
       updated_by_email: mapping.updated_by_email
     }

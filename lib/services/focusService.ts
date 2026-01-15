@@ -167,7 +167,53 @@ export async function listFocuses(
       return { success: false, error: error.message }
     }
 
-    return { success: true, focuses: data }
+    // Calculate stats for each focus
+    const focusIds = data.map((f) => f.id)
+    const focusesWithStats: Focus[] = []
+
+    // Fetch all suggestions for these focuses in a single query
+    if (focusIds.length > 0) {
+      const { data: suggestions } = await supabaseAdmin
+        .from('focus_suggestions')
+        .select('focus_id, user_status, pipeline_created')
+        .in('focus_id', focusIds)
+
+      // Group suggestions by focus_id
+      const suggestionsByFocus = new Map<string, FocusSuggestion[]>()
+      if (suggestions) {
+        for (const suggestion of suggestions) {
+          const focusId = suggestion.focus_id
+          if (!suggestionsByFocus.has(focusId)) {
+            suggestionsByFocus.set(focusId, [])
+          }
+          suggestionsByFocus.get(focusId)!.push(suggestion as FocusSuggestion)
+        }
+      }
+
+      // Add computed stats to each focus
+      for (const focus of data) {
+        const focusSuggestions = suggestionsByFocus.get(focus.id) || []
+        const suggestion_count = focusSuggestions.length
+        const created_count = focusSuggestions.filter(
+          (s) => s.user_status === 'created' || s.pipeline_created
+        ).length
+        const pending_count = focusSuggestions.filter(
+          (s) => !s.user_status || s.user_status === 'pending'
+        ).length
+
+        focusesWithStats.push({
+          ...focus,
+          suggestion_count,
+          created_count,
+          pending_count,
+        })
+      }
+    } else {
+      // No focuses, return empty array
+      return { success: true, focuses: [] }
+    }
+
+    return { success: true, focuses: focusesWithStats }
   } catch (error) {
     console.error('Unexpected error listing focuses:', error)
     return { success: false, error: 'Failed to list focuses' }

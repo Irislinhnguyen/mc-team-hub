@@ -148,6 +148,7 @@ export type Database = {
           mapping_id: string
           team_id: string
           pic_name: string
+          pipeline_poc_name: string | null
           created_at: string
           created_by: string | null
           updated_at: string
@@ -157,6 +158,7 @@ export type Database = {
           mapping_id?: string
           team_id: string
           pic_name: string
+          pipeline_poc_name?: string | null
           created_at?: string
           created_by?: string | null
           updated_at?: string
@@ -166,6 +168,7 @@ export type Database = {
           mapping_id?: string
           team_id?: string
           pic_name?: string
+          pipeline_poc_name?: string | null
           created_at?: string
           created_by?: string | null
           updated_at?: string
