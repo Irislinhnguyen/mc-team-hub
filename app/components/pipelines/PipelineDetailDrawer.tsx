@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { ExternalLink } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
@@ -18,6 +19,12 @@ interface PipelineDetailDrawerProps {
   onClose: () => void
 }
 
+interface QuarterlySheet {
+  spreadsheet_id: string
+  sheet_name: string
+  sheet_url: string
+}
+
 const formatDate = (date: string | null | undefined): string => {
   if (!date) return '—'
   try {
@@ -27,7 +34,57 @@ const formatDate = (date: string | null | undefined): string => {
   }
 }
 
+// Get GID from sheet URL
+function extractGid(sheetUrl: string): string | null {
+  const match = sheetUrl.match(/gid=([0-9]+)/)
+  return match ? match[1] : null
+}
+
 export function PipelineDetailDrawer({ pipeline, open, onClose }: PipelineDetailDrawerProps) {
+  const [quarterlySheet, setQuarterlySheet] = useState<QuarterlySheet | null>(null)
+
+  // Fetch quarterly sheet info when pipeline changes
+  useEffect(() => {
+    if (pipeline?.quarterly_sheet_id) {
+      fetchQuarterlySheet(pipeline.quarterly_sheet_id)
+    }
+  }, [pipeline?.quarterly_sheet_id])
+
+  async function fetchQuarterlySheet(id: string) {
+    try {
+      const response = await fetch(`/api/pipelines/quarterly-sheets/${id}`)
+      if (response.ok) {
+        const data = await response.json()
+        setQuarterlySheet({
+          spreadsheet_id: data.spreadsheet_id,
+          sheet_name: data.sheet_name,
+          sheet_url: data.sheet_url,
+        })
+      }
+    } catch (error) {
+      console.error('Failed to fetch quarterly sheet:', error)
+    }
+  }
+
+  // Generate direct-to-row Google Sheet URL
+  const getSheetRowUrl = (): string | null => {
+    if (!pipeline.sheet_row_number || !quarterlySheet) return null
+
+    const { spreadsheet_id, sheet_url } = quarterlySheet
+    const gid = extractGid(sheet_url)
+    const row = pipeline.sheet_row_number
+
+    if (!gid) return null
+
+    // URL format: https://docs.google.com/spreadsheets/d/[ID]/edit#gid=[GID]&range=[ROW]:[ROW]
+    return `https://docs.google.com/spreadsheets/d/${spreadsheet_id}/edit#gid=${gid}&range=${row}:${row}`
+  }
+
+  const sheetRowUrl = getSheetRowUrl()
+  const buttonText = sheetRowUrl
+    ? `Edit in Google Sheets (Row ${pipeline.sheet_row_number})`
+    : 'Edit in Google Sheets'
+
   if (!pipeline) return null
 
   // Only handle CS pipelines for now - Sales coming later
@@ -111,15 +168,21 @@ export function PipelineDetailDrawer({ pipeline, open, onClose }: PipelineDetail
                 variant="default"
                 className="flex-1 bg-[#1565C0] hover:bg-[#0D47A1]"
                 onClick={() => {
-                  window.open('/pipelines/sheet-config', '_blank')
+                  if (sheetRowUrl) {
+                    window.open(sheetRowUrl, '_blank')
+                  } else {
+                    window.open('/pipelines/sheet-config', '_blank')
+                  }
                 }}
               >
                 <ExternalLink className="mr-2 h-4 w-4" />
-                Edit in Google Sheets
+                {buttonText}
               </Button>
             </div>
             <p className="text-xs text-center text-muted-foreground mt-2">
-              Pipelines are managed via Google Sheets. Changes sync automatically.
+              {sheetRowUrl
+                ? `Opening Row ${pipeline.sheet_row_number} in Google Sheets. Changes sync automatically.`
+                : 'Pipelines are managed via Google Sheets. Changes sync automatically.'}
             </p>
           </TabsContent>
 

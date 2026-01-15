@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { AnalyticsSidebar } from '../../components/performance-tracker/AnalyticsSidebar'
 import { CrossFilterProvider } from '../../contexts/CrossFilterContext'
-import { SidebarProvider, SidebarInset, useSidebar } from '@/components/ui/sidebar'
+import { SidebarProvider, SidebarInset, SidebarRail, useSidebar } from '@/components/ui/sidebar'
 import { useIsMobile } from '../../hooks/use-mobile'
 import { cn } from '@/lib/utils'
 
@@ -56,6 +56,7 @@ export default function AnalyticsLayout({ children }: { children: React.ReactNod
           }
         `}</style>
         <AnalyticsSidebar />
+        <SidebarRail />
         <AnalyticsContent>{children}</AnalyticsContent>
       </SidebarProvider>
     </CrossFilterProvider>

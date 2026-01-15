@@ -2,7 +2,7 @@
 
 import { PipelinesSidebar } from '../../components/pipelines/PipelinesSidebar'
 import { PipelineProvider } from '../../contexts/PipelineContext'
-import { SidebarProvider, SidebarInset, useSidebar } from '@/components/ui/sidebar'
+import { SidebarProvider, SidebarInset, SidebarRail, useSidebar } from '@/components/ui/sidebar'
 import { useIsMobile } from '../../hooks/use-mobile'
 import { cn } from '@/lib/utils'
 
@@ -41,6 +41,7 @@ export default function PipelinesLayout({ children }: { children: React.ReactNod
           }
         `}</style>
         <PipelinesSidebar />
+        <SidebarRail />
         <PipelinesContent>{children}</PipelinesContent>
       </SidebarProvider>
     </PipelineProvider>

@@ -2,7 +2,7 @@
 
 import { GCPPCheckSidebar } from '../../components/gcpp-check/GCPPCheckSidebar'
 import { CrossFilterProvider } from '../../contexts/CrossFilterContext'
-import { SidebarProvider, SidebarInset, useSidebar } from '@/components/ui/sidebar'
+import { SidebarProvider, SidebarInset, SidebarRail, useSidebar } from '@/components/ui/sidebar'
 import { useIsMobile } from '../../hooks/use-mobile'
 import { cn } from '@/lib/utils'
 
@@ -49,6 +49,7 @@ export default function GCPPCheckLayout({
           }
         `}</style>
         <GCPPCheckSidebar />
+        <SidebarRail />
         <GCPPContent>{children}</GCPPContent>
       </SidebarProvider>
     </CrossFilterProvider>
