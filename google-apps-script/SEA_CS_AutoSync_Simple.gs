@@ -13,7 +13,7 @@ const SHEET_NAME = 'SEA_CS'
 const DEBOUNCE_SECONDS = 30
 
 /**
- * Main edit handler - calls sync directly with debounce
+ * Main edit handler - calls sync directly with debounce + lock
  */
 function onEdit(e) {
   try {
@@ -26,22 +26,36 @@ function onEdit(e) {
     const row = e.range.getRow()
     Logger.log('Row ' + row + ' edited in ' + SHEET_NAME)
 
-    // Check debounce - don't sync if recently synced
-    const props = PropertiesService.getScriptProperties()
-    const lastSyncTime = props.getProperty('lastSyncTime')
-    const now = new Date().getTime()
+    // Try to acquire lock - prevents concurrent syncs
+    const lock = LockService.getScriptLock()
 
-    if (lastSyncTime && (now - parseInt(lastSyncTime)) < DEBOUNCE_SECONDS * 1000) {
-      Logger.log('Debounced - sync already ran ' + DEBOUNCE_SECONDS + 's ago')
-      return
+    try {
+      const lockAcquired = lock.tryLock(10000) // Wait up to 10s
+
+      if (!lockAcquired) {
+        Logger.log('Sync in progress, skipping...')
+        return
+      }
+
+      // Check debounce - don't sync if recently synced
+      const props = PropertiesService.getScriptProperties()
+      const lastSyncTime = props.getProperty('lastSyncTime')
+      const now = new Date().getTime()
+
+      if (lastSyncTime && (now - parseInt(lastSyncTime)) < DEBOUNCE_SECONDS * 1000) {
+        Logger.log('Debounced - sync recently completed')
+        return
+      }
+
+      // Update last sync time and trigger sync
+      props.setProperty('lastSyncTime', now.toString())
+      Logger.log('Triggering sync...')
+
+      triggerSync()
+
+    } finally {
+      lock.releaseLock()
     }
-
-    // Update last sync time
-    props.setProperty('lastSyncTime', now.toString())
-    Logger.log('Triggering sync...')
-
-    // Call sync directly
-    triggerSync()
 
   } catch (error) {
     Logger.log('❌ Error in onEdit: ' + error.message)

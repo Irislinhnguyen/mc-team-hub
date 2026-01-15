@@ -554,6 +554,18 @@ export default function FocusDetailPage() {
             onUpdateStatus={updateSuggestionStatus}
             onOpenPipelineDrawer={handleOpenPipelineDrawer}
             onDeleteSuggestion={handleDeleteSuggestion}
+            onDeleteSuccess={(deletedIds) => {
+              setSuggestions((prev) => prev.filter((s) => !deletedIds.includes(s.id)))
+            }}
+            onRemarkUpdate={(mid, product, newRemark) => {
+              setSuggestions((prev) =>
+                prev.map((s) =>
+                  s.mid === mid && s.product === product
+                    ? { ...s, global_remark: newRemark }
+                    : s
+                )
+              )
+            }}
           />
         )}
         {activeTab === 'Dashboard' && <DashboardTab focusId={focusId} />}

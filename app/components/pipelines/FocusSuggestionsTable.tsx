@@ -77,6 +77,8 @@ interface FocusSuggestionsTableProps {
   ) => void
   onOpenPipelineDrawer: (pipelineId: string) => void
   onDeleteSuggestion: (suggestionId: string) => void
+  onDeleteSuccess?: (deletedIds: string[]) => void
+  onRemarkUpdate?: (mid: string, product: string, newRemark: string) => void
 }
 
 function FocusSuggestionsTable({
@@ -84,6 +86,8 @@ function FocusSuggestionsTable({
   onUpdateStatus,
   onOpenPipelineDrawer,
   onDeleteSuggestion,
+  onDeleteSuccess,
+  onRemarkUpdate,
 }: FocusSuggestionsTableProps) {
   const { toast } = useToast()
 
@@ -131,7 +135,9 @@ function FocusSuggestionsTable({
         )
       )
 
-      // Refresh will happen through parent
+      // Notify parent to update state
+      const deletedIds = Array.from(selectedSuggestions)
+      onDeleteSuccess?.(deletedIds)
       setSelectedSuggestions(new Set())
       toast({ title: 'Deleted successfully' })
     } catch (error) {
@@ -176,7 +182,12 @@ function FocusSuggestionsTable({
     if (response.ok) {
       toast({ title: 'Remark saved successfully' })
       setRemarkDialogOpen(false)
-      window.location.reload() // Reload to get updated remarks
+      // Notify parent to update state instead of reloading
+      onRemarkUpdate?.(
+        selectedPipelineForRemark.mid,
+        selectedPipelineForRemark.product,
+        remarkValue
+      )
     } else {
       toast({ title: 'Failed to save remark', variant: 'destructive' })
     }
