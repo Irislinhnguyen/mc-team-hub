@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useTransition, useDeferredValue, startTransition, memo } from 'react'
+import { useState, memo } from 'react'
 import { ArrowLeft, ExternalLink, Loader2, CirclePlus, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -99,8 +99,6 @@ function FocusSuggestionsTable({
     currentRemark: string | null
   } | null>(null)
   const [remarkText, setRemarkText] = useState('')
-  // Use deferred value for better typing performance
-  const deferredRemarkText = useDeferredValue(remarkText)
 
   // Bulk selection state
   const [selectedSuggestions, setSelectedSuggestions] = useState<Set<string>>(new Set())
