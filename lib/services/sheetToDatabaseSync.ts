@@ -365,7 +365,8 @@ function parseSheetRows(
   userId: string,
   group: 'sales' | 'cs',
   quarterlySheetId: string,
-  fiscalYear: number
+  fiscalYear: number,
+  fiscalQuarter: number
 ): PipelineRow[] {
   const pipelines: PipelineRow[] = []
 
@@ -399,8 +400,8 @@ function parseSheetRows(
 
       // CRITICAL: Set fiscal_quarter and fiscal_year from quarterly sheet metadata
       // This ensures pipelines are correctly filtered by quarter in the UI
-      sanitizedPipeline.fiscal_quarter = sanitizedQuarterlySheet.quarter
-      sanitizedPipeline.fiscal_year = sanitizedQuarterlySheet.year
+      sanitizedPipeline.fiscal_quarter = fiscalQuarter
+      sanitizedPipeline.fiscal_year = fiscalYear
 
       // Ensure key is set from Column A (sanitize it!)
       if (!sanitizedPipeline.key) {
@@ -505,7 +506,8 @@ export async function syncQuarterlySheet(
       userId,
       sanitizedQuarterlySheet.group,
       quarterlySheetId,
-      sanitizedQuarterlySheet.year
+      sanitizedQuarterlySheet.year,
+      sanitizedQuarterlySheet.quarter
     )
 
     // CRITICAL FIX: Sanitize ALL sheet pipelines to remove control characters
