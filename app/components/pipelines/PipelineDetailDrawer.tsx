@@ -66,6 +66,8 @@ export function PipelineDetailDrawer({ pipeline, open, onClose }: PipelineDetail
     }
   }
 
+  if (!pipeline) return null
+
   // Generate direct-to-row Google Sheet URL
   const getSheetRowUrl = (): string | null => {
     if (!pipeline.sheet_row_number || !quarterlySheet) return null
@@ -84,8 +86,6 @@ export function PipelineDetailDrawer({ pipeline, open, onClose }: PipelineDetail
   const buttonText = sheetRowUrl
     ? `Edit in Google Sheets (Row ${pipeline.sheet_row_number})`
     : 'Edit in Google Sheets'
-
-  if (!pipeline) return null
 
   // Only handle CS pipelines for now - Sales coming later
   if (pipeline.group !== 'cs') {
