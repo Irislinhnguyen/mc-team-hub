@@ -52,17 +52,24 @@ export function PipelineDetailDrawer({ pipeline, open, onClose }: PipelineDetail
 
   async function fetchQuarterlySheet(id: string) {
     try {
+      console.log('[PipelineDetailDrawer] Fetching quarterly sheet:', id)
       const response = await fetch(`/api/pipelines/quarterly-sheets/${id}`)
+      console.log('[PipelineDetailDrawer] Response status:', response.status)
+
       if (response.ok) {
         const data = await response.json()
+        console.log('[PipelineDetailDrawer] Quarterly sheet data:', data)
         setQuarterlySheet({
           spreadsheet_id: data.spreadsheet_id,
           sheet_name: data.sheet_name,
           sheet_url: data.sheet_url,
         })
+      } else {
+        const errorText = await response.text()
+        console.error('[PipelineDetailDrawer] API error:', response.status, errorText)
       }
     } catch (error) {
-      console.error('Failed to fetch quarterly sheet:', error)
+      console.error('[PipelineDetailDrawer] Failed to fetch quarterly sheet:', error)
     }
   }
 
@@ -70,22 +77,29 @@ export function PipelineDetailDrawer({ pipeline, open, onClose }: PipelineDetail
 
   // Generate direct-to-row Google Sheet URL
   const getSheetRowUrl = (): string | null => {
+    console.log('[PipelineDetailDrawer] getSheetRowUrl - sheet_row_number:', pipeline.sheet_row_number, 'quarterlySheet:', quarterlySheet)
     if (!pipeline.sheet_row_number || !quarterlySheet) return null
 
     const { spreadsheet_id, sheet_url } = quarterlySheet
     const gid = extractGid(sheet_url)
     const row = pipeline.sheet_row_number
 
+    console.log('[PipelineDetailDrawer] Extracted GID:', gid, 'row:', row)
+
     if (!gid) return null
 
     // URL format: https://docs.google.com/spreadsheets/d/[ID]/edit#gid=[GID]&range=[ROW]:[ROW]
-    return `https://docs.google.com/spreadsheets/d/${spreadsheet_id}/edit#gid=${gid}&range=${row}:${row}`
+    const url = `https://docs.google.com/spreadsheets/d/${spreadsheet_id}/edit#gid=${gid}&range=${row}:${row}`
+    console.log('[PipelineDetailDrawer] Generated URL:', url)
+    return url
   }
 
   const sheetRowUrl = getSheetRowUrl()
   const buttonText = sheetRowUrl
     ? `Edit in Google Sheets (Row ${pipeline.sheet_row_number})`
     : 'Edit in Google Sheets'
+
+  console.log('[PipelineDetailDrawer] Render - sheetRowUrl:', sheetRowUrl, 'buttonText:', buttonText)
 
   // Only handle CS pipelines for now - Sales coming later
   if (pipeline.group !== 'cs') {

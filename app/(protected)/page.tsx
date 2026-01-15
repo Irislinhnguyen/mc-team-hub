@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { LineChart, Shield, GitBranch, BookOpen, Trophy, Newspaper, Heart, Wrench } from 'lucide-react'
+import { LineChart, Shield, GitBranch, BookOpen, Trophy, Wrench } from 'lucide-react'
 import { ProductCard } from '../components/home/ProductCard'
 import { Header } from '../components/layout/Header'
 import { useAuth } from '../contexts/AuthContext'
@@ -150,21 +150,6 @@ export default function HomePage() {
               onClick={() => router.push('/challenges')}
             />
 
-            <ProductCard
-              title="Industry Update"
-              description="Latest industry trends, news, and market insights"
-              icon={<Newspaper className="h-full w-full" />}
-              status="developing"
-              onClick={null}
-            />
-
-            <ProductCard
-              title="MC Story"
-              description="Share your journey and memories with the team - building our collective memory hall"
-              icon={<Heart className="h-full w-full" />}
-              status="developing"
-              onClick={null}
-            />
           </div>
 
           {/* Footer Info */}
