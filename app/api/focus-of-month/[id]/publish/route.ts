@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerUser } from '@/lib/auth/server'
+import { getServerUser, canManageFocus } from '@/lib/auth/server'
 import { publishFocus } from '@/lib/services/focusService'
 
 export async function POST(
@@ -15,6 +15,14 @@ export async function POST(
     const user = await getServerUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check if user can manage Focus of the Month (Leader/Manager/Admin)
+    if (!canManageFocus(user)) {
+      return NextResponse.json(
+        { status: 'error', message: 'Forbidden: Insufficient permissions to publish focuses' },
+        { status: 403 }
+      )
     }
 
     const focusId = params.id

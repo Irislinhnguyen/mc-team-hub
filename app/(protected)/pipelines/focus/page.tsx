@@ -3,6 +3,10 @@
 /**
  * Focus of the Month - List Page
  * Displays all focuses with filters and search
+ *
+ * Access Control:
+ * - User: Can only see published focuses
+ * - Leader/Manager/Admin: Can see all focuses + create/edit/delete
  */
 
 import { useState, useEffect } from 'react'
@@ -18,8 +22,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { CreateFocusModal } from '@/app/components/pipelines/CreateFocusModal'
+import { FocusCardSkeleton } from '@/app/components/pipelines/skeletons'
+import { PipelinePageLayout } from '@/app/components/pipelines/PipelinePageLayout'
+import { useAuth } from '@/app/contexts/AuthContext'
 import type { Focus } from '@/lib/types/focus'
 import { typography, spacing, colors, composedStyles } from '@/lib/design-tokens'
+import { colors as statusColors } from '@/lib/colors'
 
 const TEAMS = [
   { id: 'WEB_GTI', name: 'Web GTI' },
@@ -42,11 +50,25 @@ const MONTHS = [
   'December',
 ]
 
+function FocusPageSkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <FocusCardSkeleton key={i} />
+      ))}
+    </div>
+  )
+}
+
 export default function FocusOfMonthPage() {
+  const { user } = useAuth()
   const [focuses, setFocuses] = useState<Focus[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [createModalOpen, setCreateModalOpen] = useState(false)
+
+  // Check if user can manage focuses (Leader/Manager/Admin)
+  const canManage = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'leader'
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('')
@@ -54,7 +76,7 @@ export default function FocusOfMonthPage() {
   const [filterYear, setFilterYear] = useState<string>('all')
   const [filterTeam, setFilterTeam] = useState<string>('all')
   const [filterGroup, setFilterGroup] = useState<string>('all')
-  const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [filterStatus, setFilterStatus] = useState<string>(canManage ? 'all' : 'published')
 
   // Load focuses
   useEffect(() => {
@@ -95,23 +117,18 @@ export default function FocusOfMonthPage() {
   const years = [currentYear, currentYear - 1, currentYear - 2]
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 style={{ fontSize: typography.sizes.pageTitle }} className={composedStyles.pageTitle}>
-            Focus of the Month
-          </h1>
-          <p className={`text-sm ${colors.text.muted} mt-1`}>
-            Monthly pipeline suggestions and progress tracking
-          </p>
-        </div>
-        <Button onClick={() => setCreateModalOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create New Focus
-        </Button>
-      </div>
-
+    <PipelinePageLayout
+      title="Focus of the Month"
+      subtitle="Monthly pipeline suggestions and progress tracking"
+      headerActions={
+        canManage ? (
+          <Button onClick={() => setCreateModalOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create New Focus
+          </Button>
+        ) : null
+      }
+    >
       {/* Filters */}
       <div className={`${colors.background.card} rounded-lg border ${spacing.cardPadding}`}>
         <div className="flex items-center gap-2 mb-4">
@@ -181,26 +198,26 @@ export default function FocusOfMonthPage() {
             </SelectContent>
           </Select>
 
-          {/* Status */}
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger>
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" key="filter-status-all">All Status</SelectItem>
-              <SelectItem value="draft" key="filter-status-draft">Draft</SelectItem>
-              <SelectItem value="published" key="filter-status-published">Published</SelectItem>
-              <SelectItem value="archived" key="filter-status-archived">Archived</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Status - only shown for users who can manage focuses */}
+          {canManage ? (
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger>
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" key="filter-status-all">All Status</SelectItem>
+                <SelectItem value="draft" key="filter-status-draft">Draft</SelectItem>
+                <SelectItem value="published" key="filter-status-published">Published</SelectItem>
+                <SelectItem value="archived" key="filter-status-archived">Archived</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : null}
         </div>
       </div>
 
       {/* Content */}
       {loading ? (
-        <div className="text-center py-12">
-          <p className={colors.text.muted}>Loading focuses...</p>
-        </div>
+        <FocusPageSkeleton />
       ) : error ? (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-red-600">{error}</p>
@@ -227,7 +244,7 @@ export default function FocusOfMonthPage() {
         onOpenChange={setCreateModalOpen}
         onSuccess={loadFocuses}
       />
-    </div>
+    </PipelinePageLayout>
   )
 }
 
@@ -236,7 +253,7 @@ function FocusCard({ focus }: { focus: Focus }) {
   const monthName = MONTHS[focus.focus_month - 1]
   const teamName = TEAMS.find((t) => t.id === focus.team_id)?.name || 'All Teams'
 
-  const statusColors = {
+  const badgeColors = {
     draft: 'bg-slate-100 text-slate-700',
     published: 'bg-blue-600 text-white',
     archived: 'bg-slate-100 text-slate-700',
@@ -257,7 +274,7 @@ function FocusCard({ focus }: { focus: Focus }) {
         </div>
         <span
           className={`px-2 py-0.5 rounded text-xs font-medium ${
-            statusColors[focus.status]
+            badgeColors[focus.status]
           }`}
         >
           {focus.status}
@@ -278,7 +295,7 @@ function FocusCard({ focus }: { focus: Focus }) {
           <p className={`text-xs ${colors.text.muted}`}>Total</p>
         </div>
         <div>
-          <p className="text-lg font-semibold text-green-600">
+          <p className="text-lg font-semibold" style={{ color: statusColors.status.success }}>
             {focus.created_count || 0}
           </p>
           <p className={`text-xs ${colors.text.muted}`}>Created</p>

@@ -8,7 +8,6 @@
 
 import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
 import { usePipeline } from '@/app/contexts/PipelineContext'
 import { usePipelines } from '@/lib/hooks/queries/usePipelines'
@@ -20,7 +19,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { Home, RefreshCw, Settings } from 'lucide-react'
+import { RefreshCw, Settings } from 'lucide-react'
 import type { Pipeline, PipelineGroup } from '@/lib/types/pipeline'
 import {
   POC_NAMES,
@@ -51,9 +50,69 @@ import { PipelineImpactTable } from '@/app/components/pipelines/PipelineImpactTa
 import { PipelineReportCard } from '@/app/components/pipelines/PipelineReportCard'
 import { FilterPanel } from '@/app/components/pipelines/FilterPanel'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { colors as statusColors } from '@/lib/colors'
 import { formatDateShort } from '@/lib/utils/dateHelpers'
 import { daysBetween } from '@/lib/utils/dateHelpers'
 import { getQuarterFromDate, isDateInQuarter } from '@/lib/utils/quarterHelpers'
+
+function PipelinesPageSkeleton() {
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: '#f9fafb' }}>
+      {/* Header Skeleton */}
+      <div className="bg-white border-b border-gray-200 sticky top-0" style={{ padding: '16px 24px', zIndex: 60 }}>
+        <div className="container mx-auto">
+          <div className="flex items-center justify-between gap-4">
+            <Skeleton className="h-8 w-48" />
+            <div className="flex-1 flex justify-center">
+              <Skeleton className="h-10 w-64" />
+            </div>
+            <Skeleton className="h-9 w-32" />
+          </div>
+        </div>
+      </div>
+
+      {/* Content Area */}
+      <div className="container mx-auto py-8 space-y-6">
+        {/* Filters Skeleton */}
+        <PipelineFilterPanelSkeleton />
+
+        {/* Stats Cards Skeleton */}
+        <div className="mb-8">
+          <div className="grid gap-4 md:grid-cols-4">
+            <PipelineStatsCardsSkeleton />
+          </div>
+        </div>
+
+        {/* Revenue Forecast Skeleton */}
+        <div className="mb-8">
+          <RevenueForecastTableSkeleton />
+        </div>
+
+        {/* Kanban Board Skeleton */}
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-[#1565C0] mb-4">Pipeline Board</h2>
+          <KanbanBoardSkeleton />
+        </div>
+
+        {/* Action Items Skeleton */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-[#1565C0] mb-4">Action Items</h2>
+          <div className="mb-6">
+            <ActionItemsTableSkeleton />
+          </div>
+          <SConfirmationTableSkeleton />
+          <div className="mt-6">
+            <MissingPidMidTableSkeleton />
+          </div>
+          <div className="mt-6">
+            <PipelineImpactTableSkeleton />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function PipelinesPageContent() {
   const router = useRouter()
@@ -87,6 +146,9 @@ function PipelinesPageContent() {
   // Get most recent quarterly sheet for default filter instead of current quarter
   const [filterYear, setFilterYear] = useState<number>(2025)  // Fallback defaults
   const [filterQuarter, setFilterQuarter] = useState<number>(4)  // Fallback defaults
+
+  // Refresh state
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Fetch most recent quarterly sheet for default filter
   useEffect(() => {
@@ -344,13 +406,26 @@ function PipelinesPageContent() {
   }
 
   // Handle refresh data - Invalidate cache and refetch
-  const handleRefreshData = () => {
-    queryClient.invalidateQueries({ queryKey: ['pipelines'] })
-    refetch()
-    toast({
-      title: 'Data refreshed',
-      description: 'Pipeline data has been reloaded from the database.',
-    })
+  const handleRefreshData = async () => {
+    setIsRefreshing(true)
+    try {
+      // Invalidate and refetch
+      await queryClient.invalidateQueries({ queryKey: ['pipelines'] })
+      await refetch()
+      toast({
+        title: 'Data refreshed',
+        description: 'Pipeline data has been reloaded from the database.',
+      })
+    } catch (error) {
+      console.error('Failed to refresh data:', error)
+      toast({
+        title: 'Refresh failed',
+        description: 'Failed to reload pipeline data. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsRefreshing(false)
+    }
   }
 
   // Format currency
@@ -365,74 +440,74 @@ function PipelinesPageContent() {
   }
 
   return (
-    <div className="container mx-auto py-8">
-      {/* Header */}
-      <div className="border-b pb-6 mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/">
-              <Button variant="ghost" size="icon" className="hover:bg-blue-50">
-                <Home className="h-5 w-5 text-[#1565C0]" />
-              </Button>
-            </Link>
+    <div className="min-h-screen" style={{ backgroundColor: '#f9fafb' }}>
+      {/* Sticky Header */}
+      <div className="bg-white border-b border-gray-200 sticky top-0" style={{ padding: '16px 24px', zIndex: 60 }}>
+        <div className="container mx-auto">
+          <div className="flex items-center justify-between gap-4">
+            {/* Left Section - Title */}
             <h1 className="text-2xl font-bold text-[#1565C0]">Sales Pipelines</h1>
-          </div>
 
-          <div className="flex-1 flex justify-center">
-            <GroupTabs
-              activeGroup={activeGroup}
-              onGroupChange={handleGroupChange}
-              salesCount={salesCount}
-              csCount={csCount}
-            />
-          </div>
+            {/* Center Section - Group Tabs */}
+            <div className="flex-1 flex justify-center">
+              <GroupTabs
+                activeGroup={activeGroup}
+                onGroupChange={handleGroupChange}
+                salesCount={salesCount}
+                csCount={csCount}
+              />
+            </div>
 
-          <div className="flex gap-2">
-            {/* Refresh Data Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefreshData}
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh Data
-            </Button>
+            {/* Right Section - Refresh Button */}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefreshData}
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Error Display */}
-      {error && (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-red-800">{error instanceof Error ? error.message : String(error)}</p>
-            <Button variant="ghost" size="sm" onClick={clearError}>
-              Dismiss
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Loading State or Content */}
-      {pipelinesLoading ? (
-        <div className="space-y-6">
-          {/* Filters Skeleton */}
-          <PipelineFilterPanelSkeleton />
-
-          {/* Stats Cards Skeleton */}
-          <div className="mb-8">
-            <div className="grid gap-4 md:grid-cols-4">
-              <PipelineStatsCardsSkeleton />
+      {/* Content Area */}
+      <div className="container mx-auto py-8">
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-red-800">{error instanceof Error ? error.message : String(error)}</p>
+              <Button variant="ghost" size="sm" onClick={clearError}>
+                Dismiss
+              </Button>
             </div>
           </div>
+        )}
 
-          {/* Revenue Forecast Skeleton */}
-          <div className="mb-8">
-            <RevenueForecastTableSkeleton />
-          </div>
+        {/* Loading State or Content */}
+        {pipelinesLoading ? (
+          <div className="space-y-6">
+            {/* Filters Skeleton */}
+            <PipelineFilterPanelSkeleton />
 
-          {/* Kanban Board Skeleton */}
-          <div className="mb-8">
+            {/* Stats Cards Skeleton */}
+            <div className="mb-8">
+              <div className="grid gap-4 md:grid-cols-4">
+                <PipelineStatsCardsSkeleton />
+              </div>
+            </div>
+
+            {/* Revenue Forecast Skeleton */}
+            <div className="mb-8">
+              <RevenueForecastTableSkeleton />
+            </div>
+
+            {/* Kanban Board Skeleton */}
+            <div className="mb-8">
             <h2 className="text-lg font-semibold text-[#1565C0] mb-4">Pipeline Board</h2>
             <KanbanBoardSkeleton />
           </div>
@@ -617,7 +692,7 @@ function PipelinesPageContent() {
                     label: 'Overdue',
                     align: 'right',
                     format: (value) => (
-                      <span className="font-bold text-red-600">{value}d</span>
+                      <span className="font-bold" style={{ color: statusColors.status.danger }}>{value}d</span>
                     )
                   }
                 ]}
@@ -657,7 +732,10 @@ function PipelinesPageContent() {
                     label: 'In',
                     align: 'right',
                     format: (value) => (
-                      <span className={`font-bold ${value <= 3 ? 'text-red-600' : 'text-gray-900'}`}>
+                      <span
+                        className="font-bold"
+                        style={{ color: value <= 3 ? statusColors.status.danger : undefined }}
+                      >
                         {value}d
                       </span>
                     )
@@ -712,6 +790,7 @@ function PipelinesPageContent() {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
       />
+      </div>
     </div>
   )
 }
@@ -719,7 +798,7 @@ function PipelinesPageContent() {
 // Wrapper with Suspense for useSearchParams
 function PipelinesPageWrapper() {
   return (
-    <Suspense fallback={<div className="container mx-auto py-8">Loading...</div>}>
+    <Suspense fallback={<PipelinesPageSkeleton />}>
       <PipelinesPageContent />
     </Suspense>
   )

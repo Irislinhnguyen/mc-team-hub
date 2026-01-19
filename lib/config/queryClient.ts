@@ -44,15 +44,31 @@ export const queryClient = new QueryClient({
  * Usage:
  * useQuery({ queryKey: queryKeys.businessHealth(filters), ... })
  */
+/**
+ * Serialize filters for stable query keys
+ * Ensures React Query detects changes in filter objects
+ */
+function serializeFilters(filters: Record<string, any>): string {
+  // Sort keys and serialize to ensure consistent string representation
+  const sortedKeys = Object.keys(filters).sort()
+  const serialized = sortedKeys.map(key => {
+    const value = filters[key]
+    if (value === null || value === undefined) return `${key}:null`
+    if (typeof value === 'object') return `${key}:${JSON.stringify(value)}`
+    return `${key}:${String(value)}`
+  }).join('|')
+  return serialized
+}
+
 export const queryKeys = {
-  // Analytics pages
-  businessHealth: (filters: Record<string, any>) => ['analytics', 'business-health', filters] as const,
-  dailyOps: (filters: Record<string, any>) => ['analytics', 'daily-ops', filters] as const,
-  profitProjections: (filters: Record<string, any>) => ['analytics', 'profit-projections', filters] as const,
-  newSales: (filters: Record<string, any>) => ['analytics', 'new-sales', filters] as const,
-  deepDive: (filters: Record<string, any>) => ['analytics', 'deep-dive', filters] as const,
-  publisherHealth: (filters: Record<string, any>) => ['analytics', 'publisher-health', filters] as const,
-  salesTracking: (filters: Record<string, any>) => ['analytics', 'sales-tracking', filters] as const,
+  // Analytics pages - use serialized filters for stable cache keys
+  businessHealth: (filters: Record<string, any>) => ['analytics', 'business-health', serializeFilters(filters)] as const,
+  dailyOps: (filters: Record<string, any>) => ['analytics', 'daily-ops', serializeFilters(filters)] as const,
+  profitProjections: (filters: Record<string, any>) => ['analytics', 'profit-projections', serializeFilters(filters)] as const,
+  newSales: (filters: Record<string, any>) => ['analytics', 'new-sales', serializeFilters(filters)] as const,
+  deepDive: (filters: Record<string, any>) => ['analytics', 'deep-dive', serializeFilters(filters)] as const,
+  publisherHealth: (filters: Record<string, any>) => ['analytics', 'publisher-health', serializeFilters(filters)] as const,
+  salesTracking: (filters: Record<string, any>) => ['analytics', 'sales-tracking', serializeFilters(filters)] as const,
 
   // GCPP Check pages
   gcppMarketOverview: (filters: Record<string, any>) => ['gcpp', 'market-overview', filters] as const,

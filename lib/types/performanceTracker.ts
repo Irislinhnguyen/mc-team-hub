@@ -209,6 +209,7 @@ export const FIELD_OPERATORS: Record<FilterField, FilterOperator[]> = {
   domain_app_id: ['equals', 'in', 'contains', 'is_null', 'is_not_null'],
   app_name: ['equals', 'in', 'contains', 'starts_with', 'regex_match', 'is_null', 'is_not_null'],
   pub_size_category: ['equals', 'in', 'is_null', 'is_not_null'],
+  category: ['equals', 'in', 'is_null', 'is_not_null'],
   scenario: ['equals', 'in', 'is_null', 'is_not_null'],
   performance: ['equals', 'in', 'is_null', 'is_not_null']
 }
@@ -245,6 +246,7 @@ export const FIELD_DATA_TYPES: Record<FilterField, FilterDataType> = {
   domain_app_id: 'string',
   app_name: 'string',
   pub_size_category: 'string',
+  category: 'string',
   scenario: 'string',
   performance: 'string'
 }
@@ -282,4 +284,45 @@ export const OPERATOR_LABELS: Record<FilterOperator, string> = {
  */
 export function isEntityOperator(operator: FilterOperator): boolean {
   return ['has', 'does_not_have', 'only_has', 'has_all', 'has_any'].includes(operator)
+}
+
+/**
+ * Metric Filter Types
+ * These types support filtering by aggregated metrics using HAVING clause
+ */
+
+/**
+ * Metric field names for aggregated metric filtering (HAVING clause)
+ */
+export type MetricField =
+  | 'revenue'      // SUM(rev)
+  | 'profit'       // SUM(profit)
+  | 'requests'     // SUM(req)
+  | 'paid'         // SUM(paid)
+  | 'ecpm'         // AVG(request_CPM)
+  | 'fill_rate'    // (SUM(paid) / SUM(req)) * 100
+  | 'profit_rate'  // (SUM(profit) / SUM(rev)) * 100
+
+/**
+ * Metric filter operators (subset for metric comparisons)
+ */
+export type MetricOperator = 'greater_than' | 'less_than' | 'greater_than_or_equal' | 'less_than_or_equal' | 'between'
+
+/**
+ * Single metric filter clause
+ */
+export interface MetricFilterClause {
+  id: string
+  metric: MetricField
+  operator: MetricOperator
+  value: number | number[]  // Single number or [min, max] for between
+  enabled: boolean
+}
+
+/**
+ * Complete metric filter configuration
+ */
+export interface MetricFilters {
+  clauses: MetricFilterClause[]
+  logic: 'AND' | 'OR'  // How to combine metric conditions
 }

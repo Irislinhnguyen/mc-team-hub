@@ -13,7 +13,7 @@ export type Database = {
           password_hash: string | null
           name: string
           avatar_url: string | null
-          role: 'admin' | 'manager' | 'user'
+          role: 'admin' | 'manager' | 'leader' | 'user'
           auth_method: 'google' | 'password' | 'both'
           created_at: string
           updated_at: string
@@ -24,7 +24,7 @@ export type Database = {
           password_hash?: string | null
           name: string
           avatar_url?: string | null
-          role?: 'admin' | 'manager' | 'user'
+          role?: 'admin' | 'manager' | 'leader' | 'user'
           auth_method?: 'google' | 'password' | 'both'
           created_at?: string
           updated_at?: string
@@ -35,7 +35,7 @@ export type Database = {
           password_hash?: string | null
           name?: string
           avatar_url?: string | null
-          role?: 'admin' | 'manager' | 'user'
+          role?: 'admin' | 'manager' | 'leader' | 'user'
           auth_method?: 'google' | 'password' | 'both'
           created_at?: string
           updated_at?: string
@@ -201,6 +201,78 @@ export type Database = {
           created_at?: string
         }
       }
+      permissions: {
+        Row: {
+          id: string
+          name: string
+          resource: string
+          action: string
+          description: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          resource: string
+          action: string
+          description?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          resource?: string
+          action?: string
+          description?: string | null
+        }
+      }
+      role_permissions: {
+        Row: {
+          id: string
+          role: 'admin' | 'manager' | 'leader' | 'user'
+          permission_id: string
+          granted_at: string
+        }
+        Insert: {
+          id?: string
+          role: 'admin' | 'manager' | 'leader' | 'user'
+          permission_id: string
+          granted_at?: string
+        }
+        Update: {
+          id?: string
+          role?: 'admin' | 'manager' | 'leader' | 'user'
+          permission_id?: string
+        }
+      }
+      user_permissions: {
+        Row: {
+          id: string
+          user_id: string
+          permission_id: string
+          granted: boolean
+          granted_by: string | null
+          granted_at: string
+          expires_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          permission_id: string
+          granted?: boolean
+          granted_by?: string | null
+          granted_at?: string
+          expires_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          permission_id?: string
+          granted?: boolean
+          granted_by?: string | null
+          expires_at?: string | null
+        }
+      }
     }
     Views: {
       [key: string]: {
@@ -238,3 +310,16 @@ export type FilterPresetShareUpdate = Database["public"]["Tables"]["filter_prese
 export type TeamConfiguration = Database["public"]["Tables"]["team_configurations"]["Row"]
 export type TeamPicMapping = Database["public"]["Tables"]["team_pic_mappings"]["Row"]
 export type TeamProductPattern = Database["public"]["Tables"]["team_product_patterns"]["Row"]
+
+// RBAC Permission types
+export type Permission = Database["public"]["Tables"]["permissions"]["Row"]
+export type PermissionInsert = Database["public"]["Tables"]["permissions"]["Insert"]
+export type PermissionUpdate = Database["public"]["Tables"]["permissions"]["Update"]
+
+export type RolePermission = Database["public"]["Tables"]["role_permissions"]["Row"]
+export type RolePermissionInsert = Database["public"]["Tables"]["role_permissions"]["Insert"]
+export type RolePermissionUpdate = Database["public"]["Tables"]["role_permissions"]["Update"]
+
+export type UserPermission = Database["public"]["Tables"]["user_permissions"]["Row"]
+export type UserPermissionInsert = Database["public"]["Tables"]["user_permissions"]["Insert"]
+export type UserPermissionUpdate = Database["public"]["Tables"]["user_permissions"]["Update"]

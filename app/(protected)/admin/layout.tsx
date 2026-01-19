@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getServerUser, isAdminOrManager } from '@/lib/auth/server'
+import { getServerUser, isLeaderOrAbove } from '@/lib/auth/server'
 import AdminSidebar from './AdminSidebar'
 
 interface AdminLayoutProps {
@@ -14,7 +14,8 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
     redirect('/auth')
   }
 
-  if (!isAdminOrManager(user)) {
+  // Leader and above can access admin section
+  if (!isLeaderOrAbove(user)) {
     redirect('/')
   }
 

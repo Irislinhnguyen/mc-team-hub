@@ -11,9 +11,9 @@ export async function GET(request: NextRequest) {
 
     const response = NextResponse.redirect(new URL('/auth', request.url))
 
-    // Clear authentication cookies
-    response.cookies.delete('__Host-auth_token')
-    response.cookies.delete('supabase-auth-token')
+    // Clear authentication cookies with proper options for __Host- prefix
+    response.cookies.delete('__Host-auth_token', { path: '/', secure: true })
+    response.cookies.delete('supabase-auth-token', { path: '/' })
 
     console.log('[Logout] User logged out successfully')
     return response
@@ -32,9 +32,9 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({ success: true })
 
-    // Clear authentication cookies
-    response.cookies.delete('__Host-auth_token')
-    response.cookies.delete('supabase-auth-token')
+    // Clear authentication cookies with proper options for __Host- prefix
+    response.cookies.delete('__Host-auth_token', { path: '/', secure: true })
+    response.cookies.delete('supabase-auth-token', { path: '/' })
 
     console.log('[Logout] User logged out successfully')
     return response

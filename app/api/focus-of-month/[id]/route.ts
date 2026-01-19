@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerUser } from '@/lib/auth/server'
+import { getServerUser, canManageFocus, isAdmin } from '@/lib/auth/server'
 import {
   getFocusById,
   updateFocus,
@@ -38,6 +38,14 @@ export async function GET(
       return NextResponse.json(
         { status: 'error', message: focusResult.error },
         { status: 404 }
+      )
+    }
+
+    // Regular users can only access published focuses
+    if (!canManageFocus(user) && focusResult.focus.status !== 'published') {
+      return NextResponse.json(
+        { status: 'error', message: 'Forbidden: You can only view published focuses' },
+        { status: 403 }
       )
     }
 
@@ -84,6 +92,14 @@ export async function PATCH(
     const user = await getServerUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check if user can manage Focus of the Month (Leader/Manager/Admin)
+    if (!canManageFocus(user)) {
+      return NextResponse.json(
+        { status: 'error', message: 'Forbidden: Insufficient permissions to update focuses' },
+        { status: 403 }
+      )
     }
 
     const focusId = params.id

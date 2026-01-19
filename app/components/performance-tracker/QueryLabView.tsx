@@ -165,10 +165,11 @@ export default function QueryLabView() {
   const { user } = useAuth()
   const displayName = user?.name || user?.email?.split('@')[0] || 'there'
 
-  // Random greeting for welcome screen
-  const [greeting] = useState(() =>
-    CREATIVE_GREETINGS[Math.floor(Math.random() * CREATIVE_GREETINGS.length)]
-  )
+  // Random greeting for welcome screen (client-only to avoid hydration mismatch)
+  const [greeting, setGreeting] = useState(CREATIVE_GREETINGS[0])
+  useEffect(() => {
+    setGreeting(CREATIVE_GREETINGS[Math.floor(Math.random() * CREATIVE_GREETINGS.length)])
+  }, [])
 
   // Sample prompts sidebar state
   const [showPromptsSidebar, setShowPromptsSidebar] = useState(false)
@@ -360,6 +361,29 @@ export default function QueryLabView() {
   }, [fetchSessions])
 
   /**
+   * Handle New Query - clear context but keep session
+   * Use this to start a fresh query in the same session
+   */
+  const handleNewQuery = useCallback(() => {
+    // Clear current query context only
+    setCurrentQuestion('')
+    setCurrentPlan('')
+    setCurrentSql('')
+    setShowSql(false)
+    setWaitingForPlanConfirmation(false)
+    setError(null)
+    setFeedback(null)
+    setShowFeedbackInput(false)
+    setRetryStatus(null)
+    setShowRetryHistory(false)
+    // Keep session, messages, and history intact
+    // Focus on input
+    setTimeout(() => {
+      document.querySelector('textarea')?.focus()
+    }, 0)
+  }, [])
+
+  /**
    * Handle selecting a session from sidebar
    */
   const handleSelectSession = useCallback((id: string) => {
@@ -384,12 +408,14 @@ export default function QueryLabView() {
    * @param promptOverride - Optional prompt to use instead of input state (for sample prompts)
    * @param forceNewSession - If true, forces creation of a new session
    */
-  const handleSubmit = async (promptOverride?: string, forceNewSession?: boolean) => {
-    const questionText = (promptOverride || input).trim()
+  const handleSubmit = async (promptOverride?: string | React.MouseEvent, forceNewSession?: boolean) => {
+    // Handle React event from button click
+    const actualPromptOverride = typeof promptOverride === 'string' ? promptOverride : undefined
+    const questionText = (actualPromptOverride || input).trim()
     if (!questionText) return
 
     // Clear input only if not using promptOverride
-    if (!promptOverride) setInput('')
+    if (!actualPromptOverride) setInput('')
     setIsLoading(true)
     setError(null)
 
@@ -444,6 +470,7 @@ export default function QueryLabView() {
           question: questionText, // Always use the NEW question
           plan: isFirstMessage ? undefined : currentPlan,
           feedback: isFirstMessage ? undefined : questionText,
+          sessionId: activeSessionId,
           conversationHistory: getConversationHistory()
         })
       })
@@ -537,6 +564,7 @@ export default function QueryLabView() {
           action: 'generate-sql',
           question: questionToExecute,
           plan: currentPlan,
+          sessionId: sessionId,
           conversationHistory: getConversationHistory()
         })
       })
@@ -1073,6 +1101,15 @@ export default function QueryLabView() {
                       <PencilLine className="h-3 w-3 mr-1" />
                       Adjust
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleNewQuery}
+                      className="h-7 px-2 text-xs rounded-full hover:bg-green-50 hover:text-green-600"
+                    >
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      New Query
+                    </Button>
                   </div>
                 </div>
               )}
@@ -1151,7 +1188,7 @@ export default function QueryLabView() {
                 onClick={handleSubmit}
                 disabled={isLoading || !input.trim()}
                 size="sm"
-                className="absolute right-2 bottom-2 h-8 w-8 p-0 rounded-full bg-[#1565C0] hover:bg-[#0D47A1] disabled:bg-gray-200 disabled:text-gray-400"
+                className="absolute right-2 bottom-2 h-8 w-8 p-0 rounded-full bg-[#1565C0] hover:bg-[#0D47A1] disabled:bg-gray-200 disabled:text-gray-400 z-10"
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -1227,8 +1264,14 @@ export default function QueryLabView() {
                             key={idx}
                             onClick={() => {
                               setShowPromptsSidebar(false)
-                              // Auto-submit with new session
-                              handleSubmit(prompt, true)
+                              // Populate input instead of auto-submit
+                              setInput(prompt)
+                              // Focus textarea with cursor at end
+                              setTimeout(() => {
+                                const textarea = document.querySelector('textarea')
+                                textarea?.focus()
+                                textarea?.setSelectionRange(prompt.length, prompt.length)
+                              }, 0)
                             }}
                             className="w-full text-left px-3 py-2 text-xs text-gray-600 hover:text-[#1565C0] hover:bg-[#BBDEFB]/20 transition-colors leading-relaxed"
                           >

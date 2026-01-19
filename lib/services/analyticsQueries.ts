@@ -1,5 +1,5 @@
 import { buildTeamCondition, buildTeamConditions, getTeamConfigurations } from '../utils/teamMatcher'
-import type { AdvancedFilters, AdvancedFilterClause, AdvancedFilterGroup, SimplifiedFilter, FilterDataType, FilterOperator, FilterField } from '../types/performanceTracker'
+import type { AdvancedFilters, AdvancedFilterClause, AdvancedFilterGroup, SimplifiedFilter, FilterDataType, FilterOperator, FilterField, MetricFilters, MetricField } from '../types/performanceTracker'
 import { FIELD_DATA_TYPES } from '../types/performanceTracker'
 
 // Helper function to escape SQL values to prevent injection
@@ -111,13 +111,20 @@ function buildSimpleCondition(field: FilterField, operator: FilterOperator, valu
 }
 
 // Build SQL condition for a single advanced filter clause
-async function buildClauseCondition(clause: AdvancedFilterClause, tableName?: string): Promise<string | null> {
+async function buildClauseCondition(
+  clause: AdvancedFilterClause,
+  tableName?: string,
+  dateRange?: { startDate: string; endDate: string }
+): Promise<string | null> {
   const { field, operator, value, dataType, enabled, attributeField, attributeDataType, condition } = clause
 
   if (!enabled) return null
 
   // Use default table if not provided
   const table = tableName || '`gcpp-check.GI_publisher.agg_monthly_with_pic_table_6_month`'
+
+  // Build date filter for subqueries (if dateRange provided)
+  const dateFilter = dateRange ? `AND DATE BETWEEN '${dateRange.startDate}' AND '${dateRange.endDate}'` : ''
 
   try {
     // Check if this is an entity operator (Branch 1)
@@ -135,14 +142,14 @@ async function buildClauseCondition(clause: AdvancedFilterClause, tableName?: st
         case 'has':
           // Entity has attribute matching condition
           // Example: zid has product equals 'video'
-          // SQL: zid IN (SELECT DISTINCT zid FROM table WHERE product = 'video')
-          return `${field} IN (SELECT DISTINCT ${field} FROM ${table} WHERE ${subqueryCondition})`
+          // SQL: zid IN (SELECT DISTINCT zid FROM table WHERE product = 'video' AND DATE BETWEEN ...)
+          return `${field} IN (SELECT DISTINCT ${field} FROM ${table} WHERE ${subqueryCondition}${dateFilter ? ` ${dateFilter}` : ''})`
 
         case 'does_not_have':
           // Entity does not have attribute matching condition
           // Example: mid does not have product equals 'flexiblesticky'
-          // SQL: mid NOT IN (SELECT DISTINCT mid FROM table WHERE product = 'flexiblesticky')
-          return `${field} NOT IN (SELECT DISTINCT ${field} FROM ${table} WHERE ${subqueryCondition})`
+          // SQL: mid NOT IN (SELECT DISTINCT mid FROM table WHERE product = 'flexiblesticky' AND DATE BETWEEN ...)
+          return `${field} NOT IN (SELECT DISTINCT ${field} FROM ${table} WHERE ${subqueryCondition}${dateFilter ? ` ${dateFilter}` : ''})`
 
         case 'only_has': {
           // Entity ONLY has these values (no other values)
@@ -153,7 +160,7 @@ async function buildClauseCondition(clause: AdvancedFilterClause, tableName?: st
           return `${field} IN (
             SELECT ${field}
             FROM ${table}
-            WHERE ${attributeField} IS NOT NULL
+            WHERE ${attributeField} IS NOT NULL${dateFilter ? ` ${dateFilter}` : ''}
             GROUP BY ${field}
             HAVING COUNT(DISTINCT ${attributeField}) = ${values.length}
               AND SUM(CASE WHEN ${attributeField} IN (${escapedValues}) THEN 1 ELSE 0 END) = COUNT(DISTINCT ${attributeField})
@@ -169,7 +176,7 @@ async function buildClauseCondition(clause: AdvancedFilterClause, tableName?: st
           return `${field} IN (
             SELECT ${field}
             FROM ${table}
-            WHERE ${attributeField} IN (${escapedValues})
+            WHERE ${attributeField} IN (${escapedValues})${dateFilter ? ` ${dateFilter}` : ''}
             GROUP BY ${field}
             HAVING COUNT(DISTINCT ${attributeField}) = ${values.length}
           )`
@@ -181,7 +188,7 @@ async function buildClauseCondition(clause: AdvancedFilterClause, tableName?: st
           const values = Array.isArray(value) ? value : [value]
           if (values.length === 0) return null
           const escapedValues = values.map(v => escapeSqlValue(v, attributeDataType)).join(', ')
-          return `${field} IN (SELECT DISTINCT ${field} FROM ${table} WHERE ${attributeField} IN (${escapedValues}))`
+          return `${field} IN (SELECT DISTINCT ${field} FROM ${table} WHERE ${attributeField} IN (${escapedValues})${dateFilter ? ` ${dateFilter}` : ''})`
         }
 
         default:
@@ -245,13 +252,13 @@ async function buildClauseCondition(clause: AdvancedFilterClause, tableName?: st
       case 'entity_has' as any: {
         const entityField = getEntityField()
         const escapedValue = escapeSqlValue(value, dataType)
-        return `${entityField} IN (SELECT DISTINCT ${entityField} FROM ${table} WHERE ${field} = ${escapedValue})`
+        return `${entityField} IN (SELECT DISTINCT ${entityField} FROM ${table} WHERE ${field} = ${escapedValue}${dateFilter ? ` ${dateFilter}` : ''})`
       }
 
       case 'entity_not_has' as any: {
         const entityField = getEntityField()
         const escapedValue = escapeSqlValue(value, dataType)
-        return `${entityField} NOT IN (SELECT DISTINCT ${entityField} FROM ${table} WHERE ${field} = ${escapedValue})`
+        return `${entityField} NOT IN (SELECT DISTINCT ${entityField} FROM ${table} WHERE ${field} = ${escapedValue}${dateFilter ? ` ${dateFilter}` : ''})`
       }
 
       case 'entity_only_has' as any: {
@@ -262,7 +269,7 @@ async function buildClauseCondition(clause: AdvancedFilterClause, tableName?: st
         return `${entityField} IN (
           SELECT ${entityField}
           FROM ${table}
-          WHERE ${field} IS NOT NULL
+          WHERE ${field} IS NOT NULL${dateFilter ? ` ${dateFilter}` : ''}
           GROUP BY ${entityField}
           HAVING COUNT(DISTINCT ${field}) = ${values.length}
             AND SUM(CASE WHEN ${field} IN (${escapedValues}) THEN 1 ELSE 0 END) = COUNT(DISTINCT ${field})
@@ -277,7 +284,7 @@ async function buildClauseCondition(clause: AdvancedFilterClause, tableName?: st
         return `${entityField} IN (
           SELECT ${entityField}
           FROM ${table}
-          WHERE ${field} IN (${escapedValues})
+          WHERE ${field} IN (${escapedValues})${dateFilter ? ` ${dateFilter}` : ''}
           GROUP BY ${entityField}
           HAVING COUNT(DISTINCT ${field}) = ${values.length}
         )`
@@ -288,7 +295,7 @@ async function buildClauseCondition(clause: AdvancedFilterClause, tableName?: st
         const values = Array.isArray(value) ? value : [value]
         if (values.length === 0) return null
         const escapedValues = values.map(v => escapeSqlValue(v, dataType)).join(', ')
-        return `${entityField} IN (SELECT DISTINCT ${entityField} FROM ${table} WHERE ${field} IN (${escapedValues}))`
+        return `${entityField} IN (SELECT DISTINCT ${entityField} FROM ${table} WHERE ${field} IN (${escapedValues})${dateFilter ? ` ${dateFilter}` : ''})`
       }
 
       default:
@@ -302,7 +309,10 @@ async function buildClauseCondition(clause: AdvancedFilterClause, tableName?: st
 }
 
 // Build WHERE clause from simplified filter (Looker Studio-style)
-export async function buildSimplifiedWhereClause(filter: SimplifiedFilter): Promise<string> {
+export async function buildSimplifiedWhereClause(
+  filter: SimplifiedFilter,
+  dateRange?: { startDate: string; endDate: string }
+): Promise<string> {
   console.log('[buildSimplifiedWhereClause] Input filter:', JSON.stringify(filter, null, 2))
   const clauseConditions: string[] = []
 
@@ -334,12 +344,12 @@ export async function buildSimplifiedWhereClause(filter: SimplifiedFilter): Prom
 
     if (clause.field === 'team') {
       // Non-equals/in team operators (e.g., contains, starts_with)
-      const condition = await buildClauseCondition(clause)
+      const condition = await buildClauseCondition(clause, undefined, dateRange)
       if (condition) {
         clauseConditions.push(condition)
       }
     } else {
-      const condition = await buildClauseCondition(clause)
+      const condition = await buildClauseCondition(clause, undefined, dateRange)
       if (condition) {
         clauseConditions.push(condition)
       }
@@ -367,7 +377,10 @@ export async function buildSimplifiedWhereClause(filter: SimplifiedFilter): Prom
 }
 
 // Build WHERE clause from advanced filters (legacy)
-export async function buildAdvancedWhereClause(advancedFilters: AdvancedFilters): Promise<string> {
+export async function buildAdvancedWhereClause(
+  advancedFilters: AdvancedFilters,
+  dateRange?: { startDate: string; endDate: string }
+): Promise<string> {
   const groupConditions: string[] = []
 
   for (const group of advancedFilters.groups) {
@@ -399,13 +412,13 @@ export async function buildAdvancedWhereClause(advancedFilters: AdvancedFilters)
           }
         } else {
           // For other team operators, fall back to default logic
-          const condition = await buildClauseCondition(clause)
+          const condition = await buildClauseCondition(clause, undefined, dateRange)
           if (condition) {
             clauseConditions.push(condition)
           }
         }
       } else {
-        const condition = await buildClauseCondition(clause)
+        const condition = await buildClauseCondition(clause, undefined, dateRange)
         if (condition) {
           clauseConditions.push(condition)
         }
@@ -433,20 +446,21 @@ export async function buildWhereClause(
     skipRevFlagFilter?: boolean
     advancedFilters?: AdvancedFilters  // Legacy format
     simplifiedFilter?: SimplifiedFilter  // New Looker Studio-style format
+    dateRange?: { startDate: string; endDate: string }  // For entity operator subqueries
   }
 ): Promise<string> {
   const conditions: string[] = []
 
   // Process simplified filter first (takes precedence over legacy advanced filters)
   if (options?.simplifiedFilter) {
-    const simplifiedConditions = await buildSimplifiedWhereClause(options.simplifiedFilter)
+    const simplifiedConditions = await buildSimplifiedWhereClause(options.simplifiedFilter, options.dateRange)
     if (simplifiedConditions) {
       conditions.push(simplifiedConditions)
     }
   }
   // Process legacy advanced filters if no simplified filter provided
   else if (options?.advancedFilters) {
-    const advancedConditions = await buildAdvancedWhereClause(options.advancedFilters)
+    const advancedConditions = await buildAdvancedWhereClause(options.advancedFilters, options.dateRange)
     if (advancedConditions) {
       conditions.push(advancedConditions)
     }
@@ -623,11 +637,118 @@ export async function buildWhereClause(
   return conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 }
 
+/**
+ * Get SQL aggregation expression for a metric field
+ */
+function getMetricAggregation(metric: MetricField): string {
+  const aggregations: Record<MetricField, string> = {
+    revenue: 'SUM(rev)',
+    profit: 'SUM(profit)',
+    requests: 'SUM(req)',
+    paid: 'SUM(paid)',
+    ecpm: 'AVG(CAST(request_CPM as FLOAT64))',
+    fill_rate: '(SUM(paid) / NULLIF(SUM(req), 0)) * 100',
+    profit_rate: '(SUM(profit) / NULLIF(SUM(rev), 0)) * 100'
+  }
+  return aggregations[metric]
+}
+
+/**
+ * Build single metric condition for HAVING clause
+ * Uses column aliases that should exist in the SELECT
+ */
+function buildMetricCondition(metric: MetricField, operator: string, value: number | number[]): string | null {
+  // Use column aliases instead of raw aggregations to avoid "aggregation of aggregation" error
+  const alias = getMetricAlias(metric)
+
+  switch (operator) {
+    case 'greater_than':
+      return `${alias} > ${Number(value)}`
+
+    case 'less_than':
+      return `${alias} < ${Number(value)}`
+
+    case 'greater_than_or_equal':
+      return `${alias} >= ${Number(value)}`
+
+    case 'less_than_or_equal':
+      return `${alias} <= ${Number(value)}`
+
+    case 'between':
+      if (!Array.isArray(value) || value.length !== 2) {
+        console.warn(`[buildMetricCondition] Between operator requires array of 2 values, got:`, value)
+        return null
+      }
+      return `${alias} BETWEEN ${Number(value[0])} AND ${Number(value[1])}`
+
+    default:
+      console.warn(`[buildMetricCondition] Unknown operator: ${operator}`)
+      return null
+  }
+}
+
+/**
+ * Get the column alias for a metric field
+ * Uses prefixed names to avoid conflicts with existing columns
+ */
+function getMetricAlias(metric: MetricField): string {
+  // Use prefixed names to avoid conflicts with existing column names
+  const aliases: Record<MetricField, string> = {
+    revenue: '_filter_revenue',
+    profit: '_filter_profit',
+    requests: '_filter_requests',
+    paid: '_filter_paid',
+    ecpm: '_filter_ecpm',
+    fill_rate: '_filter_fill_rate',
+    profit_rate: '_filter_profit_rate'
+  }
+  return aliases[metric]
+}
+
+/**
+ * Build HAVING clause from metric filters
+ * Metric filters apply AFTER aggregation (unlike WHERE which applies BEFORE)
+ *
+ * @param metricFilters - Metric filter configuration
+ * @returns Object with having clause and flag if subquery wrapping is needed
+ */
+export function buildHavingClause(metricFilters?: MetricFilters): { clause: string; needsWrapper: boolean } {
+  if (!metricFilters || metricFilters.clauses.length === 0) {
+    return { clause: '', needsWrapper: false }
+  }
+
+  const conditions: string[] = []
+  let needsWrapper = false
+
+  for (const clause of metricFilters.clauses) {
+    if (!clause.enabled) continue
+
+    const condition = buildMetricCondition(clause.metric, clause.operator, clause.value)
+    if (condition) {
+      conditions.push(condition)
+      // If using calculated metrics (ecpm, fill_rate, profit_rate), we need subquery wrapper
+      if (['ecpm', 'fill_rate', 'profit_rate'].includes(clause.metric)) {
+        needsWrapper = true
+      }
+    }
+  }
+
+  if (conditions.length === 0) {
+    return { clause: '', needsWrapper: false }
+  }
+
+  const combined = conditions.join(` ${metricFilters.logic} `)
+  console.log('[buildHavingClause] Generated HAVING clause:', combined, 'needsWrapper:', needsWrapper)
+  return { clause: `HAVING ${combined}`, needsWrapper }
+}
+
 // Business Health queries
-export function getBusinessHealthQueries(whereClause: string, options?: { offset?: number; limit?: number }) {
+export function getBusinessHealthQueries(whereClause: string, options?: { offset?: number; limit?: number; havingClause?: string }) {
   const tableName = '`gcpp-check.GI_publisher.agg_monthly_with_pic_table_6_month`'
   const offset = options?.offset ?? 0
   const limit = options?.limit ?? 500
+  const having = options?.havingClause || ''
+  const hasHavingClause = having.length > 0
 
   return {
     metrics: `
@@ -642,7 +763,25 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
       ${whereClause}
     `,
 
-    timeSeries: `
+    timeSeries: hasHavingClause ? `
+      SELECT * FROM (
+        SELECT
+          DATE as date,
+          SUM(rev) as revenue,
+          SUM(profit) as profit,
+          -- Prefixed columns for HAVING clause
+          SUM(rev) as _filter_revenue,
+          SUM(profit) as _filter_profit,
+          SUM(req) as _filter_requests,
+          SUM(paid) as _filter_paid,
+          AVG(CAST(request_CPM as FLOAT64)) as _filter_ecpm
+        FROM ${tableName}
+        ${whereClause}
+        GROUP BY DATE
+        ${having}
+      )
+      ORDER BY date ASC
+    ` : `
       SELECT
         DATE as date,
         SUM(rev) as revenue,
@@ -653,7 +792,24 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
       ORDER BY DATE ASC
     `,
 
-    topPublishers: `
+    topPublishers: hasHavingClause ? `
+      SELECT * FROM (
+        SELECT
+          pubname,
+          SUM(rev) as revenue,
+          SUM(rev) as _filter_revenue,
+          SUM(profit) as _filter_profit,
+          SUM(req) as _filter_requests,
+          SUM(paid) as _filter_paid,
+          AVG(CAST(request_CPM as FLOAT64)) as _filter_ecpm
+        FROM ${tableName}
+        ${whereClause}
+        GROUP BY pubname
+        ${having}
+      )
+      ORDER BY revenue DESC
+      LIMIT 10
+    ` : `
       SELECT
         pubname,
         SUM(rev) as revenue
@@ -664,7 +820,24 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
       LIMIT 10
     `,
 
-    topMedia: `
+    topMedia: hasHavingClause ? `
+      SELECT * FROM (
+        SELECT
+          medianame,
+          SUM(rev) as revenue,
+          SUM(rev) as _filter_revenue,
+          SUM(profit) as _filter_profit,
+          SUM(req) as _filter_requests,
+          SUM(paid) as _filter_paid,
+          AVG(CAST(request_CPM as FLOAT64)) as _filter_ecpm
+        FROM ${tableName}
+        ${whereClause}
+        GROUP BY medianame
+        ${having}
+      )
+      ORDER BY revenue DESC
+      LIMIT 10
+    ` : `
       SELECT
         medianame,
         SUM(rev) as revenue
@@ -675,7 +848,24 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
       LIMIT 10
     `,
 
-    topZones: `
+    topZones: hasHavingClause ? `
+      SELECT * FROM (
+        SELECT
+          zonename,
+          SUM(rev) as revenue,
+          SUM(rev) as _filter_revenue,
+          SUM(profit) as _filter_profit,
+          SUM(req) as _filter_requests,
+          SUM(paid) as _filter_paid,
+          AVG(CAST(request_CPM as FLOAT64)) as _filter_ecpm
+        FROM ${tableName}
+        ${whereClause}
+        GROUP BY zonename
+        ${having}
+      )
+      ORDER BY revenue DESC
+      LIMIT 10
+    ` : `
       SELECT
         zonename,
         SUM(rev) as revenue
@@ -686,7 +876,24 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
       LIMIT 10
     `,
 
-    topEcpm: `
+    topEcpm: hasHavingClause ? `
+      SELECT * FROM (
+        SELECT
+          zonename,
+          AVG(CAST(request_CPM as FLOAT64)) as ecpm,
+          SUM(rev) as _filter_revenue,
+          SUM(profit) as _filter_profit,
+          SUM(req) as _filter_requests,
+          SUM(paid) as _filter_paid,
+          AVG(CAST(request_CPM as FLOAT64)) as _filter_ecpm
+        FROM ${tableName}
+        ${whereClause}
+        GROUP BY zonename
+        ${having}
+      )
+      ORDER BY ecpm DESC
+      LIMIT 10
+    ` : `
       SELECT
         zonename,
         AVG(CAST(request_CPM as FLOAT64)) as ecpm
@@ -697,7 +904,42 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
       LIMIT 10
     `,
 
-    zoneMonitoring: `
+    zoneMonitoring: hasHavingClause ? `
+      SELECT
+        zid,
+        zonename,
+        product,
+        req,
+        fill_rate,
+        request_CPM,
+        rev,
+        profit,
+        rev_to_pub
+      FROM (
+        SELECT
+          zid,
+          zonename,
+          product,
+          SUM(req) as req,
+          ROUND(SUM(paid) / NULLIF(SUM(req), 0), 2) as fill_rate,
+          AVG(CAST(request_CPM as FLOAT64)) as request_CPM,
+          SUM(rev) as rev,
+          SUM(profit) as profit,
+          SUM(rev) - SUM(profit) as rev_to_pub,
+          SUM(rev) as _filter_revenue,
+          SUM(profit) as _filter_profit,
+          SUM(req) as _filter_requests,
+          SUM(paid) as _filter_paid,
+          AVG(CAST(request_CPM as FLOAT64)) as _filter_ecpm,
+          (SUM(paid) / NULLIF(SUM(req), 0)) * 100 as _filter_fill_rate,
+          (SUM(profit) / NULLIF(SUM(rev), 0)) * 100 as _filter_profit_rate
+        FROM ${tableName}
+        ${whereClause}
+        GROUP BY zid, zonename, product
+        ${having}
+      )
+      ORDER BY rev DESC
+    ` : `
       SELECT
         zid,
         zonename,
@@ -727,7 +969,28 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
       ${whereClause}
     `,
 
-    productTrend: `
+    productTrend: hasHavingClause ? `
+      SELECT * FROM (
+        SELECT
+          DATE as date,
+          product,
+          SUM(profit) as profit,
+          SUM(rev) as revenue,
+          SUM(paid) as paid,
+          SUM(req) as requests,
+          AVG(CAST(request_CPM as FLOAT64)) as ecpm,
+          SUM(rev) as _filter_revenue,
+          SUM(profit) as _filter_profit,
+          SUM(req) as _filter_requests,
+          SUM(paid) as _filter_paid,
+          AVG(CAST(request_CPM as FLOAT64)) as _filter_ecpm
+        FROM ${tableName}
+        ${whereClause}
+        GROUP BY DATE, product
+        ${having}
+      )
+      ORDER BY date ASC
+    ` : `
       SELECT
         DATE as date,
         product,
@@ -742,7 +1005,53 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
       ORDER BY DATE ASC
     `,
 
-    zoneMonitoringTimeSeries: `
+    zoneMonitoringTimeSeries: hasHavingClause ? `
+      SELECT * FROM (
+        SELECT
+          date,
+          pic,
+          pid,
+          mid,
+          zid,
+          zonename,
+          product,
+          req,
+          fill_rate,
+          request_CPM,
+          rev,
+          profit,
+          rev_to_pub,
+          ROW_NUMBER() OVER (PARTITION BY date ORDER BY rev DESC) as rn
+        FROM (
+          SELECT
+            DATE as date,
+            pic,
+            pid,
+            mid,
+            zid,
+            zonename,
+            product,
+            SUM(req) as req,
+            ROUND(SUM(paid) / NULLIF(SUM(req), 0), 2) as fill_rate,
+            AVG(CAST(request_CPM as FLOAT64)) as request_CPM,
+            SUM(rev) as rev,
+            SUM(profit) as profit,
+            SUM(rev) - SUM(profit) as rev_to_pub,
+            SUM(rev) as _filter_revenue,
+            SUM(profit) as _filter_profit,
+            SUM(req) as _filter_requests,
+            SUM(paid) as _filter_paid,
+            AVG(CAST(request_CPM as FLOAT64)) as _filter_ecpm,
+            (SUM(paid) / NULLIF(SUM(req), 0)) * 100 as _filter_fill_rate
+          FROM ${tableName}
+          ${whereClause}
+          GROUP BY DATE, pic, pid, mid, zid, zonename, product
+          ${having}
+        )
+      ) ranked
+      WHERE rn <= 150
+      ORDER BY date ASC, rev DESC
+    ` : `
       SELECT * FROM (
         SELECT
           DATE as date,
@@ -782,7 +1091,38 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
       ) AS subquery
     `,
 
-    listOfPid: `
+    listOfPid: hasHavingClause ? `
+      SELECT
+        pid,
+        pubname,
+        rev,
+        profit,
+        rev_to_pub,
+        ecpm,
+        fill_rate
+      FROM (
+        SELECT
+          pid,
+          pubname,
+          SUM(rev) as rev,
+          SUM(profit) as profit,
+          SUM(rev) - SUM(profit) as rev_to_pub,
+          AVG(CAST(request_CPM as FLOAT64)) as ecpm,
+          (SUM(paid) / NULLIF(SUM(req), 0)) * 100 as fill_rate,
+          SUM(rev) as _filter_revenue,
+          SUM(profit) as _filter_profit,
+          SUM(req) as _filter_requests,
+          SUM(paid) as _filter_paid,
+          AVG(CAST(request_CPM as FLOAT64)) as _filter_ecpm,
+          (SUM(paid) / NULLIF(SUM(req), 0)) * 100 as _filter_fill_rate
+        FROM ${tableName}
+        ${whereClause}
+        GROUP BY pid, pubname
+        ${having}
+      )
+      ORDER BY rev DESC
+      LIMIT ${limit} OFFSET ${offset}
+    ` : `
       SELECT
         pid,
         pubname,
@@ -811,7 +1151,45 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
       ) AS subquery
     `,
 
-    listOfPidByDate: `
+    listOfPidByDate: hasHavingClause ? `
+      SELECT * FROM (
+        SELECT
+          date,
+          pic,
+          pid,
+          pubname,
+          rev,
+          profit,
+          rev_to_pub,
+          ecpm,
+          fill_rate,
+          ROW_NUMBER() OVER (PARTITION BY date ORDER BY rev DESC) as rn
+        FROM (
+          SELECT
+            DATE as date,
+            pic,
+            pid,
+            pubname,
+            SUM(rev) as rev,
+            SUM(profit) as profit,
+            SUM(rev) - SUM(profit) as rev_to_pub,
+            AVG(CAST(request_CPM as FLOAT64)) as ecpm,
+            (SUM(paid) / NULLIF(SUM(req), 0)) * 100 as fill_rate,
+            SUM(rev) as _filter_revenue,
+            SUM(profit) as _filter_profit,
+            SUM(req) as _filter_requests,
+            SUM(paid) as _filter_paid,
+            AVG(CAST(request_CPM as FLOAT64)) as _filter_ecpm,
+            (SUM(paid) / NULLIF(SUM(req), 0)) * 100 as _filter_fill_rate
+          FROM ${tableName}
+          ${whereClause}
+          GROUP BY DATE, pic, pid, pubname
+          ${having}
+        )
+      ) ranked
+      WHERE rn <= 100
+      ORDER BY date ASC, rev DESC
+    ` : `
       SELECT * FROM (
         SELECT
           DATE as date,
@@ -846,7 +1224,42 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
       ) AS subquery
     `,
 
-    listOfMid: `
+    listOfMid: hasHavingClause ? `
+      SELECT
+        pid,
+        pubname,
+        mid,
+        medianame,
+        rev,
+        profit,
+        rev_to_pub,
+        ecpm,
+        fill_rate
+      FROM (
+        SELECT
+          pid,
+          pubname,
+          mid,
+          medianame,
+          SUM(rev) as rev,
+          SUM(profit) as profit,
+          SUM(rev) - SUM(profit) as rev_to_pub,
+          AVG(CAST(request_CPM as FLOAT64)) as ecpm,
+          (SUM(paid) / NULLIF(SUM(req), 0)) * 100 as fill_rate,
+          SUM(rev) as _filter_revenue,
+          SUM(profit) as _filter_profit,
+          SUM(req) as _filter_requests,
+          SUM(paid) as _filter_paid,
+          AVG(CAST(request_CPM as FLOAT64)) as _filter_ecpm,
+          (SUM(paid) / NULLIF(SUM(req), 0)) * 100 as _filter_fill_rate
+        FROM ${tableName}
+        ${whereClause}
+        GROUP BY pid, pubname, mid, medianame
+        ${having}
+      )
+      ORDER BY rev DESC
+      LIMIT ${limit} OFFSET ${offset}
+    ` : `
       SELECT
         pid,
         pubname,
@@ -879,7 +1292,49 @@ export function getBusinessHealthQueries(whereClause: string, options?: { offset
       ) AS subquery
     `,
 
-    listOfMidByDate: `
+    listOfMidByDate: hasHavingClause ? `
+      SELECT * FROM (
+        SELECT
+          date,
+          pic,
+          pid,
+          pubname,
+          mid,
+          medianame,
+          rev,
+          profit,
+          rev_to_pub,
+          ecpm,
+          fill_rate,
+          ROW_NUMBER() OVER (PARTITION BY date ORDER BY rev DESC) as rn
+        FROM (
+          SELECT
+            DATE as date,
+            pic,
+            pid,
+            pubname,
+            mid,
+            medianame,
+            SUM(rev) as rev,
+            SUM(profit) as profit,
+            SUM(rev) - SUM(profit) as rev_to_pub,
+            AVG(CAST(request_CPM as FLOAT64)) as ecpm,
+            (SUM(paid) / NULLIF(SUM(req), 0)) * 100 as fill_rate,
+            SUM(rev) as _filter_revenue,
+            SUM(profit) as _filter_profit,
+            SUM(req) as _filter_requests,
+            SUM(paid) as _filter_paid,
+            AVG(CAST(request_CPM as FLOAT64)) as _filter_ecpm,
+            (SUM(paid) / NULLIF(SUM(req), 0)) * 100 as _filter_fill_rate
+          FROM ${tableName}
+          ${whereClause}
+          GROUP BY DATE, pic, pid, pubname, mid, medianame
+          ${having}
+        )
+      ) ranked
+      WHERE rn <= 100
+      ORDER BY date ASC, rev DESC
+    ` : `
       SELECT * FROM (
         SELECT
           DATE as date,

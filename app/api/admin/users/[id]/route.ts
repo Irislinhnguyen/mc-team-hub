@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerUser, requireAdminOrManager, isAdmin } from '@/lib/auth/server'
-import { createClient } from '@/lib/supabase/server'
+import { getServerUser, requireAdminOrManager, isAdmin, requireLeaderOrAbove, canAssignRole } from '@/lib/auth/server'
+import { createAdminClient } from '@/lib/supabase/server'
 
 // GET single user
 export async function GET(
@@ -9,10 +9,11 @@ export async function GET(
 ) {
   try {
     const user = await getServerUser()
-    requireAdminOrManager(user)
+    // Leader and above can view users
+    requireLeaderOrAbove(user)
 
     const { id } = await params
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
 
     const { data: userData, error } = await supabase
       .from('users')
@@ -44,7 +45,8 @@ export async function PATCH(
 ) {
   try {
     const currentUser = await getServerUser()
-    requireAdminOrManager(currentUser)
+    // Leader and above can update users (but with role restrictions)
+    requireLeaderOrAbove(currentUser)
 
     const { id } = await params
     const body = await request.json()
@@ -58,15 +60,15 @@ export async function PATCH(
       )
     }
 
-    // Only admin can change roles to admin or change admin's role
-    if (role === 'admin' && !isAdmin(currentUser)) {
+    // Check if current user can assign the target role based on hierarchy
+    if (role && !canAssignRole(currentUser.role, role)) {
       return NextResponse.json(
-        { error: 'Only admins can assign admin role' },
+        { error: `You cannot assign ${role} role` },
         { status: 403 }
       )
     }
 
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
 
     // Check if trying to modify an admin (only admin can do this)
     const { data: targetUser } = await supabase
@@ -154,7 +156,7 @@ export async function DELETE(
       )
     }
 
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
 
     // Check if user exists and is not an admin
     const { data: targetUser } = await supabase

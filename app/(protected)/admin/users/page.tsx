@@ -47,6 +47,13 @@ type RoleFilter = 'all' | 'admin' | 'manager' | 'leader' | 'user'
 
 const ROLES = ['admin', 'manager', 'leader', 'user'] as const
 
+interface RoleStats {
+  admin: number
+  manager: number
+  leader: number
+  user: number
+}
+
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -56,6 +63,7 @@ export default function UsersPage() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
+  const [stats, setStats] = useState<RoleStats>({ admin: 0, manager: 0, leader: 0, user: 0 })
 
   // Edit modal state
   const [editingUser, setEditingUser] = useState<User | null>(null)
@@ -91,8 +99,10 @@ export default function UsersPage() {
       }
 
       const response = await fetch(`/api/admin/users?${params}`)
+
       if (!response.ok) {
-        throw new Error('Failed to fetch users')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to fetch users')
       }
 
       const data: UsersResponse = await response.json()
@@ -106,8 +116,21 @@ export default function UsersPage() {
     }
   }
 
+  const fetchStats = async () => {
+    try {
+      const response = await fetch('/api/admin/users/stats')
+      if (response.ok) {
+        const data = await response.json()
+        setStats(data)
+      }
+    } catch (err) {
+      console.error('[Users Page] Failed to fetch stats:', err)
+    }
+  }
+
   useEffect(() => {
     fetchUsers()
+    fetchStats()
   }, [roleFilter, page])
 
   // Debounced search
@@ -184,6 +207,7 @@ export default function UsersPage() {
 
       setEditingUser(null)
       fetchUsers()
+      fetchStats()
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -206,6 +230,7 @@ export default function UsersPage() {
 
       setDeletingUser(null)
       fetchUsers()
+      fetchStats()
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -242,19 +267,12 @@ export default function UsersPage() {
       setNewRole('user')
       setNewPassword('')
       fetchUsers()
+      fetchStats()
     } catch (err: any) {
       setError(err.message)
     } finally {
       setCreating(false)
     }
-  }
-
-  // Stats by role
-  const stats = {
-    admin: users.filter(u => u.role === 'admin').length,
-    manager: users.filter(u => u.role === 'manager').length,
-    leader: users.filter(u => u.role === 'leader').length,
-    user: users.filter(u => u.role === 'user').length,
   }
 
   return (

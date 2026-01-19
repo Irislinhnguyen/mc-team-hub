@@ -56,7 +56,8 @@ const MODIFY_KEYWORDS_VI = [
 const MODIFY_KEYWORDS_EN = [
   'change', 'modify', 'update', 'but', 'however',
   'add', 'remove', 'delete', 'keep', 'filter',
-  'only show', 'instead', 'replace', 'switch'
+  'only show', 'instead', 'replace', 'switch',
+  'adjust:', 'show zone name', 'add zone', 'add column', 'include zone'
 ]
 
 // Reference words pointing to previous context

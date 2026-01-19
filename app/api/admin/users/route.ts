@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerUser, requireAdminOrManager, isAdmin } from '@/lib/auth/server'
-import { createClient } from '@/lib/supabase/server'
+import { getServerUser, requireAdminOrManager, isAdmin, requireLeaderOrAbove } from '@/lib/auth/server'
+import { createAdminClient } from '@/lib/supabase/server'
 
 // GET all users
 export async function GET(request: NextRequest) {
   try {
     const user = await getServerUser()
-    requireAdminOrManager(user)
+    // Leader and above can view users
+    requireLeaderOrAbove(user)
 
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
     const searchParams = request.nextUrl.searchParams
 
     const page = parseInt(searchParams.get('page') || '1')
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
 
     // Check if user already exists
     const { data: existingUser } = await supabase

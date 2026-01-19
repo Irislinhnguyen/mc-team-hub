@@ -178,13 +178,30 @@ export function AddPipelinesModal({
   const [error, setError] = useState<string | null>(null)
   const [resultMessage, setResultMessage] = useState<string | null>(null)
 
-  // Metadata for filter builder (can be loaded from API if needed)
-  const [metadata] = useState<any>({
+  // Metadata for filter builder - loaded from API
+  const [metadata, setMetadata] = useState<any>({
     pics: [],
     teams: [],
     products: [],
-    // Add more metadata as needed
   })
+
+  // Load metadata when modal opens
+  useEffect(() => {
+    if (isOpen && metadata.products.length === 0) {
+      fetch('/api/focus-of-month/metadata')
+        .then(res => res.json())
+        .then(data => {
+          setMetadata({
+            products: data.products || [],
+            teams: data.teams || [],
+            pics: data.pics || [],
+          })
+        })
+        .catch(err => {
+          console.error('Failed to load metadata:', err)
+        })
+    }
+  }, [isOpen])
 
   // Reset state when modal closes
   useEffect(() => {

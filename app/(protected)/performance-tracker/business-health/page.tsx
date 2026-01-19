@@ -21,9 +21,11 @@ import { usePICBreakdown } from '../../../../lib/hooks/queries/usePICBreakdown'
 import { ToggleGroup, ToggleGroupItem } from '../../../../src/components/ui/toggle-group'
 import { AnalyticsPageLayout } from '../../../components/performance-tracker/AnalyticsPageLayout'
 import { MetadataFilterPanel } from '../../../components/performance-tracker/MetadataFilterPanel'
+import { MetricFilterPanel } from '../../../components/performance-tracker/MetricFilterPanel'
 import { useDefaultDateRange } from '../../../../lib/hooks/useDefaultDateRange'
 import { safeToFixed, safeNumber, formatDate } from '../../../../lib/utils/formatters'
 import { filterDataMulti } from '../../../../lib/hooks/useClientSideFilter'
+import type { MetricFilters } from '../../../../lib/types/performanceTracker'
 
 /**
  * REFACTORED VERSION - Business Health Dashboard
@@ -47,8 +49,20 @@ function BusinessHealthPageContent() {
   const presetIdFromUrl = searchParams.get('preset')
   const [currentFilters, setCurrentFilters] = useState<Record<string, any>>(defaultDateRange)
 
+  // ✨ NEW: Metric filters state (for filtering by aggregated metrics)
+  const [metricFilters, setMetricFilters] = useState<MetricFilters>({
+    clauses: [],
+    logic: 'AND'
+  })
+
   const { crossFilters } = useCrossFilter()
   const [selectedMetric, setSelectedMetric] = useState<'revenue' | 'profit' | 'requests' | 'paid' | 'ecpm' | 'fill_rate'>('revenue')
+
+  // ✨ NEW: Combined filters including metric filters
+  const combinedFilters = useMemo(() => ({
+    ...currentFilters,
+    metricFilters,
+  }), [currentFilters, metricFilters])
 
   // Stabilize setCurrentFilters to prevent infinite re-render loops in child components
   const stableSetCurrentFilters = useCallback((filters: Record<string, any>) => {
@@ -56,7 +70,7 @@ function BusinessHealthPageContent() {
   }, [])
 
   // ✨ Use React Query hook for data fetching with automatic caching
-  const { data: rawData, isLoading: loading, error } = useBusinessHealth(currentFilters)
+  const { data: rawData, isLoading: loading, error } = useBusinessHealth(combinedFilters)
 
   // ✨ Fetch team configurations for drill-down chart
   const { data: teamData, isLoading: teamLoading } = useTeamConfigurations()
@@ -67,13 +81,13 @@ function BusinessHealthPageContent() {
   const [selectedTeamForDrill, setSelectedTeamForDrill] = useState<string | null>(null)
 
   // ✨ NEW: Fetch team breakdown (always loaded, small payload ~120 rows)
-  const { data: teamBreakdownResponse, isLoading: isTeamBreakdownLoading } = useTeamBreakdown(currentFilters)
+  const { data: teamBreakdownResponse, isLoading: isTeamBreakdownLoading } = useTeamBreakdown(combinedFilters)
   const teamBreakdownData = teamBreakdownResponse?.teamBreakdown || []
 
   // ✨ NEW: Fetch PIC breakdown on-demand (only when user clicks a team)
   const { data: picBreakdownResponse, isLoading: isPICBreakdownLoading } = usePICBreakdown(
     selectedTeamForDrill,
-    currentFilters,
+    combinedFilters,
     !!selectedTeamForDrill  // Only enabled when team selected
   )
   const picBreakdownData = picBreakdownResponse?.picBreakdown || []
@@ -277,6 +291,13 @@ function BusinessHealthPageContent() {
         isLoading={loading}
         defaultDateRange={defaultDateRange}
         presetIdFromUrl={presetIdFromUrl || undefined}
+      />
+
+      {/* ✨ NEW: Metric Filter Panel - Filter by aggregated metrics */}
+      <MetricFilterPanel
+        metricFilters={metricFilters}
+        onMetricFiltersChange={setMetricFilters}
+        disabled={loading}
       />
 
       {/* Top Metrics Row - Max 2 rows on mobile */}

@@ -474,7 +474,7 @@ function DeepDiveV2PageContent() {
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         {/* Page Title */}
         <div>
-          <h1 className="text-2xl font-bold mb-2" style={{ color: '#1976D2' }}>
+          <h1 className="text-2xl font-bold mb-2" style={{ color: '#1565C0' }}>
             Deep Dive Analytics
           </h1>
           <p className="text-sm" style={{ color: '#6b7280' }}>

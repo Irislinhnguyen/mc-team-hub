@@ -97,39 +97,169 @@ Detect the language of the user's question and ALWAYS respond in the SAME langua
 - Indonesian question (Bahasa) → Indonesian response
 - Any other language → Same language response
 
-**IMPORTANT: YOU MUST THINK STEP-BY-STEP BEFORE GENERATING SQL**
+**AVAILABLE COLUMNS (IMPORTANT - zonename EXISTS in pub_data!):**
 
-Your task has TWO stages:
-1. REASONING: Break down the question into logical steps
-2. SQL GENERATION: Generate SQL based on your reasoning
+pub_data table (gcpp-check.GI_publisher.pub_data):
+- date, pic, pid, pubname, mid, medianame
+- zid, zonename  ← zonename IS available directly, NO extra table needed!
+- rev (revenue), profit, paid (impressions), req (requests)
+- request_CPM, month, year
 
-**STAGE 1: REASONING PROCESS (REQUIRED)**
+updated_product_name table (gcpp-check.GI_publisher.updated_product_name):
+- JOIN on zid when user asks about "product"
+- Columns: pid, pubname, mid, medianame, zid, zonename, H5, product
 
-You MUST provide detailed reasoning in this structure:
+**CRITICAL REMINDERS:**
+- "zone name" / "zonename" → use zonename column (EXISTS in pub_data!)
+- "product" → JOIN with updated_product_name table
+- "team" → use pic IN (...) filter (NO team column exists!)
 
-**Step 1: UNDERSTAND THE QUESTION**
-- What is the user asking for?
-- What entities are involved? (publishers/pid, media/mid, zones/zid, teams/pic)
-- What time periods are specified?
-- KEY INSIGHT: What is the core logic? (e.g., "churn" = had revenue before, but not now)
+**IMPORTANT: 3-STEP THINKING PROCESS FOR GENERATING SQL**
 
-**Step 2: BREAK DOWN THE LOGIC**
-- What are the logical steps needed?
-- Are there multiple conditions? (e.g., A AND B, A BUT NOT B)
-- What calculations are required?
-- Do I need set operations? (UNION, EXCEPT, IN/NOT IN)
+You MUST follow this 3-step process for every question:
 
-**Step 3: IDENTIFY CONSTRAINTS**
-- Does this need JOIN with updated_product_name? (if product filter)
-- What are the exact date ranges?
-- Any team/PIC filters? (get from context)
-- Watch for NULL handling (pic CAN BE NULL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1: ENTITY IDENTIFICATION (What entities?)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Step 4: PLAN THE SQL STRUCTURE**
-- Do I need CTEs (WITH clauses) for multi-step logic?
-- What is each CTE doing?
-- What is the main SELECT statement?
-- What ORDER BY / LIMIT applies?
+FIRST: Identify what ENTITY the user wants:
+
+| Entity | Description | Columns to SELECT |
+|--------|-------------|-------------------|
+| pid | Publisher | pid, pubname |
+| mid | Media | mid, medianame, pid, pubname |
+| zid | Zone | zid, zonename, mid, medianame, pid, pubname |
+| team | Team (via PIC) | pic, COUNT(DISTINCT pid) |
+| pic | Person in Charge | pic, team, pubname |
+
+ENTITY HIERARCHY (child includes parent):
+- zid → includes mid, pid info
+- mid → includes pid info
+- pid → publisher only
+
+KEYWORD PATTERNS:
+- "zones", "zone IDs", "zid", "these zones" → entity = zid
+- "publishers", "PIDs", "pubname" → entity = pid
+- "media", "MIDs", "medianame" → entity = mid
+- "teams", "team names" → entity = team (use pic filter)
+
+SPECIFIC ID FILTERS:
+- "these zones: 1597085, 1563812, ..." → WHERE zid IN (1597085, 1563812, ...)
+- "for PIDs: 123, 456" → WHERE pid IN (123, 456)
+- Parse comma-separated, tab-separated, or space-separated numbers
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2: METRIC DETERMINATION (What metrics?)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SECOND: Identify what METRICS to calculate:
+
+| User Request | SQL Formula | Notes |
+|--------------|-------------|-------|
+| "revenue" | SUM(rev) | Direct sum |
+| "ad requests" / "requests" | SUM(req) | Direct sum |
+| "impressions" / "paid" | SUM(paid) | Direct sum |
+| "profit" | SUM(profit) | Direct sum |
+| "eCPM" | SAFE_DIVIDE(SUM(rev), SUM(paid)) * 1000 | Calculated! |
+| "fill rate" | SAFE_DIVIDE(SUM(paid), SUM(req)) * 100 | Calculated! |
+| "profit rate" | SAFE_DIVIDE(SUM(profit), SUM(rev)) * 100 | Calculated! |
+| "revenue to publisher" | SUM(paid) | Same as impressions |
+
+IMPORTANT: When user asks for "eCPM", "fill rate", or "profit rate",
+you MUST calculate them using SAFE_DIVIDE, NOT select a pre-existing column!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 3: HOW TO GET METRICS (SQL Structure)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+THIRD: Build the SQL query:
+
+1. SELECT entity columns + calculated metrics
+2. FROM \`gcpp-check.GI_publisher.pub_data\`
+3. WHERE conditions:
+   - Date range (parse from question)
+   - Entity ID filter (IN clause for specific IDs)
+   - Product filter (only if mentioned - requires JOIN)
+4. GROUP BY entity columns
+5. ORDER BY (usually revenue descending)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXAMPLE: Complex Zone Query with Multiple Metrics
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Question: "Give me the information for these zones: 1597085, 1563812, 1595787.
+Include zonename. Calculate total ad requests, revenue, eCPM, profit."
+
+**Step 1: Entity**
+- Keywords: "zones", "zone IDs" → entity = zid
+- Specific IDs: 1597085, 1563812, 1595787
+
+**Step 2: Metrics**
+- "ad requests" → SUM(req)
+- "revenue" → SUM(rev)
+- "eCPM" → SAFE_DIVIDE(SUM(rev), SUM(paid)) * 1000
+- "profit" → SUM(profit)
+
+**Step 3: SQL**
+SELECT
+  zid,
+  zonename,
+  mid,
+  medianame,
+  pid,
+  pubname,
+  SUM(req) as total_requests,
+  SUM(rev) as total_revenue,
+  SUM(profit) as total_profit,
+  SUM(paid) as total_impressions,
+  SAFE_DIVIDE(SUM(rev), SUM(paid)) * 1000 as ecpm
+FROM \`gcpp-check.GI_publisher.pub_data\`
+WHERE zid IN (1597085, 1563812, 1595787)
+GROUP BY zid, zonename, mid, medianame, pid, pubname
+ORDER BY total_revenue DESC
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXAMPLE: Multiple Metrics for Publishers
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Question: "Show publishers with revenue, eCPM, and fill rate in October 2024"
+
+**Step 1: Entity**
+- Keywords: "publishers" → entity = pid
+
+**Step 2: Metrics**
+- "revenue" → SUM(rev)
+- "eCPM" → SAFE_DIVIDE(SUM(rev), SUM(paid)) * 1000
+- "fill rate" → SAFE_DIVIDE(SUM(paid), SUM(req)) * 100
+
+**Step 3: SQL**
+SELECT
+  pid,
+  pubname,
+  SUM(rev) as total_revenue,
+  SUM(req) as total_requests,
+  SUM(paid) as total_impressions,
+  SAFE_DIVIDE(SUM(rev), SUM(paid)) * 1000 as ecpm,
+  SAFE_DIVIDE(SUM(paid), SUM(req)) * 100 as fill_rate
+FROM \`gcpp-check.GI_publisher.pub_data\`
+WHERE date BETWEEN '2024-10-01' AND '2024-10-31'
+GROUP BY pid, pubname
+ORDER BY total_revenue DESC
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TABLE SCHEMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**pub_data table columns:**
+date, pic, pid, pubname, mid, medianame, zid, zonename, rev, profit, paid, req, request_CPM, month, year
+
+**updated_product_name table columns:**
+pid, pubname, mid, medianame, zid, zonename, H5, product
+
+**IMPORTANT:**
+- "zone name" / "zonename" → use zonename column (EXISTS in pub_data!)
+- "product" → JOIN with updated_product_name table
+- "team" → use pic IN (...) filter (NO team column exists!)
 
 **EXAMPLE REASONING (Churned Publishers):**
 
@@ -589,47 +719,47 @@ Response:
   "warnings": []
 }
 
-**OUTPUT FORMAT WITH REASONING:**
+**OUTPUT FORMAT WITH 3-STEP REASONING:**
 
 You MUST return JSON with this structure:
 
 {
   "reasoning": {
-    "step1_understanding": {
-      "question_type": "...",
-      "entities": [...],
-      "time_periods": [...],
-      "key_insight": "..."
+    "step1_entity": {
+      "detected_entity": "zid",
+      "keywords_found": ["zones", "zone IDs"],
+      "id_filters": [1597085, 1563812],
+      "reason": "User asked for zone information with specific IDs"
     },
-    "step2_breakdown": {
-      "logic_steps": [...],
-      "calculations": [...]
+    "step2_metrics": {
+      "metrics_requested": ["ad requests", "revenue", "eCPM", "profit"],
+      "sql_formulas": {
+        "ad_requests": "SUM(req)",
+        "revenue": "SUM(rev)",
+        "ecpm": "SAFE_DIVIDE(SUM(rev), SUM(paid)) * 1000",
+        "profit": "SUM(profit)"
+      }
     },
-    "step3_constraints": {
-      "no_product_filter": true/false,
-      "no_join_needed": true/false,
-      "date_ranges": [...],
-      "team_filter_needed": true/false
-    },
-    "step4_sql_plan": {
-      "cte1": "...",
-      "cte2": "...",
-      "main_query": "...",
-      "order_by": "..."
+    "step3_sql_structure": {
+      "entity_columns": ["zid", "zonename", "mid", "medianame", "pid", "pubname"],
+      "where_clause": "zid IN (...)",
+      "group_by": ["zid", "zonename", "mid", "medianame", "pid", "pubname"],
+      "order_by": "total_revenue DESC"
     }
   },
   "understanding": {
-    "summary": "...",
-    "entities": [...],
-    "filters": [...],
+    "summary": "Show metrics for specific zones",
+    "entities": ["zones (zid, zonename)"],
+    "filters": ["zid IN (...)"],
+    "metrics": ["requests", "revenue", "eCPM", "profit"],
     "timeRange": "...",
-    "confidence": 0.0-1.0
+    "confidence": 0.95
   },
   "sql": "SELECT ...",
   "warnings": []
 }
 
-Now process the user's question with REASONING FIRST, then SQL.`
+Now process the user's question with 3-STEP REASONING FIRST, then SQL.`
 
 export async function generateSqlFromQuestion(
   question: string,

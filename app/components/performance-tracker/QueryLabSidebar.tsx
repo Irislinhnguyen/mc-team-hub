@@ -13,13 +13,14 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/src/components/ui/button'
 import { ScrollArea } from '@/src/components/ui/scroll-area'
-import { useAuth } from '@/app/contexts/AuthContext'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/src/components/ui/dropdown-menu'
+import { useAuth } from '@/app/contexts/AuthContext'
+import { UserDropdown } from '../shared/UserDropdown'
 import {
   Plus,
   MessageSquare,
@@ -30,12 +31,9 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
   ArrowLeft,
   Sparkles,
-  LogOut,
-  Settings,
-  LayoutDashboard
+  Settings
 } from 'lucide-react'
 
 interface Session {
@@ -337,38 +335,7 @@ export default function QueryLabSidebar({
       {/* User Info - Bottom with Dropdown */}
       {user && (
         <div className="p-3 border-t border-gray-100">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg bg-gray-50/80 hover:bg-gray-100 transition-colors cursor-pointer">
-                <div className="h-8 w-8 rounded-full bg-[#1565C0] flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-                  {user.email?.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0 text-left">
-                  <p className="text-sm font-medium text-gray-700 truncate">
-                    {user.name || user.email?.split('@')[0]}
-                  </p>
-                  <p className="text-[11px] text-gray-400 truncate">{user.email}</p>
-                </div>
-                <ChevronUp className="w-4 h-4 text-gray-400 flex-shrink-0" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="top" className="w-48">
-              <DropdownMenuItem
-                onClick={() => router.push('/')}
-                className="cursor-pointer"
-              >
-                <LayoutDashboard className="w-4 h-4 mr-2" />
-                Back to Dashboard
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => logout()}
-                className="text-red-600 focus:text-red-600 cursor-pointer"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <UserDropdown user={user} onLogout={logout} align="start" showUpChevron />
         </div>
       )}
     </div>

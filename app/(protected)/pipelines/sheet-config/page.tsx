@@ -10,6 +10,9 @@
 import { useState, useEffect } from 'react'
 import { QuarterlySheetManager } from '@/app/components/pipelines/QuarterlySheetManager'
 import { AddQuarterlySheetModal } from '@/app/components/pipelines/AddQuarterlySheetModal'
+import { QuarterlySheetTableSkeleton } from '@/app/components/pipelines/skeletons'
+import { PipelinePageLayout } from '@/app/components/pipelines/PipelinePageLayout'
+import { QuarterlySheetTableSkeleton as SheetConfigSkeleton } from '@/app/components/pipelines/skeletons'
 
 interface QuarterlySheet {
   id: string
@@ -60,20 +63,23 @@ export default function SheetConfigPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent mb-4"></div>
-            <p className="text-muted-foreground">Loading quarterly sheets...</p>
-          </div>
-        </div>
-      </div>
+      <PipelinePageLayout
+        title="Quarterly Sheets Configuration"
+        subtitle="Manage Google Sheets sync for each quarter. Click sync to update pipelines from specific sheets."
+        headerActions={<AddQuarterlySheetModal onSheetAdded={fetchSheets} />}
+      >
+        <QuarterlySheetTableSkeleton rows={5} />
+      </PipelinePageLayout>
     )
   }
 
   if (error) {
     return (
-      <div className="container mx-auto py-8">
+      <PipelinePageLayout
+        title="Quarterly Sheets Configuration"
+        subtitle="Manage Google Sheets sync for each quarter. Click sync to update pipelines from specific sheets."
+        headerActions={<AddQuarterlySheetModal onSheetAdded={fetchSheets} />}
+      >
         <div className="rounded-lg border border-red-200 bg-red-50 p-8 text-center">
           <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Sheets</h3>
           <p className="text-red-700">{error}</p>
@@ -84,26 +90,19 @@ export default function SheetConfigPage() {
             Retry
           </button>
         </div>
-      </div>
+      </PipelinePageLayout>
     )
   }
 
   return (
-    <div className="container mx-auto py-8">
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1565C0]">Quarterly Sheets Configuration</h1>
-          <p className="text-muted-foreground">
-            Manage Google Sheets sync for each quarter. Click sync to update pipelines from specific sheets.
-          </p>
-        </div>
-        <AddQuarterlySheetModal onSheetAdded={fetchSheets} />
-      </div>
-
+    <PipelinePageLayout
+      title="Quarterly Sheets Configuration"
+      subtitle="Manage Google Sheets sync for each quarter. Click sync to update pipelines from specific sheets."
+      headerActions={<AddQuarterlySheetModal onSheetAdded={fetchSheets} />}
+    >
       {/* Quarterly Sheets Table */}
       {sheets.length === 0 ? (
-        <div className="rounded-lg border-2 border-dashed p-12 text-center">
+        <div className="rounded-lg border-2 border-dashed p-12 text-center bg-white">
           <h3 className="mb-2 text-lg font-semibold">No quarterly sheets configured</h3>
           <p className="mb-4 text-sm text-muted-foreground">
             Add a quarterly sheet to start syncing your pipeline data.
@@ -113,11 +112,13 @@ export default function SheetConfigPage() {
           </p>
         </div>
       ) : (
-        <QuarterlySheetManager
-          sheets={sheets}
-          onRefresh={fetchSheets}
-        />
+        <div className="bg-white rounded-lg border">
+          <QuarterlySheetManager
+            sheets={sheets}
+            onRefresh={fetchSheets}
+          />
+        </div>
       )}
-    </div>
+    </PipelinePageLayout>
   )
 }

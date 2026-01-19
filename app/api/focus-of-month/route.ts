@@ -4,11 +4,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerUser } from '@/lib/auth/server'
+import { getServerUser, canManageFocus } from '@/lib/auth/server'
 import {
   listFocuses,
   createFocus,
-  getManagerRoles,
 } from '@/lib/services/focusService'
 import type { CreateFocusRequest, FocusListFilters } from '@/lib/types/focus'
 import { z } from 'zod'
@@ -26,12 +25,19 @@ export async function GET(request: NextRequest) {
 
     // Parse query parameters
     const { searchParams } = new URL(request.url)
+
+    // Regular users can only see published focuses
+    const userStatusFilter = searchParams.get('status') as any
+    const effectiveStatus = canManageFocus(user)
+      ? userStatusFilter  // Leader/Manager/Admin can filter by any status
+      : 'published'       // Regular users only see published
+
     const filters: FocusListFilters = {
       month: searchParams.get('month') ? parseInt(searchParams.get('month')!) : undefined,
       year: searchParams.get('year') ? parseInt(searchParams.get('year')!) : undefined,
       team: searchParams.get('team') || undefined,
       group: (searchParams.get('group') as 'sales' | 'cs') || undefined,
-      status: searchParams.get('status') as any,
+      status: effectiveStatus,
       search: searchParams.get('search') || undefined,
     }
 
@@ -77,30 +83,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user is a focus manager
-    // If user is admin, allow immediately
-    if (user.role !== 'admin') {
-      const rolesResult = await getManagerRoles()
-
-      // If roles check fails, log but allow (graceful degradation)
-      if (!rolesResult.success) {
-        console.warn('Failed to check manager roles, allowing by default:', rolesResult.error)
-      } else {
-        // Check if user has create permission
-        const hasPermission = rolesResult.roles?.some(
-          (r) =>
-            r.user_id === user.sub &&
-            r.can_create
-        )
-
-        if (!hasPermission && rolesResult.roles && rolesResult.roles.length > 0) {
-          // Only block if roles table has data and user is not in it
-          return NextResponse.json(
-            { status: 'error', message: 'Only focus managers can create focuses' },
-            { status: 403 }
-          )
-        }
-      }
+    // Check if user can manage Focus of the Month (Leader/Manager/Admin)
+    if (!canManageFocus(user)) {
+      return NextResponse.json(
+        { status: 'error', message: 'Forbidden: Insufficient permissions to create focuses' },
+        { status: 403 }
+      )
     }
 
     // Parse and validate request body

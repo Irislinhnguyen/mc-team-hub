@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import TeamSetupCardSkeleton from '../../../components/performance-tracker/skeletons/TeamSetupCardSkeleton'
 import { DynamicTableSkeleton } from '../../../components/performance-tracker/skeletons/DynamicTableSkeleton'
 import type { ColumnConfig } from '@/lib/types/performanceTracker'
+import { colors } from '@/lib/colors'
 
 interface PicAssignment {
   pic_name: string
@@ -252,7 +253,7 @@ export default function TeamSetupPage() {
     return (
       <div className="p-8">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Team Setup</h1>
+          <h1 className="text-2xl font-bold" style={{ color: colors.main }}>Team Setup</h1>
           <p className="text-sm text-gray-500">Manage PIC team assignments and Pipeline POC mappings</p>
         </div>
 
@@ -281,7 +282,7 @@ export default function TeamSetupPage() {
     return (
       <div className="p-8">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Team Setup</h1>
+          <h1 className="text-2xl font-bold" style={{ color: colors.main }}>Team Setup</h1>
           <p className="text-sm text-gray-500">Manage PIC team assignments and Pipeline POC mappings</p>
         </div>
         <div className="flex flex-col items-center justify-center h-64">
@@ -309,7 +310,7 @@ export default function TeamSetupPage() {
   return (
     <div className="p-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Team Setup</h1>
+        <h1 className="text-2xl font-bold" style={{ color: colors.main }}>Team Setup</h1>
         <p className="text-sm text-gray-500">Manage PIC team assignments and Pipeline POC mappings</p>
       </div>
 

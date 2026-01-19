@@ -135,6 +135,7 @@ export async function POST(request: NextRequest) {
       skipDateFilter: true, // We'll add date filter manually
       skipRevFlagFilter: true,
       simplifiedFilter,
+      dateRange, // Pass dateRange for entity operator subqueries
     })
 
     console.log('[FilterPipelines] 📝 WHERE clause generated:', whereClause)

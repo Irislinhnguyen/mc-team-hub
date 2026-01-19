@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import BigQueryService from '../../../../lib/services/bigquery'
-import { buildWhereClause, getBusinessHealthQueries } from '../../../../lib/services/analyticsQueries'
+import { buildWhereClause, getBusinessHealthQueries, buildHavingClause } from '../../../../lib/services/analyticsQueries'
+import type { MetricFilters } from '../../../../lib/types/performanceTracker'
 
 export async function POST(request: NextRequest) {
   try {
     const filters = await request.json()
     const whereClause = await buildWhereClause(filters)
 
-    const queries = getBusinessHealthQueries(whereClause)
+    // Extract metric filters and build HAVING clause
+    const metricFilters: MetricFilters | undefined = filters.metricFilters
+    const { clause: havingClause } = buildHavingClause(metricFilters)
+
+    const queries = getBusinessHealthQueries(whereClause, { havingClause })
 
     // Execute all queries in parallel
     const [metrics, timeSeries, publishers, media, zones, ecpm, zoneMonitoring, profitRate, productTrend, zoneMonitoringTimeSeries, listOfPid, listOfPidByDate, listOfMid, listOfMidByDate] = await Promise.all([

@@ -3,6 +3,10 @@
 /**
  * Focus Detail Page
  * Shows focus details with tabs: Suggestions, Dashboard, Activity
+ *
+ * Access Control:
+ * - User: Can only view published focuses (read-only)
+ * - Leader/Manager/Admin: Can view/edit all focuses
  */
 
 import { useState, useEffect, useMemo } from 'react'
@@ -41,9 +45,13 @@ import { EditFocusModal } from '@/app/components/pipelines/EditFocusModal'
 import { AddPipelinesModal } from '@/app/components/pipelines/AddPipelinesModal'
 import { PipelineDetailDrawer } from '@/app/components/pipelines/PipelineDetailDrawer'
 import FocusSuggestionsTable from '@/app/components/pipelines/FocusSuggestionsTable'
+import { FocusDetailSkeleton } from '@/app/components/pipelines/skeletons'
+import { PipelinePageLayout } from '@/app/components/pipelines/PipelinePageLayout'
+import { useAuth } from '@/app/contexts/AuthContext'
 import type { Focus, FocusSuggestion } from '@/lib/types/focus'
 import type { Pipeline } from '@/lib/types/pipeline'
 import { typography, spacing, colors, composedStyles } from '@/lib/design-tokens'
+import { colors as statusColors } from '@/lib/colors'
 
 // Debounce helper
 function debounce<T extends (...args: any[]) => any>(
@@ -77,11 +85,16 @@ export default function FocusDetailPage() {
   const router = useRouter()
   const focusId = params.id as string
   const { toast } = useToast()
+  const { user } = useAuth()
 
   const [focus, setFocus] = useState<Focus | null>(null)
   const [suggestions, setSuggestions] = useState<FocusSuggestion[]>([])
   const [loading, setLoading] = useState(true)
+  const [accessDenied, setAccessDenied] = useState(false)
   const [activeTab, setActiveTab] = useState('Suggestions')
+
+  // Check if user can manage focuses (Leader/Manager/Admin)
+  const canManage = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'leader'
 
   // Filter state for Suggestions tab
   const [filters, setFilters] = useState<{
@@ -165,6 +178,12 @@ export default function FocusDetailPage() {
       const response = await fetch(`/api/focus-of-month/${focusId}`)
 
       if (!response.ok) {
+        // Handle 403 - access denied (user trying to access draft/archived)
+        if (response.status === 403) {
+          setAccessDenied(true)
+          setLoading(false)
+          return
+        }
         console.error('[loadFocus] Response not OK:', response.status, response.statusText)
         setLoading(false)
         return
@@ -318,105 +337,130 @@ export default function FocusDetailPage() {
 
   if (loading) {
     return (
-      <div className="p-8 text-center">
-        <p>Loading...</p>
-      </div>
+      <PipelinePageLayout
+        title={<span>Loading...</span>}
+        showBackButton
+        onBackButtonClick={() => router.push('/pipelines/focus')}
+      >
+        <FocusDetailSkeleton />
+      </PipelinePageLayout>
+    )
+  }
+
+  if (accessDenied) {
+    return (
+      <PipelinePageLayout
+        title="Access Denied"
+        showBackButton
+        onBackButtonClick={() => router.push('/pipelines/focus')}
+      >
+        <div className="text-center py-12">
+          <p className="text-red-600 mb-4">You can only view published focuses.</p>
+          <Button variant="outline" onClick={() => router.push('/pipelines/focus')}>
+            Back to Focus List
+          </Button>
+        </div>
+      </PipelinePageLayout>
     )
   }
 
   if (!focus) {
     return (
-      <div className="p-8 text-center">
-        <p>Focus not found</p>
-      </div>
+      <PipelinePageLayout
+        title="Focus Not Found"
+        showBackButton
+        onBackButtonClick={() => router.push('/pipelines/focus')}
+      >
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Focus not found</p>
+        </div>
+      </PipelinePageLayout>
     )
   }
 
-  return (
-    <div className="p-4 md:p-6 lg:p-8 space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <Button variant="ghost" size="sm" onClick={() => router.push('/pipelines/focus')}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h1 style={{ fontSize: typography.sizes.pageTitle }} className={composedStyles.pageTitle}>
-              {focus.title}
-            </h1>
-            <Badge
-              variant={
-                focus.status === 'published'
-                  ? 'default'
-                  : focus.status === 'draft'
-                  ? 'secondary'
-                  : 'outline'
-              }
-            >
-              {focus.status}
-            </Badge>
-          </div>
-          <p className={`text-sm ${colors.text.muted} ml-12`}>
-            {focus.description || 'No description'}
-          </p>
-        </div>
+  // Build title with badge
+  const titleWithBadge = (
+    <>
+      {focus.title}
+      <Badge
+        variant={
+          focus.status === 'published'
+            ? 'default'
+            : focus.status === 'draft'
+            ? 'secondary'
+            : 'outline'
+        }
+      >
+        {focus.status}
+      </Badge>
+    </>
+  )
 
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-          {/* Status Change Buttons - based on current status */}
-          {focus.status === 'draft' && (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => handleChangeStatus('published')}
-              >
-                Publish Focus
-              </Button>
+  return (
+    <PipelinePageLayout
+      title={titleWithBadge}
+      subtitle={focus.description || 'No description'}
+      showBackButton
+      onBackButtonClick={() => router.push('/pipelines/focus')}
+      headerActions={
+        canManage ? (
+          <>
+            {/* Status Change Buttons - based on current status */}
+            {focus.status === 'draft' && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => handleChangeStatus('published')}
+                >
+                  Publish Focus
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleChangeStatus('archived')}
+                >
+                  Archive Focus
+                </Button>
+              </>
+            )}
+            {focus.status === 'published' && (
               <Button
                 variant="outline"
                 onClick={() => handleChangeStatus('archived')}
               >
                 Archive Focus
               </Button>
-            </>
-          )}
-          {focus.status === 'published' && (
+            )}
+
+            {/* Edit Button */}
             <Button
               variant="outline"
-              onClick={() => handleChangeStatus('archived')}
+              onClick={() => setShowEditFocusModal(true)}
             >
-              Archive Focus
+              Edit Focus
             </Button>
-          )}
 
-          {/* Edit Button */}
-          <Button
-            variant="outline"
-            onClick={() => setShowEditFocusModal(true)}
-          >
-            Edit Focus
-          </Button>
+            {/* Add Pipelines Button - only show if not archived */}
+            {focus.status !== 'archived' && (
+              <Button onClick={() => setShowAddPipelinesModal(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Pipelines
+              </Button>
+            )}
 
-          {/* Add Pipelines Button - only show if not archived */}
-          {focus.status !== 'archived' && (
-            <Button onClick={() => setShowAddPipelinesModal(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Pipelines
-            </Button>
-          )}
-
-          {/* Delete Button - show if not archived */}
-          {focus.status !== 'archived' && (
-            <Button variant="destructive" onClick={handleDeleteFocus}>
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete Focus
-            </Button>
-          )}
-        </div>
-      </div>
-
+            {/* Delete Button - show if not archived */}
+            {focus.status !== 'archived' && (
+              <Button variant="destructive" onClick={handleDeleteFocus}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Focus
+              </Button>
+            )}
+          </>
+        ) : null
+      }
+      contentClassName="!pt-0"
+    >
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white rounded-lg border p-4">
         <StatCard
           label="Total Suggestions"
           value={stats.total}
@@ -426,14 +470,14 @@ export default function FocusDetailPage() {
         <StatCard
           label="Created"
           value={stats.created}
-          icon={<CheckCircle className="h-5 w-5 text-green-500" />}
-          valueColor="text-green-600"
+          icon={<CheckCircle className="h-5 w-5" style={{ color: statusColors.status.success }} />}
+          valueStyle={{ color: statusColors.status.success }}
         />
         <StatCard
           label="Cannot Create"
           value={stats.cannot_create}
-          icon={<XCircle className="h-5 w-5 text-red-500" />}
-          valueColor="text-red-600"
+          icon={<XCircle className="h-5 w-5" style={{ color: statusColors.status.danger }} />}
+          valueStyle={{ color: statusColors.status.danger }}
         />
         <StatCard
           label="Pending"
@@ -444,8 +488,8 @@ export default function FocusDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-slate-200">
-        <div className="flex gap-4">
+      <div className="border-b border-slate-200 bg-white rounded-t-lg">
+        <div className="flex gap-4 px-4">
           {TABS.map((tab) => (
             <button
               key={tab}
@@ -626,7 +670,7 @@ export default function FocusDetailPage() {
           }}
         />
       )}
-    </div>
+    </PipelinePageLayout>
   )
 }
 
@@ -635,11 +679,13 @@ function StatCard({
   value,
   icon,
   valueColor = colors.text.primary,
+  valueStyle,
 }: {
   label: string
   value: number
   icon: React.ReactNode
   valueColor?: string
+  valueStyle?: React.CSSProperties
 }) {
   return (
     <div className={`${colors.background.card} rounded-lg border ${spacing.cardPadding}`}>
@@ -647,7 +693,13 @@ function StatCard({
         <span className={`text-sm ${colors.text.muted}`}>{label}</span>
         {icon}
       </div>
-      <p style={{ fontSize: typography.sizes.metricValue }} className={`font-bold ${valueColor}`}>
+      <p
+        style={{
+          fontSize: typography.sizes.metricValue,
+          ...(valueStyle && { color: valueStyle.color })
+        }}
+        className={`font-bold ${valueColor}`}
+      >
         {value}
       </p>
     </div>

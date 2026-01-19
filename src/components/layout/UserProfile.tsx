@@ -1,6 +1,6 @@
 'use client'
 
-import { LogOut, Shield } from 'lucide-react'
+import { LogOut, Shield, Crown, User, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -45,11 +45,20 @@ export const UserProfile = () => {
     <div className="p-4 border-t border-border bg-sidebar">
       <div className="flex items-center gap-3">
         <Avatar className="h-10 w-10">
-          <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground">
+          <AvatarFallback className={`${
+            user.role === 'admin' ? 'bg-orange-100 text-orange-600' :
+            user.role === 'manager' ? 'bg-purple-100 text-purple-600' :
+            user.role === 'leader' ? 'bg-amber-100 text-amber-600' :
+            'bg-gray-100 text-gray-600'
+          }`}>
             {user.role === 'admin' ? (
-              <Shield className="h-5 w-5 text-orange-500" />
+              <Shield className="h-5 w-5" />
+            ) : user.role === 'manager' ? (
+              <Crown className="h-5 w-5" />
+            ) : user.role === 'leader' ? (
+              <Users className="h-5 w-5" />
             ) : (
-              initials
+              <User className="h-5 w-5" />
             )}
           </AvatarFallback>
         </Avatar>
@@ -60,8 +69,18 @@ export const UserProfile = () => {
               {user.name || 'User'}
             </p>
             {user.role === 'admin' && (
-              <Badge variant="destructive" className="text-xs px-1 py-0">
+              <Badge className="text-xs px-1 py-0 bg-orange-500 text-white hover:bg-orange-600">
                 Admin
+              </Badge>
+            )}
+            {user.role === 'manager' && (
+              <Badge className="text-xs px-1 py-0 bg-purple-500 text-white hover:bg-purple-600">
+                Manager
+              </Badge>
+            )}
+            {user.role === 'leader' && (
+              <Badge className="text-xs px-1 py-0 bg-amber-500 text-white hover:bg-amber-600">
+                Leader
               </Badge>
             )}
           </div>
