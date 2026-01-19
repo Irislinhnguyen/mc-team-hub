@@ -85,35 +85,35 @@ const SAMPLE_PROMPTS_CATEGORIES = [
     name: "Team/PIC Analysis",
     icon: "Users",
     prompts: [
-      "Total revenue of team WEB_GV in November 2024",
-      "Compare revenue of WEB_GV vs APP_GV in October 2024",
-      "Top 5 PICs by revenue from 2024-11-01 to 2024-11-25",
-      "Revenue breakdown by PIC for team WEB_GTI in Q4 2024",
+      "Total revenue of team WEB_GV in November 2025",
+      "Compare revenue of WEB_GV vs APP_GV in October 2025",
+      "Top 5 PICs by revenue from 2025-11-01 to 2025-11-25",
+      "Revenue breakdown by PIC for team WEB_GTI in Q4 2025",
       "Show revenue of vn_minhlh in last 30 days",
-      "Which PIC in WEB_GV had highest revenue growth in November vs October 2024?",
+      "Which PIC in WEB_GV had highest revenue growth in November vs October 2025?",
     ]
   },
   {
     name: "Publisher Analysis",
     icon: "Building",
     prompts: [
-      "Top 10 publishers by revenue in November 2024",
-      "Publishers with revenue drop more than 20% comparing November vs October 2024",
+      "Top 10 publishers by revenue in November 2025",
+      "Publishers with revenue drop more than 20% comparing November vs October 2025",
       "All publishers managed by vn_minhlh with revenue in last 7 days",
-      "Publishers with fill rate below 50% in November 2024",
-      "Revenue of PID 12345 comparing November vs October 2024",
-      "Top 5 publishers by profit in Q4 2024",
+      "Publishers with fill rate below 50% in November 2025",
+      "Revenue of PID 12345 comparing November vs October 2025",
+      "Top 5 publishers by profit in Q4 2025",
     ]
   },
   {
     name: "Zone & Product",
     icon: "Layers",
     prompts: [
-      "Top 10 zones by revenue from 2024-11-01 to 2024-11-25",
-      "Revenue by product for team WEB_GV in November 2024",
-      "Compare Overlay vs Sticky revenue in October 2024",
-      "Zones with impressions drop more than 30% in November vs October 2024",
-      "Revenue trend by product from January to November 2024",
+      "Top 10 zones by revenue from 2025-11-01 to 2025-11-25",
+      "Revenue by product for team WEB_GV in November 2025",
+      "Compare Overlay vs Sticky revenue in October 2025",
+      "Zones with impressions drop more than 30% in November vs October 2025",
+      "Revenue trend by product from January to November 2025",
       "Top 5 zones of vn_ducnv by revenue in last 14 days",
     ]
   },
@@ -121,23 +121,23 @@ const SAMPLE_PROMPTS_CATEGORIES = [
     name: "Time & Trends",
     icon: "TrendingUp",
     prompts: [
-      "Compare total revenue November 2024 vs October 2024",
-      "Monthly revenue trend from January to November 2024",
-      "Daily revenue of WEB_GV from 2024-11-18 to 2024-11-25",
-      "Compare Q3 vs Q4 2024 revenue by team",
-      "Revenue by day of week in November 2024",
-      "Year-over-year comparison: November 2023 vs November 2024",
+      "Compare total revenue November 2025 vs October 2025",
+      "Monthly revenue trend from January to November 2025",
+      "Daily revenue of WEB_GV from 2025-11-18 to 2025-11-25",
+      "Compare Q3 vs Q4 2025 revenue by team",
+      "Revenue by day of week in November 2025",
+      "Year-over-year comparison: November 2024 vs November 2025",
     ]
   },
   {
     name: "Advanced Analysis",
     icon: "Zap",
     prompts: [
-      "Publishers with highest revenue but fill rate below 60% in November 2024",
-      "Revenue distribution by product and team in Q4 2024",
-      "Products with highest revenue growth comparing November vs October 2024",
-      "Average revenue per impression by team in November 2024",
-      "Top 10 zones by revenue growth rate November vs October 2024",
+      "Publishers with highest revenue but fill rate below 60% in November 2025",
+      "Revenue distribution by product and team in Q4 2025",
+      "Products with highest revenue growth comparing November vs October 2025",
+      "Average revenue per impression by team in November 2025",
+      "Top 10 zones by revenue growth rate November vs October 2025",
       "Publishers of vn_minhlh with revenue drop in last 7 days vs previous 7 days",
     ]
   },
@@ -799,30 +799,21 @@ export default function QueryLabView() {
         {/* Header - Minimal */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-gray-100 bg-white">
           <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="text-gray-500 hover:text-[#1565C0]"
-            >
-              {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-            </Button>
             {isInChatMode && (
               <h2 className="text-sm font-medium text-gray-600">
                 Ask follow-up questions to refine your query
               </h2>
             )}
           </div>
-          {isInChatMode && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleNewChat}
-              className="text-[#1565C0] hover:bg-[#BBDEFB]/30"
-            >
-              + New Chat
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowPromptsSidebar(true)}
+            className="text-[#1565C0] hover:bg-[#BBDEFB]/30"
+          >
+            <Sparkles className="h-4 w-4 mr-1" />
+            Sample Prompts
+          </Button>
         </div>
 
         {/* Messages Area */}
@@ -1105,15 +1096,6 @@ export default function QueryLabView() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={handleAdjust}
-                      className="h-7 px-2 text-xs rounded-full hover:bg-[#BBDEFB]/30 hover:text-[#1565C0]"
-                    >
-                      <PencilLine className="h-3 w-3 mr-1" />
-                      Adjust
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
                       onClick={handleNewQuery}
                       className="h-7 px-2 text-xs rounded-full hover:bg-green-50 hover:text-green-600"
                     >
@@ -1274,7 +1256,18 @@ export default function QueryLabView() {
                             key={idx}
                             onClick={() => {
                               setShowPromptsSidebar(false)
-                              // Populate input instead of auto-submit
+                              // Clear context first (New Query mode)
+                              setCurrentQuestion('')
+                              setCurrentPlan('')
+                              setCurrentSql('')
+                              setShowSql(false)
+                              setWaitingForPlanConfirmation(false)
+                              setError(null)
+                              setFeedback(null)
+                              setShowFeedbackInput(false)
+                              setRetryStatus(null)
+                              setShowRetryHistory(false)
+                              // Populate input with the prompt
                               setInput(prompt)
                               // Focus textarea with cursor at end
                               setTimeout(() => {

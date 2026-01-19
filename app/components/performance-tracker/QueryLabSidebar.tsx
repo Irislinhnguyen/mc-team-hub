@@ -312,6 +312,17 @@ export default function QueryLabSidebar({
         </div>
       </div>
 
+      {/* New Chat Button */}
+      <div className="px-3 pt-3 pb-2">
+        <Button
+          onClick={onNewChat}
+          className="w-full justify-start gap-2 bg-[#1565C0] hover:bg-[#0D47A1] text-white"
+        >
+          <Plus className="h-4 w-4" />
+          New Chat
+        </Button>
+      </div>
+
       {/* Session List */}
       <ScrollArea className="flex-1 px-2 pb-4">
         {sessions.length === 0 ? (
