@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * Focus of the Month - List Page
  * Displays all focuses with filters and search

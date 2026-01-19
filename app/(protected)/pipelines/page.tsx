@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * Pipelines Page - Flat Architecture
  * Displays Sales and CS pipeline groups with inline Kanban boards

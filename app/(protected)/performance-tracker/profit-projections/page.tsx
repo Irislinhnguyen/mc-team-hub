@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { DataTable } from '../../../components/performance-tracker/DataTable'
 import { DataTableSkeleton } from '../../../components/performance-tracker/skeletons/DataTableSkeleton'

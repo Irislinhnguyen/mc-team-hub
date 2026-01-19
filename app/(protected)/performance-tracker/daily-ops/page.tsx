@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { MetricCard } from '../../../components/performance-tracker/MetricCard'
 import MetricCardSkeleton from '../../../components/performance-tracker/skeletons/MetricCardSkeleton'

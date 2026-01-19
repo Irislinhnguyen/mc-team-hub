@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect } from 'react'
 import { FilterPanel } from '../../../components/performance-tracker/FilterPanel'
 import FilterPanelSkeleton from '../../../components/performance-tracker/skeletons/FilterPanelSkeleton'

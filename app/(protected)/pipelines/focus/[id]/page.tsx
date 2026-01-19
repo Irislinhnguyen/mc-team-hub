@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * Focus Detail Page
  * Shows focus details with tabs: Suggestions, Dashboard, Activity

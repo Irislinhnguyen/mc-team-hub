@@ -3,6 +3,8 @@ import { TagCreationWorkflow } from '@/app/components/tools/tag-creation/TagCrea
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata = {
   title: 'AI Tag Creation Assistant - Tools',
   description: 'Generate zone CSV with AI, extract zone IDs, and sync to Google Sheets',

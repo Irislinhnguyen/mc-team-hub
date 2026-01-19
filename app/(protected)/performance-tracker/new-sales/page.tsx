@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { ToggleGroup, ToggleGroupItem } from '../../../../src/components/ui/toggle-group'
 import { MetadataFilterPanel } from '../../../components/performance-tracker/MetadataFilterPanel'

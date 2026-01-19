@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useRouter } from 'next/navigation'
 import { Wrench, ArrowLeft } from 'lucide-react'
 import { ProductCard } from '@/app/components/home/ProductCard'

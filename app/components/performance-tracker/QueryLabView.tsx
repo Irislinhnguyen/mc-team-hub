@@ -376,11 +376,21 @@ export default function QueryLabView() {
     setShowFeedbackInput(false)
     setRetryStatus(null)
     setShowRetryHistory(false)
+
+    // Add AI message to indicate ready for new query
+    const newQueryMessage: Message = {
+      id: `new-query-${Date.now()}`,
+      role: 'assistant',
+      content: "What would you like to know next? I'm ready for your new question.",
+      message_type: 'plan'
+    }
+    setMessages(prev => [...prev, newQueryMessage])
+
     // Keep session, messages, and history intact
     // Focus on input
     setTimeout(() => {
       document.querySelector('textarea')?.focus()
-    }, 0)
+    }, 100)
   }, [])
 
   /**

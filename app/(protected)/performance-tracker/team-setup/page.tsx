@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * Team Setup Page - Table View
  * Manage team assignments with full audit trail

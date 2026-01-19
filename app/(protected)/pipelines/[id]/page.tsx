@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * Pipeline Detail Page Redirect
  * Redirects old /pipelines/[id] URLs to new group-based architecture

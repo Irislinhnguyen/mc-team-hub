@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { BigQueryService } from '@/lib/services/bigquery'
+import BigQueryService from '@/lib/services/bigquery'
 
 export async function POST(request: NextRequest) {
   try {
