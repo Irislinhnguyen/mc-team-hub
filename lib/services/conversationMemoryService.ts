@@ -244,7 +244,7 @@ class ConversationMemoryService {
 
   /**
    * Refine SQL based on previous SQL and new question
-   * Uses gpt-4o-mini for cost efficiency (~100x cheaper than gpt-4o)
+   * Uses gpt-4.1-mini with full system context for accuracy
    */
   async refineSqlFromContext(
     newQuestion: string,
@@ -261,7 +261,14 @@ class ConversationMemoryService {
       : null
 
     try {
-      const prompt = `You are a BigQuery SQL expert. You have a working SQL query that needs modification.
+      // Import the full system prompt for comprehensive context
+      const { SYSTEM_PROMPT } = await import('../../../../lib/services/aiSqlGenerator')
+
+      // Extract schema and rules (everything before YOUR TASK section)
+      const promptParts = SYSTEM_PROMPT?.split('YOUR TASK:') || []
+      const schemaContext = promptParts[0] || ''
+
+      const prompt = `You are a BigQuery SQL expert refining an existing query.
 
 **PREVIOUS QUESTION:** "${previousQuestion}"
 
@@ -272,14 +279,15 @@ ${previousSql}
 
 **NEW REQUEST:** "${newQuestion}"
 
-**YOUR TASK:**
-Modify the SQL to fulfill the new request. Make minimal changes - only change what's necessary.
+**SCHEMA AND RULES:**
+${schemaContext}
 
-**IMPORTANT RULES:**
+**REFINEMENT INSTRUCTIONS:**
+- Modify the SQL to fulfill the new request
+- Make minimal changes - only update what's necessary
 - Keep the same table references and structure if possible
-- Only modify the relevant parts (e.g., date range, filters, columns)
 - Preserve working logic that doesn't need to change
-- Use proper BigQuery syntax
+- When adding new metrics, use the formulas specified above
 
 **RESPONSE FORMAT (JSON):**
 {
@@ -290,7 +298,7 @@ Modify the SQL to fulfill the new request. Make minimal changes - only change wh
 Respond with valid JSON only.`
 
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-mini',
         messages: [
           {
             role: 'system',
@@ -316,12 +324,12 @@ Respond with valid JSON only.`
         throw new Error('No SQL in refinement response')
       }
 
-      console.log(`[ConversationMemory] Refined SQL with ${result.changes?.length || 0} changes using gpt-4o-mini`)
+      console.log(`[ConversationMemory] Refined SQL with ${result.changes?.length || 0} changes using gpt-4.1-mini`)
 
       return {
         sql: result.sql,
         changes: result.changes || [],
-        model: 'gpt-4o-mini'
+        model: 'gpt-4.1-mini'
       }
 
     } catch (error) {

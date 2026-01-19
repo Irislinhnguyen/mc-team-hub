@@ -160,18 +160,21 @@ SECOND: Identify what METRICS to calculate:
 | "ad requests" / "requests" | SUM(req) | Direct sum |
 | "impressions" / "paid" | SUM(paid) | Direct sum |
 | "profit" | SUM(profit) | Direct sum |
-| "eCPM" (alone) | SAFE_DIVIDE(SUM(rev), SUM(paid)) * 1000 | Aggregate eCPM (default) |
-| "average eCPM" / "avg eCPM" | AVG(request_CPM) | Average OF daily eCPMs |
-| "mean eCPM" | AVG(request_CPM) | Average OF daily eCPMs |
+| "eCPM" (alone, no "average"/"avg"/"mean") | SAFE_DIVIDE(SUM(rev), SUM(paid)) * 1000 | Aggregate eCPM |
+| "average eCPM" / "avg eCPM" / "mean eCPM" | AVG(request_CPM) | Average OF daily eCPM values |
 | "daily eCPM" | request_CPM | Use pre-calculated column |
 | "fill rate" | SAFE_DIVIDE(SUM(paid), SUM(req)) * 100 | Calculated! |
 | "profit rate" | SAFE_DIVIDE(SUM(profit), SUM(rev)) * 100 | Calculated! |
 | "revenue to publisher" | SUM(paid) | Same as impressions |
 
-IMPORTANT: eCPM has THREE different meanings - detect by keyword matching:
-1. "eCPM" alone (no "average"/"avg"/"mean"/"daily") → aggregate = SAFE_DIVIDE(SUM(rev), SUM(paid)) * 1000
-2. "average eCPM" / "avg eCPM" / "mean eCPM" → average OF daily eCPMs = AVG(request_CPM)
-3. "daily eCPM" → use pre-calculated column = request_CPM
+IMPORTANT: eCPM has THREE different meanings - detect by keyword matching (case-insensitive):
+1. Just "ecpm" or "eCPM" WITHOUT words "average"/"avg"/"mean"/"daily" → use SAFE_DIVIDE(SUM(rev), SUM(paid)) * 1000
+2. "average eCPM" / "avg eCPM" / "mean eCPM" (with or without "add in") → use AVG(request_CPM)
+3. "daily eCPM" → use request_CPM column directly
+
+KEYWORD PATTERNS (case-insensitive, may have extra spaces or punctuation):
+- Average eCPM: "average ecpm", "avg ecpm", "mean ecpm", "add in average ecpm"
+- Daily eCPM: "daily ecpm", "ecpm by day"
 
 For "fill rate" and "profit rate", calculate using SAFE_DIVIDE.
 
