@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { ArrowRight, Upload, Loader2, Image as ImageIcon, CheckCircle2, AlertCircle } from 'lucide-react'
 import type { ExtractedZone } from '@/lib/types/tools'
@@ -195,46 +194,22 @@ export function ZoneExtractionStep({ onComplete, onBack }: ZoneExtractionStepPro
   }
 
   return (
-    <Card className="border border-gray-100">
-      <CardHeader className="py-3 px-4">
-        <div className="flex items-center gap-3">
-          <div className="w-5 h-5 rounded-full bg-gray-100 text-gray-600 text-xs font-medium flex items-center justify-center">
-            2
-          </div>
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-base text-[#1565C0]">Extract Zone IDs</CardTitle>
-            <span className="text-xs text-red-600 font-medium">*Required</span>
-            <HelpIcon
-              title="How it works (Required Step)"
-              content={`This step is REQUIRED - upload screenshots of your zones table.
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <span className="text-lg font-semibold text-[#1565C0]">Step 2: Extract Zone IDs</span>
+        <span className="text-sm text-red-500">*Required</span>
+      </div>
 
-You can upload up to 10 screenshots (useful if zones span multiple pages).
-
-Three ways to upload:
-1. Click the upload area to select files (can select multiple)
-2. Drag & drop images directly into the upload area
-3. Copy image (Ctrl+C) and paste (Ctrl+V) anywhere on the page
-
-Supported formats: PNG or JPG (max 10MB per file)
-
-The AI will automatically extract Zone IDs and names from all screenshots.
-Make sure Zone IDs and Zone Names are clearly visible in each image.
-
-All zones from all screenshots will be combined into one list.`}
-            />
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* File Upload */}
+      <div className="space-y-4">
         <div className="space-y-4">
           <div
             className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
               isDragging
-                ? 'border-[#1565C0] bg-blue-50'
+                ? 'border-gray-400'
                 : files.length > 0
-                  ? 'border-gray-300 bg-gray-50'
-                  : 'border-gray-300 hover:border-[#1565C0]'
+                  ? 'border-gray-300'
+                  : 'border-gray-300 hover:border-gray-400'
             }`}
             onClick={() => fileInputRef.current?.click()}
             onDragOver={handleDragOver}
@@ -253,7 +228,7 @@ All zones from all screenshots will be combined into one list.`}
 
             {files.length > 0 ? (
               <div className="space-y-3">
-                <CheckCircle2 className="h-10 w-10 mx-auto text-[#1565C0]" />
+                <CheckCircle2 className="h-10 w-10 mx-auto text-gray-700" />
                 <p className="text-sm font-medium text-gray-900">
                   {files.length} screenshot{files.length > 1 ? 's' : ''} uploaded
                 </p>
@@ -283,7 +258,6 @@ All zones from all screenshots will be combined into one list.`}
             )}
           </div>
 
-          {/* Preview Images */}
           {previews.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {previews.map((preview, index) => (
@@ -316,7 +290,6 @@ All zones from all screenshots will be combined into one list.`}
           )}
         </div>
 
-        {/* Error Message */}
         {error && (
           <div className="flex items-start gap-2 text-sm text-red-600">
             <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
@@ -324,9 +297,8 @@ All zones from all screenshots will be combined into one list.`}
           </div>
         )}
 
-        {/* Extract Button */}
         {files.length > 0 && !extractedZones && (
-          <Button onClick={handleExtract} disabled={isExtracting} className="w-full bg-[#1565C0] hover:bg-[#0D47A1] text-white" size="lg">
+          <Button onClick={handleExtract} disabled={isExtracting} className="w-full bg-gray-900 hover:bg-gray-800 text-white" size="lg">
             {isExtracting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -341,30 +313,28 @@ All zones from all screenshots will be combined into one list.`}
           </Button>
         )}
 
-        {/* Extracted Zones Preview */}
         {extractedZones && (
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm text-gray-900 mb-4">
-              <CheckCircle2 className="h-4 w-4 text-[#1565C0] flex-shrink-0" />
+              <CheckCircle2 className="h-4 w-4 text-gray-700 flex-shrink-0" />
               <p className="font-medium">
                 Extracted {extractedZones.length} zones from {files.length} screenshot{files.length > 1 ? 's' : ''}
               </p>
             </div>
 
-            {/* Zones Table */}
-            <div className="rounded-lg overflow-auto max-h-96 bg-white">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 sticky top-0">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Zone ID</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Zone Name</th>
+            <div className="rounded-lg overflow-auto max-h-96 bg-white border">
+              <table className="w-full">
+                <thead className="sticky top-0">
+                  <tr className="border-b">
+                    <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">Zone ID</th>
+                    <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">Zone Name</th>
                   </tr>
                 </thead>
                 <tbody>
                   {extractedZones.map((zone, index) => (
-                    <tr key={index} className="even:bg-gray-50">
-                      <td className="px-3 py-2 font-mono text-xs text-gray-900">{zone.zone_id}</td>
-                      <td className="px-3 py-2 text-xs text-gray-900">{zone.zone_name}</td>
+                    <tr key={index} className="border-b">
+                      <td className="px-3 py-2 font-mono text-sm text-gray-900">{zone.zone_id}</td>
+                      <td className="px-3 py-2 text-sm text-gray-900">{zone.zone_name}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -373,7 +343,6 @@ All zones from all screenshots will be combined into one list.`}
           </div>
         )}
 
-        {/* Navigation Buttons */}
         {extractedZones && (
           <div className="flex gap-3 pt-4">
             <Button
@@ -388,13 +357,13 @@ All zones from all screenshots will be combined into one list.`}
               <ImageIcon className="mr-2 h-4 w-4" />
               Re-scan
             </Button>
-            <Button onClick={handleNext} size="lg" className="flex-1 bg-[#1565C0] hover:bg-[#0D47A1] text-white">
+            <Button onClick={handleNext} size="lg" className="flex-1 bg-gray-900 hover:bg-gray-800 text-white">
               Continue to Enter Metadata
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

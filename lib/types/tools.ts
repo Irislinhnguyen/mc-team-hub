@@ -131,3 +131,92 @@ export interface GeneratedWebZone extends ExtractedZone {
   product: string
   sequenceNumber: number
 }
+
+// ============================================================
+// NEW: Multi-MID Workflow Types (Step 0, 1, 3)
+// ============================================================
+
+// Media Template Row (from CSV upload in Step 0)
+export interface MediaTemplateRow {
+  pid: string // Publisher ID (from CSV)
+  siteAppName: string // Site/App Name (from CSV)
+  siteUrl: string // Site URL (from CSV)
+  publisherComment?: string
+  vendorComment?: string
+  pubname?: string // Publisher Name (user enters per row)
+  mid?: string // Media ID (user enters per row)
+  // Common fields (CHUNG CHO TẤT CẢ - entered once for all rows)
+  childNetworkCode?: string // Child Network Code (from Step 0, common for all)
+  pic?: string // PIC (from Step 0, common for all)
+}
+
+// MID with zones (for Step 1 multi-MID support)
+export interface MidWithZones {
+  mid: string
+  siteAppName: string
+  zones: GeneratedZone[] | ExtractedZone[]
+}
+
+// Step 0 State
+export interface Step0Data {
+  medias: MediaTemplateRow[]
+  // Indexed by MID for quick lookup
+  byMid: Record<string, MediaTemplateRow>
+  // Common fields (CHUNG CHO TẤT CẢ - entered once for all rows)
+  childNetworkCode?: string // Child Network Code (common for all MIDs)
+  pic?: string // PIC (common for all MIDs)
+}
+
+// Sync status per MID (for Step 3)
+export interface MidSyncStatus {
+  mid: string
+  status: 'pending' | 'syncing' | 'synced' | 'error'
+  syncedAt?: Date
+  error?: string
+}
+
+// Zone Row for CSV output (35 columns matching template_zone_template)
+export interface ZoneCsvRow {
+  mediaId: string // Media Id (= MID)
+  nameOfZone: string // Name of zone
+  zoneUrl: string // Zone URL
+  allowedDomainList: string // Allowed domain list
+  inventoryType: string // Inventory Type
+  typeOfZone: string // Type of zone
+  width: string // width
+  height: string // height
+  useMultipleSizes: string // Use multiple sizes
+  multiSizes: string // Multi sizes
+  enableBidderDelivery: string // Enable Bidder Delivery
+  createReportsFromBidPrice: string // Create Reports from Bid Price
+  methodOfBidprice: string // Method of Bidprice
+  cpmIosJpy: string // CPM(iOS)(JPY)
+  cpmAndroidJpy: string // CPM(Android)(JPY)
+  cpmOtherJpy: string // CPM(Other)(JPY)
+  floorPriceJpy: string // Floor Price(JPY)
+  deductMarginFromRtb: string // Deduct margin from RTB value at bidder delivery
+  zonePosition: string // Zone position
+  allowSemiAdultContents: string // Allow Semi Adult Contents
+  allowSemiAdultCategories: string // Allow semi-adult categories
+  useRtb: string // Use RTB
+  allowExternalDelivery: string // Allow External Delivery
+  appId: string // App ID
+  allowVtoV: string // Allow VtoV
+  category: string // Category
+  categoryDetail: string // Category Detail
+  defaultPayoutRate: string // Default Payout rate for zone
+  adjustIframeSize: string // Adjust Iframe size
+  selectorOfIframeAdjuster: string // Selector of Iframe Adjuster
+  rtbOptimisationType: string // RTB optimisation type
+  vendorComment: string // Vendor comment
+  format: string // Format
+  device: string // Device
+  deliveryMethod: string // Delivery Method
+}
+
+// Pending zones for Step 1 (before CSV generation)
+export interface PendingZonesByMid {
+  mid: string
+  siteAppName: string
+  zones: ZoneCsvRow[]
+}

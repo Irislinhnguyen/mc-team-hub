@@ -49,14 +49,11 @@ export async function POST(request: NextRequest) {
 
     const { buffer, zones } = await generateZoneCSV(zoneUrl, prompt, payoutRate)
 
-    const filename = `zones_${Date.now()}.xlsx`
-
-    return new Response(buffer, {
-      headers: {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="${filename}"`,
-        'X-Zone-Count': zones.length.toString(),
-      },
+    // Return JSON response with zones (for client-side storage) and buffer as base64 (for optional download)
+    return NextResponse.json({
+      success: true,
+      zones: zones,
+      buffer: buffer.toString('base64'),
     })
   } catch (error: any) {
     console.error('[Generate CSV API] Error:', error)

@@ -4,8 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Upload, AlertCircle, Loader2, CheckCircle2, ExternalLink } from 'lucide-react'
+import { Upload, AlertCircle, Loader2, CheckCircle2, ExternalLink, Badge } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -13,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { ExtractedZone, TeamType } from '@/lib/types/tools'
+import type { ExtractedZone, TeamType, Step0Data, MidSyncStatus, MediaTemplateRow } from '@/lib/types/tools'
 import { HelpIcon } from './HelpIcon'
 
 interface ZoneWithMetadata extends ExtractedZone {
@@ -40,7 +39,10 @@ interface ZoneDataEntryStepProps {
   zones: ExtractedZone[]
   initialAppstoreUrl?: string
   initialPayoutRate?: string
+  step0Data?: Step0Data | null // NEW: Data from Step 0
+  syncedMids?: Set<string> // NEW: Already synced MIDs
   onComplete: (zonesWithMetadata: ZoneWithMetadata[]) => void
+  onSyncMid?: (mid: string, data: ZoneWithMetadata[]) => void // NEW: Callback when syncing a MID
   onReset: () => void
   onBack: () => void
 }
@@ -86,12 +88,21 @@ export function ZoneDataEntryStep({
   zones,
   initialAppstoreUrl = '',
   initialPayoutRate = '',
+  step0Data,
+  syncedMids = new Set(),
   onComplete,
+  onSyncMid,
   onReset,
   onBack
 }: ZoneDataEntryStepProps) {
+  // Available MIDs from Step 0 (for multi-MID sync)
+  const availableMids: MediaTemplateRow[] = step0Data?.medias.filter(m => m.mid?.trim()) || []
+
+  // Selected MID for sync
+  const [selectedMid, setSelectedMid] = useState('')
+
   // Common fields (apply to all zones) - auto-fill from Step 1 if available
-  const [appId, setAppId] = useState('') // Team App only
+  const [appId, setAppId] = useState('')
   const [appstoreUrl, setAppstoreUrl] = useState(initialAppstoreUrl)
   const [payoutRate, setPayoutRate] = useState(initialPayoutRate)
   const [pid, setPid] = useState('')
@@ -100,36 +111,59 @@ export function ZoneDataEntryStep({
   const [mediaName, setMediaName] = useState('')
   const [childNetworkCode, setChildNetworkCode] = useState('')
   const [pic, setPic] = useState('')
-  const [companyName, setCompanyName] = useState('') // Team Web only
-  const [content, setContent] = useState('') // Team App only
+  const [companyName, setCompanyName] = useState('')
+  const [content, setContent] = useState('')
 
   // Individual zone data
   const [zoneData, setZoneData] = useState<ZoneWithMetadata[]>([])
 
   const [errors, setErrors] = useState<string[]>([])
-
-  // Search filter for zone type dropdown
   const [zoneTypeSearch, setZoneTypeSearch] = useState('')
 
-  // Select the correct zone types based on team type
+  // Sync state - PER MID
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [currentSyncingMid, setCurrentSyncingMid] = useState<string | null>(null)
+  const [syncErrors, setSyncErrors] = useState<Record<string, string>>({})
+  const [syncSuccess, setSyncSuccess] = useState(false)
+
   const ZONE_TYPES = teamType === 'app' ? ZONE_TYPES_APP : ZONE_TYPES_WEB
 
-  // Sync state
-  const [isSyncing, setIsSyncing] = useState(false)
-  const [syncSuccess, setSyncSuccess] = useState(false)
-  const [syncError, setSyncError] = useState<string | null>(null)
+  /**
+   * Auto-fill data when MID is selected
+   */
+  useEffect(() => {
+    if (selectedMid && step0Data?.byMid[selectedMid]) {
+      const mediaData = step0Data.byMid[selectedMid]
+      setPid(mediaData.pid || '')
+      setPubname(mediaData.pubname || '')
+      setMid(selectedMid)
+      setMediaName(mediaData.siteAppName || '')
+      // Auto-fill common fields from Step 0 (childNetworkCode, pic)
+      setChildNetworkCode(step0Data.childNetworkCode || '')
+      setPic(step0Data.pic || '')
+      // Clear errors when data is auto-filled
+      if (errors.length > 0) setErrors([])
+    } else if (!selectedMid) {
+      // Clear if no MID selected
+      setPid('')
+      setPubname('')
+      setMid('')
+      setMediaName('')
+      setChildNetworkCode('')
+      setPic('')
+    }
+    // Clear errors when data is auto-filled (intentionally not tracking errors)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMid, step0Data])
 
   /**
    * Extract Floor Price (FP) from zone name (Team App only)
-   * Expected format: {product}_{fp}_{app_id}_app
-   * Example: "reward_0.76_123456_app" → "0.76"
    */
   const extractFPFromZoneName = (zoneName: string): string => {
     try {
       const parts = zoneName.split('_')
       if (parts.length >= 2) {
         const fpCandidate = parts[1]
-        // Validate it's a number
         if (!isNaN(parseFloat(fpCandidate))) {
           return fpCandidate
         }
@@ -143,17 +177,10 @@ export function ZoneDataEntryStep({
 
   /**
    * Auto-detect Zone Type from zone name (Team App only)
-   * Expected format: {product}_{fp}_{app_id}_app
-   * Example: "reward_0.76_123456_app" → "Reward"
-   * Example: "banner300x250_0.90_123456_app" → "Banner_300x250"
-   * Example: "banner320x50_0.90_123456_app" → "Banner_320x50"
    */
   const detectZoneType = (zoneName: string): string => {
     try {
       const lowerZoneName = zoneName.toLowerCase()
-
-      // Mapping từ zone name prefix đến Zone Type
-      // Note: Banner sizes are written WITHOUT underscore (e.g., banner300x250, not banner_300x250)
       const zoneTypeMap: Record<string, string> = {
         'appopen': 'AppOpen',
         'banneradaptive': 'Banner_adaptive',
@@ -175,14 +202,12 @@ export function ZoneDataEntryStep({
         'reward_interstitial': 'Reward Interstitial',
       }
 
-      // Try exact matches first (with underscore after zone type)
       for (const [prefix, zoneType] of Object.entries(zoneTypeMap)) {
         if (lowerZoneName.startsWith(prefix + '_')) {
           return zoneType
         }
       }
 
-      // Fallback: check if it starts with any key (without underscore requirement)
       for (const [prefix, zoneType] of Object.entries(zoneTypeMap)) {
         if (lowerZoneName.startsWith(prefix)) {
           return zoneType
@@ -207,16 +232,11 @@ export function ZoneDataEntryStep({
           let extractedFP = ''
 
           if (teamType === 'app') {
-            // Team App: PR + FP + GI act
             extractedFP = extractFPFromZoneName(zone.zone_name)
             autoFilledNote = `PR: ${payoutRate || ''}\nFP: ${extractedFP}\nGI act `
-
-            // Auto-detect zone type from zone name
             detectedZoneType = detectZoneType(zone.zone_name)
-
             console.log(`[ZoneDataEntryStep] Team App - Zone: ${zone.zone_name} → FP: ${extractedFP}, Type: ${detectedZoneType}`)
           } else {
-            // Team Web: only PR
             autoFilledNote = `PR: ${payoutRate || ''}`
             console.log(`[ZoneDataEntryStep] Team Web - Zone: ${zone.zone_name}`)
           }
@@ -225,7 +245,6 @@ export function ZoneDataEntryStep({
             ...zone,
             zone_type: detectedZoneType,
             cs_sales_note_type: autoFilledNote,
-            // Team App: auto-fill new columns M, N, O
             payout_rate: teamType === 'app' ? payoutRate : undefined,
             floor_price: teamType === 'app' ? extractedFP : undefined,
             account: teamType === 'app' ? 'GI' : undefined,
@@ -244,6 +263,14 @@ export function ZoneDataEntryStep({
     updated[index] = { ...updated[index], [field]: value }
     setZoneData(updated)
     if (errors.length > 0) setErrors([])
+    // Clear sync error when user makes changes
+    if (selectedMid && syncErrors[selectedMid]) {
+      setSyncErrors(prev => {
+        const updated = { ...prev }
+        delete updated[selectedMid]
+        return updated
+      })
+    }
   }
 
   // Update state when initial values change from Step 1
@@ -270,16 +297,12 @@ export function ZoneDataEntryStep({
           let extractedFP = ''
 
           if (teamType === 'app') {
-            // Team App: PR + FP + GI act
             extractedFP = extractFPFromZoneName(zone.zone_name)
             autoFilledNote = `PR: ${payoutRate || ''}\nFP: ${extractedFP}\nGI act `
-
-            // Re-detect zone type if it's empty
             if (!updatedZoneType) {
               updatedZoneType = detectZoneType(zone.zone_name)
             }
           } else {
-            // Team Web: only PR
             autoFilledNote = `PR: ${payoutRate || ''}`
           }
 
@@ -287,7 +310,6 @@ export function ZoneDataEntryStep({
             ...zone,
             zone_type: updatedZoneType,
             cs_sales_note_type: autoFilledNote,
-            // Team App: update PR and FP when payoutRate changes
             payout_rate: teamType === 'app' ? payoutRate : zone.payout_rate,
             floor_price: teamType === 'app' ? extractedFP : zone.floor_price,
             account: zone.account || (teamType === 'app' ? 'GI' : undefined),
@@ -295,6 +317,8 @@ export function ZoneDataEntryStep({
         })
       )
     }
+    // Intentionally not tracking zoneData to avoid infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [payoutRate, teamType])
 
   // Auto-extract App ID from Appstore URL (Team App only)
@@ -307,14 +331,11 @@ export function ZoneDataEntryStep({
     }
 
     let extractedAppId = ''
-
-    // iOS App Store URL: https://apps.apple.com/.../app/app-name/id123456789
     const iosMatch = appstoreUrl.match(/id(\d+)/)
     if (iosMatch) {
       extractedAppId = iosMatch[1]
     }
 
-    // Android Play Store URL: https://play.google.com/store/apps/details?id=com.example.app
     const androidMatch = appstoreUrl.match(/id=([a-zA-Z0-9._]+)/)
     if (androidMatch) {
       extractedAppId = androidMatch[1]
@@ -323,12 +344,15 @@ export function ZoneDataEntryStep({
     setAppId(extractedAppId)
   }, [appstoreUrl, teamType])
 
+  /**
+   * Validate and sync zones for selected MID
+   * NO PAGE REFRESH after sync
+   */
   const validateAndSync = async () => {
     const validationErrors: string[] = []
 
-    // Validate common fields (different for Team App vs Team Web)
+    // Validate common fields
     if (teamType === 'app') {
-      // Team App validation
       if (!appId.trim()) validationErrors.push('App ID is required')
       if (!appstoreUrl.trim()) validationErrors.push('Zone URL is required')
       if (!pid.trim()) validationErrors.push('PID is required')
@@ -339,7 +363,6 @@ export function ZoneDataEntryStep({
       if (!pic.trim()) validationErrors.push('PIC is required')
       if (!content.trim()) validationErrors.push('Content is required')
     } else {
-      // Team Web validation
       if (!appstoreUrl.trim()) validationErrors.push('Domain is required')
       if (!pid.trim()) validationErrors.push('PID is required')
       if (!pubname.trim()) validationErrors.push('Publisher Name is required')
@@ -347,7 +370,6 @@ export function ZoneDataEntryStep({
       if (!mediaName.trim()) validationErrors.push('Media Name is required')
       if (!pic.trim()) validationErrors.push('PIC is required')
       if (!companyName.trim()) validationErrors.push('Company Name is required')
-      // GAM Network ID is optional for Team Web
     }
 
     // Validate individual zone fields
@@ -358,7 +380,6 @@ export function ZoneDataEntryStep({
       if (!zone.cs_sales_note_type?.trim()) {
         validationErrors.push(`Zone ${index + 1}: CS/Sales Note is required`)
       }
-      // Team App: validate Account field
       if (teamType === 'app' && !zone.account?.trim()) {
         validationErrors.push(`Zone ${index + 1}: Account is required`)
       }
@@ -369,7 +390,7 @@ export function ZoneDataEntryStep({
       return
     }
 
-    // Merge common fields into all zones (team-specific)
+    // Merge common fields into all zones
     const finalData = zoneData.map((zone) => {
       const baseData = {
         ...zone,
@@ -391,19 +412,22 @@ export function ZoneDataEntryStep({
       } else {
         return {
           ...baseData,
-          child_network_code: childNetworkCode, // optional for web
+          child_network_code: childNetworkCode,
           company_name: companyName,
         }
       }
     })
 
-    // Sync to Google Sheets - dynamic sheet name based on team type
     const sheetName = teamType === 'app' ? 'Tag Creation_APP' : 'Tag Creation_WEB'
     const sheetGid = teamType === 'app' ? '193855895' : '101229294'
 
     setIsSyncing(true)
-    setSyncError(null)
-    setSyncSuccess(false)
+    setCurrentSyncingMid(mid)
+    setSyncErrors(prev => {
+      const updated = { ...prev }
+      delete updated[mid || '']
+      return updated
+    })
 
     try {
       const response = await fetch('/api/tools/tag-creation/sync-sheets', {
@@ -426,78 +450,123 @@ export function ZoneDataEntryStep({
 
       setSyncSuccess(true)
       onComplete(finalData)
+
+      // Notify parent about MID sync
+      if (onSyncMid && mid) {
+        onSyncMid(mid, finalData)
+      }
+
+      // NO PAGE REFRESH - allow user to sync another MID
+      // Clear selected MID for next sync
+      setTimeout(() => {
+        setSelectedMid('')
+      }, 500)
     } catch (err: any) {
       console.error('Error syncing to sheets:', err)
-      setSyncError(err.message)
+      const errorMsg = err.message
+      setSyncErrors(prev => ({ ...prev, [mid || '']: errorMsg }))
     } finally {
       setIsSyncing(false)
+      setCurrentSyncingMid(null)
     }
   }
 
+  // Get sync status for a MID
+  const getMidSyncStatus = (mid: string): MidSyncStatus['status'] => {
+    if (currentSyncingMid === mid) return 'syncing'
+    if (syncErrors[mid]) return 'error'
+    if (syncedMids.has(mid)) return 'synced'
+    return 'pending'
+  }
+
+  const sheetName = teamType === 'app' ? 'Tag Creation_APP' : 'Tag Creation_WEB'
+  const sheetGid = teamType === 'app' ? '193855895' : '101229294'
+  const sheetUrl = `https://docs.google.com/spreadsheets/d/1gfCTHCfpTqhb6pzpEhkYx3RxvMhOlhB4pB2iUlSWBNs/edit?gid=${sheetGid}#gid=${sheetGid}`
+
   return (
-    <Card className="border border-gray-100">
-      <CardHeader className="py-3 px-4">
-        <div className="flex items-center gap-3">
-          <div className="w-5 h-5 rounded-full bg-gray-100 text-gray-600 text-xs font-medium flex items-center justify-center">
-            3
-          </div>
-          <div className="flex items-center">
-            <CardTitle className="text-base text-[#1565C0]">Enter Zone Metadata</CardTitle>
-            <HelpIcon
-              title="What to fill in"
-              content={teamType === 'app' ? `1. Common Information (applies to all zones):
-   - App ID: Auto-extracted from Zone URL (read-only)
-   - Zone URL: URL to app store listing (iOS or Android)
-   - PIC: Person In Charge
-   - PID: Publisher ID
-   - Publisher Name: Name of the publisher
-   - Child Network Code: Ad network code
-   - MID: Media ID
-   - Media Name: Name of the media property
-   - Content: Game or Non-game
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <span className="text-lg font-semibold text-[#1565C0]">Step 3: Sync to Sheets</span>
+      </div>
 
-2. Individual Zone Information (for each zone):
-   - Zone Type: AppOpen, Banner types, Interstitial, Native, Reward, Video types, etc.
-   - CS/Sales Note: Enter custom text (e.g., CS, Sales, or any note)
-   - Account: Select GI or GJ (default: GI)` : `1. Common Information (applies to all zones):
-   - Domain: Website domain
-   - PIC: Person In Charge
-   - PID: Publisher ID
-   - Publisher Name: Name of the publisher
-   - Company Name: Child pub name
-   - GAM Network ID: Ad network code (optional)
-   - MID: Media ID
-   - Media Name: Name of the media property
-
-2. Individual Zone Information (for each zone):
-   - Zone Type: Banner, Inpage, VAST, etc.
-   - CS/Sales Note: Enter custom text (e.g., CS, Sales, or any note)`}
-            />
+      <div className="space-y-4">
+        {/* MID Selector (if Step 0 data available) */}
+        {availableMids.length > 0 && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700 block">
+              Select MID to sync <span className="text-gray-500 font-normal">(from Step 0)</span>
+            </label>
+            <Select value={selectedMid} onValueChange={setSelectedMid}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a MID to sync..." />
+              </SelectTrigger>
+              <SelectContent>
+                {availableMids.map((media) => (
+                  <SelectItem key={media.mid} value={media.mid!}>
+                    <div className="flex items-center gap-2">
+                      <span>{media.mid}</span>
+                      {media.pubname && <span className="text-gray-500">({media.pubname})</span>}
+                      {syncedMids.has(media.mid!) && (
+                        <CheckCircle2 className="h-3 w-3 text-green-600" />
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Common Fields Section - Conditional based on team type */}
+        )}
+
+        {/* Sync Status Summary */}
+        {availableMids.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {availableMids.map((media) => {
+              const status = getMidSyncStatus(media.mid!)
+              return (
+                <Badge
+                  key={media.mid}
+                  variant="secondary"
+                  className={
+                    status === 'synced'
+                      ? 'bg-green-600 text-white hover:bg-green-700'
+                      : status === 'syncing'
+                        ? 'bg-blue-600 text-white'
+                        : status === 'error'
+                          ? 'bg-red-600 text-white'
+                          : 'bg-gray-200 text-gray-700'
+                  }
+                >
+                  {media.mid}
+                  {status === 'synced' && ' ✓'}
+                  {status === 'syncing' && ' ...'}
+                  {status === 'error' && ' ✗'}
+                </Badge>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Common Fields Section */}
         <div className="space-y-4">
           {teamType === 'app' ? (
-            // Team App: 3 rows x 3 columns
             <>
-              {/* Row 1: App ID, Zone URL, PIC */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-700 block">
-                    App ID <span className="text-xs text-gray-500 font-normal">(Auto)</span>
+              {/* Row 1: App ID, Zone URL */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700 block">
+                    App ID <span className="text-xs text-gray-400">(Auto)</span>
                   </label>
                   <Input
                     value={appId}
                     disabled
                     placeholder="Auto-filled"
-                    className="h-8 text-xs bg-gray-50 text-gray-600 cursor-not-allowed"
+                    className="h-9 text-sm bg-gray-100 text-gray-600 cursor-not-allowed"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-700 block">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700 block">
                     Zone URL <span className="text-red-500">*</span>
                   </label>
                   <Input
@@ -506,30 +575,19 @@ export function ZoneDataEntryStep({
                       setAppstoreUrl(e.target.value)
                       if (errors.length > 0) setErrors([])
                     }}
-                    className="h-8 text-xs"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-700 block">
-                    PIC <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    value={pic}
-                    onChange={(e) => {
-                      setPic(e.target.value)
-                      if (errors.length > 0) setErrors([])
-                    }}
-                    className="h-8 text-xs"
+                    className="h-9 text-sm"
                   />
                 </div>
               </div>
 
-              {/* Row 2: PID, Publisher Name, Child Network Code */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-700 block">
+              {/* Row 2: PID, Publisher Name */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700 block">
                     PID <span className="text-red-500">*</span>
+                    {selectedMid && step0Data?.byMid[selectedMid]?.pid && (
+                      <span className="text-xs text-green-600 ml-1">(Auto)</span>
+                    )}
                   </label>
                   <Input
                     value={pid}
@@ -537,13 +595,17 @@ export function ZoneDataEntryStep({
                       setPid(e.target.value)
                       if (errors.length > 0) setErrors([])
                     }}
-                    className="h-8 text-xs"
+                    className="h-9 text-sm"
+                    disabled={!!selectedMid && !!step0Data?.byMid[selectedMid]?.pid}
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-700 block">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700 block">
                     Publisher Name <span className="text-red-500">*</span>
+                    {selectedMid && step0Data?.byMid[selectedMid]?.pubname && (
+                      <span className="text-xs text-green-600 ml-1">(Auto)</span>
+                    )}
                   </label>
                   <Input
                     value={pubname}
@@ -551,12 +613,55 @@ export function ZoneDataEntryStep({
                       setPubname(e.target.value)
                       if (errors.length > 0) setErrors([])
                     }}
-                    className="h-8 text-xs"
+                    className="h-9 text-sm"
+                    disabled={!!selectedMid && !!step0Data?.byMid[selectedMid]?.pubname}
+                  />
+                </div>
+              </div>
+
+              {/* Row 3: MID, Media Name */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700 block">
+                    MID <span className="text-red-500">*</span>
+                    {selectedMid && (
+                      <span className="text-xs text-green-600 ml-1">(Auto)</span>
+                    )}
+                  </label>
+                  <Input
+                    value={mid}
+                    onChange={(e) => {
+                      setMid(e.target.value)
+                      if (errors.length > 0) setErrors([])
+                    }}
+                    className="h-9 text-sm"
+                    disabled={!!selectedMid}
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-700 block">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700 block">
+                    Media Name <span className="text-red-500">*</span>
+                    {selectedMid && step0Data?.byMid[selectedMid]?.siteAppName && (
+                      <span className="text-xs text-green-600 ml-1">(Auto)</span>
+                    )}
+                  </label>
+                  <Input
+                    value={mediaName}
+                    onChange={(e) => {
+                      setMediaName(e.target.value)
+                      if (errors.length > 0) setErrors([])
+                    }}
+                    className="h-9 text-sm"
+                    disabled={!!selectedMid && !!step0Data?.byMid[selectedMid]?.siteAppName}
+                  />
+                </div>
+              </div>
+
+              {/* Row 4: Child Network Code, PIC, Content */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700 block">
                     Child Network Code <span className="text-red-500">*</span>
                   </label>
                   <Input
@@ -565,55 +670,38 @@ export function ZoneDataEntryStep({
                       setChildNetworkCode(e.target.value)
                       if (errors.length > 0) setErrors([])
                     }}
-                    className="h-8 text-xs"
+                    className="h-9 text-sm"
                   />
                 </div>
-              </div>
 
-              {/* Row 3: MID, Media Name, Content */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-700 block">
-                    MID <span className="text-red-500">*</span>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700 block">
+                    PIC <span className="text-red-500">*</span>
                   </label>
                   <Input
-                    value={mid}
+                    value={pic}
                     onChange={(e) => {
-                      setMid(e.target.value)
+                      setPic(e.target.value)
                       if (errors.length > 0) setErrors([])
                     }}
-                    className="h-8 text-xs"
+                    className="h-9 text-sm"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-700 block">
-                    Media Name <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    value={mediaName}
-                    onChange={(e) => {
-                      setMediaName(e.target.value)
-                      if (errors.length > 0) setErrors([])
-                    }}
-                    className="h-8 text-xs"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-700 block">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700 block">
                     Content <span className="text-red-500">*</span>
                   </label>
                   <Select value={content} onValueChange={(value) => {
                     setContent(value)
                     if (errors.length > 0) setErrors([])
                   }}>
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-9 text-sm">
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent position="popper" sideOffset={4}>
                       {CONTENT_OPTIONS.map((option) => (
-                        <SelectItem key={option} value={option} className="text-xs">
+                        <SelectItem key={option} value={option}>
                           {option}
                         </SelectItem>
                       ))}
@@ -623,12 +711,11 @@ export function ZoneDataEntryStep({
               </div>
             </>
           ) : (
-            // Team Web: 2 rows x 4 columns
             <>
-              {/* Row 1: Domain, PIC, PID, Publisher Name */}
-              <div className="grid grid-cols-4 gap-3">
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-700 block">
+              {/* Row 1: Domain, PIC */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700 block">
                     Domain <span className="text-red-500">*</span>
                   </label>
                   <Input
@@ -637,12 +724,12 @@ export function ZoneDataEntryStep({
                       setAppstoreUrl(e.target.value)
                       if (errors.length > 0) setErrors([])
                     }}
-                    className="h-8 text-xs"
+                    className="h-9 text-sm"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-700 block">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700 block">
                     PIC <span className="text-red-500">*</span>
                   </label>
                   <Input
@@ -651,13 +738,19 @@ export function ZoneDataEntryStep({
                       setPic(e.target.value)
                       if (errors.length > 0) setErrors([])
                     }}
-                    className="h-8 text-xs"
+                    className="h-9 text-sm"
                   />
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-700 block">
+              {/* Row 2: PID, Publisher Name */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700 block">
                     PID <span className="text-red-500">*</span>
+                    {selectedMid && step0Data?.byMid[selectedMid]?.pid && (
+                      <span className="text-xs text-green-600 ml-1">(Auto)</span>
+                    )}
                   </label>
                   <Input
                     value={pid}
@@ -665,13 +758,17 @@ export function ZoneDataEntryStep({
                       setPid(e.target.value)
                       if (errors.length > 0) setErrors([])
                     }}
-                    className="h-8 text-xs"
+                    className="h-9 text-sm"
+                    disabled={!!selectedMid && !!step0Data?.byMid[selectedMid]?.pid}
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-700 block">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700 block">
                     Publisher Name <span className="text-red-500">*</span>
+                    {selectedMid && step0Data?.byMid[selectedMid]?.pubname && (
+                      <span className="text-xs text-green-600 ml-1">(Auto)</span>
+                    )}
                   </label>
                   <Input
                     value={pubname}
@@ -679,15 +776,16 @@ export function ZoneDataEntryStep({
                       setPubname(e.target.value)
                       if (errors.length > 0) setErrors([])
                     }}
-                    className="h-8 text-xs"
+                    className="h-9 text-sm"
+                    disabled={!!selectedMid && !!step0Data?.byMid[selectedMid]?.pubname}
                   />
                 </div>
               </div>
 
-              {/* Row 2: Company Name, GAM Network ID, MID, Media Name */}
-              <div className="grid grid-cols-4 gap-3">
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-700 block">
+              {/* Row 3: Company Name, Child Network Code */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700 block">
                     Company Name <span className="text-red-500">*</span>
                   </label>
                   <Input
@@ -697,13 +795,13 @@ export function ZoneDataEntryStep({
                       if (errors.length > 0) setErrors([])
                     }}
                     placeholder="Child pub name"
-                    className="h-8 text-xs"
+                    className="h-9 text-sm"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-700 block">
-                    GAM Network ID
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700 block">
+                    Child Network Code <span className="text-red-500">*</span>
                   </label>
                   <Input
                     value={childNetworkCode}
@@ -711,13 +809,19 @@ export function ZoneDataEntryStep({
                       setChildNetworkCode(e.target.value)
                       if (errors.length > 0) setErrors([])
                     }}
-                    className="h-8 text-xs"
+                    className="h-9 text-sm"
                   />
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-700 block">
+              {/* Row 4: MID, Media Name */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700 block">
                     MID <span className="text-red-500">*</span>
+                    {selectedMid && (
+                      <span className="text-xs text-green-600 ml-1">(Auto)</span>
+                    )}
                   </label>
                   <Input
                     value={mid}
@@ -725,13 +829,17 @@ export function ZoneDataEntryStep({
                       setMid(e.target.value)
                       if (errors.length > 0) setErrors([])
                     }}
-                    className="h-8 text-xs"
+                    className="h-9 text-sm"
+                    disabled={!!selectedMid}
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-700 block">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700 block">
                     Media Name <span className="text-red-500">*</span>
+                    {selectedMid && step0Data?.byMid[selectedMid]?.siteAppName && (
+                      <span className="text-xs text-green-600 ml-1">(Auto)</span>
+                    )}
                   </label>
                   <Input
                     value={mediaName}
@@ -739,7 +847,8 @@ export function ZoneDataEntryStep({
                       setMediaName(e.target.value)
                       if (errors.length > 0) setErrors([])
                     }}
-                    className="h-8 text-xs"
+                    className="h-9 text-sm"
+                    disabled={!!selectedMid && !!step0Data?.byMid[selectedMid]?.siteAppName}
                   />
                 </div>
               </div>
@@ -747,28 +856,27 @@ export function ZoneDataEntryStep({
           )}
         </div>
 
-        {/* Individual Zone Data Table */}
         <div className="space-y-3 pt-2">
-          <div className="rounded-lg overflow-auto max-h-96">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 sticky top-0">
-                <tr>
-                  <th className="px-3 py-3 text-left font-medium text-gray-700">#</th>
-                  <th className="px-3 py-3 text-left font-medium text-gray-700">Zone ID</th>
-                  <th className="px-3 py-3 text-left font-medium text-gray-700">Zone Name</th>
-                  <th className="px-3 py-3 text-left font-medium text-gray-700">Zone Type *</th>
-                  <th className="px-3 py-3 text-left font-medium text-gray-700">CS/Sales Note *</th>
+          <div className="rounded-lg overflow-auto max-h-96 bg-white border">
+            <table className="w-full">
+              <thead className="sticky top-0">
+                <tr className="border-b">
+                  <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">#</th>
+                  <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">Zone ID</th>
+                  <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">Zone Name</th>
+                  <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">Zone Type *</th>
+                  <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">CS/Sales Note *</th>
                   {teamType === 'app' && (
-                    <th className="px-3 py-3 text-left font-medium text-gray-700">Account *</th>
+                    <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">Account *</th>
                   )}
                 </tr>
               </thead>
               <tbody>
                 {zoneData.map((zone, index) => (
-                  <tr key={index} className="even:bg-gray-50">
-                    <td className="px-3 py-2 text-gray-600">{index + 1}</td>
-                    <td className="px-3 py-2 font-mono text-xs">{zone.zone_id}</td>
-                    <td className="px-3 py-2 text-xs max-w-xs truncate" title={zone.zone_name}>
+                  <tr key={index} className="border-b">
+                    <td className="px-3 py-2 text-sm text-gray-600">{index + 1}</td>
+                    <td className="px-3 py-2 font-mono text-sm text-gray-900">{zone.zone_id}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate" title={zone.zone_name}>
                       {zone.zone_name}
                     </td>
                     <td className="px-3 py-2">
@@ -845,16 +953,15 @@ export function ZoneDataEntryStep({
           </div>
         </div>
 
-        {/* Validation Errors */}
         {errors.length > 0 && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+          <div className="border border-red-200 bg-red-50 p-4">
             <div className="flex items-start gap-2">
               <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <h4 className="text-sm font-semibold text-red-900 mb-2">
                   Please fix the following errors:
                 </h4>
-                <ul className="text-xs text-red-700 space-y-1">
+                <ul className="text-sm text-red-700 space-y-1">
                   {errors.map((error, index) => (
                     <li key={index} className="flex gap-2">
                       <span className="text-red-500">•</span>
@@ -867,85 +974,93 @@ export function ZoneDataEntryStep({
           </div>
         )}
 
-        {/* Sync Error */}
-        {syncError && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+        {selectedMid && syncErrors[selectedMid] && (
+          <div className="border border-red-200 bg-red-50 p-4">
             <div className="flex items-start gap-2">
               <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <h4 className="text-sm font-semibold text-red-900 mb-1">
-                  Sync Failed
+                  Sync Failed for MID: {selectedMid}
                 </h4>
-                <p className="text-xs text-red-700">{syncError}</p>
+                <p className="text-sm text-red-700">{syncErrors[selectedMid]}</p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Sync Success Message */}
-        {syncSuccess && (() => {
-          const sheetName = teamType === 'app' ? 'Tag Creation_APP' : 'Tag Creation_WEB'
-          const sheetGid = teamType === 'app' ? '193855895' : '101229294'
-          const sheetUrl = `https://docs.google.com/spreadsheets/d/1gfCTHCfpTqhb6pzpEhkYx3RxvMhOlhB4pB2iUlSWBNs/edit?gid=${sheetGid}#gid=${sheetGid}`
-
-          return (
-            <div className="rounded-lg border border-[#1565C0]/20 bg-[#E3F2FD] p-4">
-              <div className="flex items-start gap-2">
-                <CheckCircle2 className="h-5 w-5 text-[#1565C0] flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <h4 className="text-sm font-semibold text-[#0D47A1] mb-2">
-                    Successfully Synced to Google Sheets!
-                  </h4>
-                  <p className="text-xs text-[#1565C0] mb-2">
-                    Data has been written to: <span className="font-medium">{sheetName}</span>
-                  </p>
+        {syncSuccess && selectedMid && (
+          <div className="border border-gray-200 bg-gray-50 p-4">
+            <div className="flex items-start gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                  Successfully Synced MID: {selectedMid}
+                </h4>
+                <p className="text-sm text-gray-600 mb-2">
+                  Data has been written to: <span className="font-medium">{sheetName}</span>
+                </p>
+                <div className="flex items-center gap-4">
                   <a
                     href={sheetUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-sm font-medium text-[#1565C0] hover:text-[#0D47A1] hover:underline"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:underline"
                   >
                     View in Google Sheets
                     <ExternalLink className="h-4 w-4" />
                   </a>
+                  <p className="text-sm text-gray-600">
+                    Select another MID to continue syncing
+                  </p>
                 </div>
               </div>
             </div>
-          )
-        })()}
+          </div>
+        )}
 
-        {/* Sync Button or Create New Tag */}
         <div className="flex justify-end pt-4">
-          {syncSuccess ? (
+          <Button
+            onClick={validateAndSync}
+            size="lg"
+            className={`w-full ${syncSuccess ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-900 hover:bg-gray-800'} text-white`}
+            disabled={isSyncing || zoneData.length === 0}
+          >
+            {isSyncing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Syncing {selectedMid ? `MID ${selectedMid}` : 'to Google Sheets'}...
+              </>
+            ) : syncSuccess ? (
+              <>
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Sync Complete - Select Another MID
+              </>
+            ) : (
+              <>
+                Sync {selectedMid ? `MID ${selectedMid}` : 'to Google Sheets'}
+                <Upload className="ml-2 h-4 w-4" />
+              </>
+            )}
+          </Button>
+        </div>
+
+        {/* All Synced Message */}
+        {availableMids.length > 0 && syncedMids.size === availableMids.length && (
+          <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-center">
+            <CheckCircle2 className="h-5 w-5 text-green-600 mx-auto mb-2" />
+            <p className="text-sm font-medium text-green-900">
+              All MIDs synced successfully!
+            </p>
             <Button
               onClick={onReset}
-              size="lg"
-              className="w-full bg-[#1565C0] hover:bg-[#0D47A1] text-white"
+              variant="outline"
+              className="mt-3 border-green-600 text-green-700 hover:bg-green-100"
             >
-              Create New Tag
+              Create New Workflow
             </Button>
-          ) : (
-            <Button
-              onClick={validateAndSync}
-              size="lg"
-              className="w-full bg-[#1565C0] hover:bg-[#0D47A1] text-white"
-              disabled={isSyncing}
-            >
-              {isSyncing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Syncing to Google Sheets...
-                </>
-              ) : (
-                <>
-                  Sync to Google Sheets
-                  <Upload className="ml-2 h-4 w-4" />
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
