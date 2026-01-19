@@ -138,6 +138,7 @@ export function ZoneDataEntryStep({
       setPubname(mediaData.pubname || '')
       setMid(selectedMid)
       setMediaName(mediaData.siteAppName || '')
+      setAppstoreUrl(mediaData.siteUrl || '')
       // Auto-fill common fields from Step 0 (childNetworkCode, pic)
       setChildNetworkCode(step0Data.childNetworkCode || '')
       setPic(step0Data.pic || '')
@@ -149,6 +150,7 @@ export function ZoneDataEntryStep({
       setPubname('')
       setMid('')
       setMediaName('')
+      setAppstoreUrl('')
       setChildNetworkCode('')
       setPic('')
     }
@@ -568,6 +570,9 @@ export function ZoneDataEntryStep({
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-gray-700 block">
                     Zone URL <span className="text-red-500">*</span>
+                    {selectedMid && step0Data?.byMid[selectedMid]?.siteUrl && (
+                      <span className="text-xs text-green-600 ml-1">(Auto)</span>
+                    )}
                   </label>
                   <Input
                     value={appstoreUrl}
@@ -576,6 +581,7 @@ export function ZoneDataEntryStep({
                       if (errors.length > 0) setErrors([])
                     }}
                     className="h-9 text-sm"
+                    disabled={!!selectedMid && !!step0Data?.byMid[selectedMid]?.siteUrl}
                   />
                 </div>
               </div>
@@ -717,6 +723,9 @@ export function ZoneDataEntryStep({
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-gray-700 block">
                     Domain <span className="text-red-500">*</span>
+                    {selectedMid && step0Data?.byMid[selectedMid]?.siteUrl && (
+                      <span className="text-xs text-green-600 ml-1">(Auto)</span>
+                    )}
                   </label>
                   <Input
                     value={appstoreUrl}
@@ -725,6 +734,7 @@ export function ZoneDataEntryStep({
                       if (errors.length > 0) setErrors([])
                     }}
                     className="h-9 text-sm"
+                    disabled={!!selectedMid && !!step0Data?.byMid[selectedMid]?.siteUrl}
                   />
                 </div>
 
