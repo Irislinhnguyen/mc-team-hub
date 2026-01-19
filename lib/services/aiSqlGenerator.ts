@@ -160,13 +160,20 @@ SECOND: Identify what METRICS to calculate:
 | "ad requests" / "requests" | SUM(req) | Direct sum |
 | "impressions" / "paid" | SUM(paid) | Direct sum |
 | "profit" | SUM(profit) | Direct sum |
-| "eCPM" | SAFE_DIVIDE(SUM(rev), SUM(paid)) * 1000 | Calculated! |
+| "eCPM" (alone) | SAFE_DIVIDE(SUM(rev), SUM(paid)) * 1000 | Aggregate eCPM (default) |
+| "average eCPM" / "avg eCPM" | AVG(request_CPM) | Average OF daily eCPMs |
+| "mean eCPM" | AVG(request_CPM) | Average OF daily eCPMs |
+| "daily eCPM" | request_CPM | Use pre-calculated column |
 | "fill rate" | SAFE_DIVIDE(SUM(paid), SUM(req)) * 100 | Calculated! |
 | "profit rate" | SAFE_DIVIDE(SUM(profit), SUM(rev)) * 100 | Calculated! |
 | "revenue to publisher" | SUM(paid) | Same as impressions |
 
-IMPORTANT: When user asks for "eCPM", "fill rate", or "profit rate",
-you MUST calculate them using SAFE_DIVIDE, NOT select a pre-existing column!
+IMPORTANT: eCPM has THREE different meanings - detect by keyword matching:
+1. "eCPM" alone (no "average"/"avg"/"mean"/"daily") → aggregate = SAFE_DIVIDE(SUM(rev), SUM(paid)) * 1000
+2. "average eCPM" / "avg eCPM" / "mean eCPM" → average OF daily eCPMs = AVG(request_CPM)
+3. "daily eCPM" → use pre-calculated column = request_CPM
+
+For "fill rate" and "profit rate", calculate using SAFE_DIVIDE.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 STEP 3: HOW TO GET METRICS (SQL Structure)
@@ -245,6 +252,34 @@ FROM \`gcpp-check.GI_publisher.pub_data\`
 WHERE date BETWEEN '2024-10-01' AND '2024-10-31'
 GROUP BY pid, pubname
 ORDER BY total_revenue DESC
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXAMPLE: Average eCPM by Day of Week (IMPORTANT - uses AVG of daily eCPMs)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Question: "Revenue by day of week in December 2025 with average eCPM, total profit, and total request"
+
+**Step 1: Entity**
+- Keywords: "day of week" → entity = FORMAT_TIMESTAMP('%A', TIMESTAMP(date))
+- Time range: December 2025
+
+**Step 2: Metrics**
+- "revenue" → SUM(rev)
+- "average eCPM" → AVG(request_CPM)  ← NOTE: This is average OF daily eCPMs, NOT aggregate!
+- "total profit" → SUM(profit)
+- "total request" → SUM(req)
+
+**Step 3: SQL**
+SELECT
+  FORMAT_TIMESTAMP('%A', TIMESTAMP(date)) AS day_of_week,
+  SUM(rev) AS total_revenue,
+  AVG(request_CPM) AS average_ecpm,
+  SUM(profit) AS total_profit,
+  SUM(req) AS total_requests
+FROM `gcpp-check.GI_publisher.pub_data`
+WHERE DATE_TRUNC(date, MONTH) = '2025-12-01'
+GROUP BY day_of_week
+ORDER BY day_of_week
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TABLE SCHEMA
