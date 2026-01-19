@@ -276,7 +276,7 @@ SELECT
   AVG(request_CPM) AS average_ecpm,
   SUM(profit) AS total_profit,
   SUM(req) AS total_requests
-FROM `gcpp-check.GI_publisher.pub_data`
+FROM \`gcpp-check.GI_publisher.pub_data\`
 WHERE DATE_TRUNC(date, MONTH) = '2025-12-01'
 GROUP BY day_of_week
 ORDER BY day_of_week
