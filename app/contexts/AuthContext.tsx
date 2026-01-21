@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
 
 export interface User {
   email: string
@@ -110,10 +110,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // Auto-refresh session configuration
+  const AUTO_REFRESH_INTERVAL = 5 * 60 * 1000 // 5 minutes
+  const isRefreshing = useRef(false)
+
+  // Silent refresh - updates user data without showing loading state
+  const silentRefresh = async (): Promise<boolean> => {
+    if (isRefreshing.current) return false
+
+    try {
+      isRefreshing.current = true
+      const response = await fetch('/api/auth/refresh')
+
+      if (!response.ok) {
+        return false
+      }
+
+      const data = await response.json()
+
+      if (data.status === 'ok' && data.user) {
+        // Check if role changed
+        const roleChanged = user && data.user.role !== user.role
+        setUser(data.user)
+
+        if (roleChanged) {
+          console.log('[AuthContext] Role changed from', user?.role, 'to', data.user.role)
+          // Trigger a page reload to ensure all components pick up new permissions
+          window.location.reload()
+        }
+
+        return true
+      }
+
+      return false
+    } catch (err) {
+      console.error('[AuthContext] Error in silent refresh:', err)
+      return false
+    } finally {
+      isRefreshing.current = false
+    }
+  }
+
+  // Initial fetch
   useEffect(() => {
     fetchUser()
     fetchCsrfToken()
   }, [])
+
+  // Periodic auto-refresh every 5 minutes
+  useEffect(() => {
+    if (!user) return // Only refresh if user is logged in
+
+    const intervalId = setInterval(() => {
+      console.log('[AuthContext] Auto-refreshing session...')
+      silentRefresh()
+    }, AUTO_REFRESH_INTERVAL)
+
+    return () => clearInterval(intervalId)
+  }, [user])
+
+  // Refresh when window regains focus (user switches back to tab)
+  useEffect(() => {
+    if (!user) return
+
+    const handleFocus = () => {
+      console.log('[AuthContext] Window regained focus, refreshing session...')
+      silentRefresh()
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [user])
 
   return (
     <AuthContext.Provider value={{ user, isLoading, error, logout, refreshUser, refreshSession, csrfToken }}>
