@@ -223,6 +223,10 @@ function FocusSuggestionsTable({
           height: '540px', // 10 rows * 48px per row + header
           minWidth: 0,
           width: '100%',
+          overscrollBehavior: 'contain', // Prevent scroll chaining to parent page
+          touchAction: 'pan-x pan-y', // Control touch scroll behavior
+          scrollbarWidth: 'thin', // Better scrollbar appearance
+          WebkitOverflowScrolling: 'touch', // Smooth scroll on iOS
         }}
       >
         <table className="w-full border-collapse">
