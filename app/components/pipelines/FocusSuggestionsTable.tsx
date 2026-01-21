@@ -6,14 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -35,6 +27,7 @@ import { PipelineDetailDrawer } from '@/app/components/pipelines/PipelineDetailD
 import type { FocusSuggestion } from '@/lib/types/focus'
 import type { Pipeline } from '@/lib/types/pipeline'
 import { typography, composedStyles } from '@/lib/design-tokens'
+import { colors } from '@/lib/colors'
 
 // Cannot create reasons enum
 const CANNOT_CREATE_REASONS = [
@@ -223,39 +216,52 @@ function FocusSuggestionsTable({
         </div>
       )}
 
-      {/* Scrollable Table Container - 600px for 15 rows */}
+      {/* Scrollable Table Container - 7 rows visible - matching DataTable pattern */}
       <div
         className="overflow-x-auto overflow-y-auto border border-gray-200 rounded-b-lg"
         style={{
-          height: '600px', // 15 rows * 40px per row = 600px
-          minHeight: '600px',
+          height: '310px', // 7 rows * 44px per row = 308px
+          minWidth: 0,
+          width: '100%',
         }}
       >
-        <Table>
-          <TableHeader className="sticky top-0 z-10 bg-white shadow-sm">
-            <TableRow>
-              <TableHead className="w-[4%]">
+        <table className="w-full border-collapse">
+          <thead className="sticky top-0 shadow-sm" style={{ zIndex: 20, backgroundColor: '#ffffff' }}>
+            <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+              <th className="w-[4%] h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
                 <Checkbox
                   checked={allSelected}
                   onCheckedChange={handleSelectAll}
                   aria-label="Select all"
                 />
-              </TableHead>
-              <TableHead className={`w-[6%] ${composedStyles.tableHeader}`}>MID</TableHead>
-              <TableHead className={`w-[6%] ${composedStyles.tableHeader}`}>Media Name</TableHead>
-              <TableHead className={`w-[7%] ${composedStyles.tableHeader}`}>Product</TableHead>
-              <TableHead className={`w-[8%] ${composedStyles.tableHeader}`}>PIC</TableHead>
-              <TableHead className={`w-[6%] text-right ${composedStyles.tableHeader}`}>30D Requests</TableHead>
-              <TableHead className={`w-[7%] ${composedStyles.tableHeader}`}>Pipeline</TableHead>
-              <TableHead className={`w-[7%] ${composedStyles.tableHeader}`}>Quarter</TableHead>
-              <TableHead className={`w-[10%] text-center ${composedStyles.tableHeader}`}>Cannot Create</TableHead>
-              <TableHead className={`w-[43%] ${composedStyles.tableHeader}`}>Remark</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {suggestions.map((suggestion) => (
-              <TableRow key={suggestion.id}>
-                <TableCell className="w-[4%]">
+              </th>
+              <th className={`w-[6%] h-12 px-4 text-left align-middle font-medium text-muted-foreground ${composedStyles.tableHeader}`}>MID</th>
+              <th className={`w-[6%] h-12 px-4 text-left align-middle font-medium text-muted-foreground ${composedStyles.tableHeader}`}>Media Name</th>
+              <th className={`w-[7%] h-12 px-4 text-left align-middle font-medium text-muted-foreground ${composedStyles.tableHeader}`}>Product</th>
+              <th className={`w-[8%] h-12 px-4 text-left align-middle font-medium text-muted-foreground ${composedStyles.tableHeader}`}>PIC</th>
+              <th className={`w-[6%] h-12 px-4 text-right align-middle font-medium text-muted-foreground ${composedStyles.tableHeader}`}>30D Requests</th>
+              <th className={`w-[7%] h-12 px-4 text-left align-middle font-medium text-muted-foreground ${composedStyles.tableHeader}`}>Pipeline</th>
+              <th className={`w-[7%] h-12 px-4 text-left align-middle font-medium text-muted-foreground ${composedStyles.tableHeader}`}>Quarter</th>
+              <th className={`w-[10%] h-12 px-4 text-center align-middle font-medium text-muted-foreground ${composedStyles.tableHeader}`}>Cannot Create</th>
+              <th className={`w-[43%] h-12 px-4 text-left align-middle font-medium text-muted-foreground ${composedStyles.tableHeader}`}>Remark</th>
+            </tr>
+          </thead>
+          <tbody>
+            {suggestions.map((suggestion, idx) => (
+              <tr
+                key={suggestion.id}
+                className="border-b border-slate-200 transition-colors"
+                style={{
+                  backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f0f0f0'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = idx % 2 === 0 ? '#ffffff' : '#f8fafc'
+                }}
+              >
+                <td className="w-[4%] p-4 align-middle [&:has([role=checkbox])]:pr-0">
                   <Checkbox
                     checked={selectedSuggestions.has(suggestion.id)}
                     onCheckedChange={(checked) => {
@@ -269,11 +275,11 @@ function FocusSuggestionsTable({
                     }}
                     aria-label={`Select ${suggestion.mid}`}
                   />
-                </TableCell>
+                </td>
 
-                <TableCell className={`w-[6%] ${composedStyles.tableData}`}>{suggestion.mid}</TableCell>
+                <td className={`w-[6%] p-4 align-middle ${composedStyles.tableData}`}>{suggestion.mid}</td>
 
-                <TableCell className={`w-[6%] ${composedStyles.tableData}`}>
+                <td className={`w-[6%] p-4 align-middle ${composedStyles.tableData}`}>
                   <div className="flex items-center gap-2">
                     <span className="line-clamp-2 text-xs" title={suggestion.media_name}>
                       {suggestion.media_name || '-'}
@@ -289,21 +295,21 @@ function FocusSuggestionsTable({
                       </Button>
                     )}
                   </div>
-                </TableCell>
+                </td>
 
-                <TableCell className="w-[7%]">
+                <td className="w-[7%] p-4 align-middle">
                   <Badge variant="outline" className="text-xs">
                     {suggestion.product}
                   </Badge>
-                </TableCell>
+                </td>
 
-                <TableCell className={`w-[8%] ${composedStyles.tableData}`}>{suggestion.pic || '-'}</TableCell>
+                <td className={`w-[8%] p-4 align-middle ${composedStyles.tableData}`}>{suggestion.pic || '-'}</td>
 
-                <TableCell className={`w-[6%] text-right ${composedStyles.tableData}`}>
+                <td className={`w-[6%] p-4 text-right align-middle ${composedStyles.tableData}`}>
                   {suggestion.last_30d_requests?.toLocaleString() || 0}
-                </TableCell>
+                </td>
 
-                <TableCell className={`w-[7%] ${composedStyles.tableData}`}>
+                <td className={`w-[7%] p-4 align-middle ${composedStyles.tableData}`}>
                   <div className="flex items-center gap-2">
                     <Checkbox
                       checked={suggestion.pipeline_created || false}
@@ -322,9 +328,9 @@ function FocusSuggestionsTable({
                       </Button>
                     )}
                   </div>
-                </TableCell>
+                </td>
 
-                <TableCell className="w-[7%]">
+                <td className="w-[7%] p-4 align-middle">
                   <Select
                     value={suggestion.quarter || ''}
                     onValueChange={(value) => onUpdateStatus(suggestion.id, { quarter: value })}
@@ -341,9 +347,9 @@ function FocusSuggestionsTable({
                       ))}
                     </SelectContent>
                   </Select>
-                </TableCell>
+                </td>
 
-                <TableCell className="w-[10%]">
+                <td className="w-[10%] p-4 align-middle">
                   <div className="flex items-center justify-center gap-2">
                     <Checkbox
                       checked={suggestion.user_status === 'cannot_create'}
@@ -415,9 +421,9 @@ function FocusSuggestionsTable({
                       )}
                     </div>
                   )}
-                </TableCell>
+                </td>
 
-                <TableCell className={`w-[45%] ${composedStyles.tableData}`}>
+                <td className={`w-[43%] p-4 align-middle ${composedStyles.tableData}`}>
                   {(suggestion as any).global_remark ? (
                     <div className="flex items-start gap-2 group">
                       <div
@@ -445,11 +451,11 @@ function FocusSuggestionsTable({
                       <CirclePlus className="w-4 h-4" />
                     </Button>
                   )}
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
 
       {/* Remark Dialog */}

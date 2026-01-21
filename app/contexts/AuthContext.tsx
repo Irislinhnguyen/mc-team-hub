@@ -28,6 +28,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [csrfToken, setCsrfToken] = useState<string | null>(null)
 
+  // Ref to track user without triggering re-renders (for auto-refresh)
+  const userRef = useRef<User | null>(null)
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    userRef.current = user
+  }, [user])
+
   const fetchUser = async () => {
     try {
       setIsLoading(true)
@@ -129,12 +137,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json()
 
       if (data.status === 'ok' && data.user) {
-        // Check if role changed
-        const roleChanged = user && data.user.role !== user.role
+        // Check if role changed - use ref to avoid stale closure
+        const currentUser = userRef.current
+        const roleChanged = currentUser && data.user.role !== currentUser.role
         setUser(data.user)
+        // Update ref immediately
+        userRef.current = data.user
 
         if (roleChanged) {
-          console.log('[AuthContext] Role changed from', user?.role, 'to', data.user.role)
+          console.log('[AuthContext] Role changed from', currentUser?.role, 'to', data.user.role)
           // Trigger a page reload to ensure all components pick up new permissions
           window.location.reload()
         }
@@ -157,30 +168,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchCsrfToken()
   }, [])
 
-  // Periodic auto-refresh every 5 minutes
+  // Periodic auto-refresh every 5 minutes - no user dependency to prevent infinite loop
   useEffect(() => {
-    if (!user) return // Only refresh if user is logged in
-
     const intervalId = setInterval(() => {
-      console.log('[AuthContext] Auto-refreshing session...')
-      silentRefresh()
+      // Only refresh if user exists (check ref to avoid closure issues)
+      if (userRef.current) {
+        console.log('[AuthContext] Auto-refreshing session...')
+        silentRefresh()
+      }
     }, AUTO_REFRESH_INTERVAL)
 
     return () => clearInterval(intervalId)
-  }, [user])
+  }, []) // Empty deps - only run once on mount
 
   // Refresh when window regains focus (user switches back to tab)
   useEffect(() => {
-    if (!user) return
-
     const handleFocus = () => {
-      console.log('[AuthContext] Window regained focus, refreshing session...')
-      silentRefresh()
+      // Only refresh if user exists
+      if (userRef.current) {
+        console.log('[AuthContext] Window regained focus, refreshing session...')
+        silentRefresh()
+      }
     }
 
     window.addEventListener('focus', handleFocus)
     return () => window.removeEventListener('focus', handleFocus)
-  }, [user])
+  }, []) // Empty deps - only run once on mount
 
   return (
     <AuthContext.Provider value={{ user, isLoading, error, logout, refreshUser, refreshSession, csrfToken }}>
