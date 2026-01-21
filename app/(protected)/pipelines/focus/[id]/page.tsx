@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, CheckCircle, XCircle, Clock, Trash2, Plus, ExternalLink, Loader2 } from 'lucide-react'
+import { ArrowLeft, Trash2, Plus, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -47,6 +47,7 @@ import { EditFocusModal } from '@/app/components/pipelines/EditFocusModal'
 import { AddPipelinesModal } from '@/app/components/pipelines/AddPipelinesModal'
 import { PipelineDetailDrawer } from '@/app/components/pipelines/PipelineDetailDrawer'
 import FocusSuggestionsTable from '@/app/components/pipelines/FocusSuggestionsTable'
+import { MetricCard } from '@/app/components/performance-tracker/MetricCard'
 import { FocusDetailSkeleton } from '@/app/components/pipelines/skeletons'
 import { PipelinePageLayout } from '@/app/components/pipelines/PipelinePageLayout'
 import { useAuth } from '@/app/contexts/AuthContext'
@@ -462,31 +463,11 @@ export default function FocusDetailPage() {
       contentClassName="!pt-0"
     >
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white rounded-lg border p-4">
-        <StatCard
-          label="Total Suggestions"
-          value={stats.total}
-          icon={<Clock className={`h-5 w-5 ${colors.text.muted}`} />}
-          valueColor={colors.text.primary}
-        />
-        <StatCard
-          label="Created"
-          value={stats.created}
-          icon={<CheckCircle className="h-5 w-5" style={{ color: statusColors.status.success }} />}
-          valueStyle={{ color: statusColors.status.success }}
-        />
-        <StatCard
-          label="Cannot Create"
-          value={stats.cannot_create}
-          icon={<XCircle className="h-5 w-5" style={{ color: statusColors.status.danger }} />}
-          valueStyle={{ color: statusColors.status.danger }}
-        />
-        <StatCard
-          label="Pending"
-          value={stats.pending}
-          icon={<Clock className={`h-5 w-5 ${colors.text.muted}`} />}
-          valueColor={colors.text.secondary}
-        />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2.5 md:gap-4">
+        <MetricCard label="Total" value={stats.total} />
+        <MetricCard label="Created" value={stats.created} />
+        <MetricCard label="Cannot Create" value={stats.cannot_create} />
+        <MetricCard label="Pending" value={stats.pending} />
       </div>
 
       {/* Tabs */}
@@ -675,39 +656,6 @@ export default function FocusDetailPage() {
     </PipelinePageLayout>
   )
 }
-
-function StatCard({
-  label,
-  value,
-  icon,
-  valueColor = colors.text.primary,
-  valueStyle,
-}: {
-  label: string
-  value: number
-  icon: React.ReactNode
-  valueColor?: string
-  valueStyle?: React.CSSProperties
-}) {
-  return (
-    <div className={`${colors.background.card} rounded-lg border ${spacing.cardPadding}`}>
-      <div className="flex items-center justify-between mb-2">
-        <span className={`text-sm ${colors.text.muted}`}>{label}</span>
-        {icon}
-      </div>
-      <p
-        style={{
-          fontSize: typography.sizes.metricValue,
-          ...(valueStyle && { color: valueStyle.color })
-        }}
-        className={`font-bold ${valueColor}`}
-      >
-        {value}
-      </p>
-    </div>
-  )
-}
-
 
 function DashboardTab({ focusId }: { focusId: string }) {
   return (
