@@ -216,11 +216,11 @@ function FocusSuggestionsTable({
         </div>
       )}
 
-      {/* Scrollable Table Container - 7 rows visible - matching DataTable pattern */}
+      {/* Scrollable Table Container - 10 rows visible - matching DataTable pattern */}
       <div
         className="overflow-x-auto overflow-y-auto border border-gray-200 rounded-b-lg"
         style={{
-          height: '310px', // 7 rows * 44px per row = 308px
+          height: '540px', // 10 rows * 48px per row + header
           minWidth: 0,
           width: '100%',
         }}
@@ -228,22 +228,22 @@ function FocusSuggestionsTable({
         <table className="w-full border-collapse">
           <thead className="sticky top-0 shadow-sm" style={{ zIndex: 20, backgroundColor: '#ffffff' }}>
             <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-              <th className="w-[4%] h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
+              <th className="w-[4%] px-2 py-2 text-left font-semibold leading-tight" style={{ fontSize: typography.sizes.filterHeader, color: colors.text.secondary }}>
                 <Checkbox
                   checked={allSelected}
                   onCheckedChange={handleSelectAll}
                   aria-label="Select all"
                 />
               </th>
-              <th className={`w-[6%] h-12 px-4 text-left align-middle font-medium text-muted-foreground ${composedStyles.tableHeader}`}>MID</th>
-              <th className={`w-[6%] h-12 px-4 text-left align-middle font-medium text-muted-foreground ${composedStyles.tableHeader}`}>Media Name</th>
-              <th className={`w-[7%] h-12 px-4 text-left align-middle font-medium text-muted-foreground ${composedStyles.tableHeader}`}>Product</th>
-              <th className={`w-[8%] h-12 px-4 text-left align-middle font-medium text-muted-foreground ${composedStyles.tableHeader}`}>PIC</th>
-              <th className={`w-[6%] h-12 px-4 text-right align-middle font-medium text-muted-foreground ${composedStyles.tableHeader}`}>30D Requests</th>
-              <th className={`w-[7%] h-12 px-4 text-left align-middle font-medium text-muted-foreground ${composedStyles.tableHeader}`}>Pipeline</th>
-              <th className={`w-[7%] h-12 px-4 text-left align-middle font-medium text-muted-foreground ${composedStyles.tableHeader}`}>Quarter</th>
-              <th className={`w-[10%] h-12 px-4 text-center align-middle font-medium text-muted-foreground ${composedStyles.tableHeader}`}>Cannot Create</th>
-              <th className={`w-[43%] h-12 px-4 text-left align-middle font-medium text-muted-foreground ${composedStyles.tableHeader}`}>Remark</th>
+              <th className="w-[6%] px-2 py-2 text-left font-semibold leading-tight" style={{ fontSize: typography.sizes.filterHeader, color: colors.text.secondary }}>MID</th>
+              <th className="w-[6%] px-2 py-2 text-left font-semibold leading-tight" style={{ fontSize: typography.sizes.filterHeader, color: colors.text.secondary }}>Media Name</th>
+              <th className="w-[7%] px-2 py-2 text-left font-semibold leading-tight" style={{ fontSize: typography.sizes.filterHeader, color: colors.text.secondary }}>Product</th>
+              <th className="w-[8%] px-2 py-2 text-left font-semibold leading-tight" style={{ fontSize: typography.sizes.filterHeader, color: colors.text.secondary }}>PIC</th>
+              <th className="w-[6%] px-2 py-2 text-right font-semibold leading-tight" style={{ fontSize: typography.sizes.filterHeader, color: colors.text.secondary }}>30D Requests</th>
+              <th className="w-[7%] px-2 py-2 text-left font-semibold leading-tight" style={{ fontSize: typography.sizes.filterHeader, color: colors.text.secondary }}>Pipeline</th>
+              <th className="w-[7%] px-2 py-2 text-left font-semibold leading-tight" style={{ fontSize: typography.sizes.filterHeader, color: colors.text.secondary }}>Quarter</th>
+              <th className="w-[10%] px-2 py-2 text-center font-semibold leading-tight" style={{ fontSize: typography.sizes.filterHeader, color: colors.text.secondary }}>Cannot Create</th>
+              <th className="w-[43%] px-2 py-2 text-left font-semibold leading-tight" style={{ fontSize: typography.sizes.filterHeader, color: colors.text.secondary }}>Remark</th>
             </tr>
           </thead>
           <tbody>
@@ -261,7 +261,7 @@ function FocusSuggestionsTable({
                   e.currentTarget.style.backgroundColor = idx % 2 === 0 ? '#ffffff' : '#f8fafc'
                 }}
               >
-                <td className="w-[4%] p-4 align-middle [&:has([role=checkbox])]:pr-0">
+                <td className="w-[4%] px-2 py-2 align-middle [&:has([role=checkbox])]:pr-0">
                   <Checkbox
                     checked={selectedSuggestions.has(suggestion.id)}
                     onCheckedChange={(checked) => {
@@ -277,9 +277,9 @@ function FocusSuggestionsTable({
                   />
                 </td>
 
-                <td className={`w-[6%] p-4 align-middle ${composedStyles.tableData}`}>{suggestion.mid}</td>
+                <td className="w-[6%] px-2 py-2 leading-tight" style={{ fontSize: typography.sizes.dataPoint }}>{suggestion.mid}</td>
 
-                <td className={`w-[6%] p-4 align-middle ${composedStyles.tableData}`}>
+                <td className="w-[6%] px-2 py-2 leading-tight" style={{ fontSize: typography.sizes.dataPoint }}>
                   <div className="flex items-center gap-2">
                     <span className="line-clamp-2 text-xs" title={suggestion.media_name}>
                       {suggestion.media_name || '-'}
@@ -297,19 +297,19 @@ function FocusSuggestionsTable({
                   </div>
                 </td>
 
-                <td className="w-[7%] p-4 align-middle">
+                <td className="w-[7%] px-2 py-2 align-middle">
                   <Badge variant="outline" className="text-xs">
                     {suggestion.product}
                   </Badge>
                 </td>
 
-                <td className={`w-[8%] p-4 align-middle ${composedStyles.tableData}`}>{suggestion.pic || '-'}</td>
+                <td className="w-[8%] px-2 py-2 leading-tight" style={{ fontSize: typography.sizes.dataPoint }}>{suggestion.pic || '-'}</td>
 
-                <td className={`w-[6%] p-4 text-right align-middle ${composedStyles.tableData}`}>
+                <td className="w-[6%] px-2 py-2 text-right leading-tight" style={{ fontSize: typography.sizes.dataPoint }}>
                   {suggestion.last_30d_requests?.toLocaleString() || 0}
                 </td>
 
-                <td className={`w-[7%] p-4 align-middle ${composedStyles.tableData}`}>
+                <td className="w-[7%] px-2 py-2 leading-tight" style={{ fontSize: typography.sizes.dataPoint }}>
                   <div className="flex items-center gap-2">
                     <Checkbox
                       checked={suggestion.pipeline_created || false}
@@ -330,7 +330,7 @@ function FocusSuggestionsTable({
                   </div>
                 </td>
 
-                <td className="w-[7%] p-4 align-middle">
+                <td className="w-[7%] px-2 py-2 align-middle">
                   <Select
                     value={suggestion.quarter || ''}
                     onValueChange={(value) => onUpdateStatus(suggestion.id, { quarter: value })}
@@ -349,7 +349,7 @@ function FocusSuggestionsTable({
                   </Select>
                 </td>
 
-                <td className="w-[10%] p-4 align-middle">
+                <td className="w-[10%] px-2 py-2 align-middle">
                   <div className="flex items-center justify-center gap-2">
                     <Checkbox
                       checked={suggestion.user_status === 'cannot_create'}
@@ -423,7 +423,7 @@ function FocusSuggestionsTable({
                   )}
                 </td>
 
-                <td className={`w-[43%] p-4 align-middle ${composedStyles.tableData}`}>
+                <td className="w-[43%] px-2 py-2 leading-tight" style={{ fontSize: typography.sizes.dataPoint }}>
                   {(suggestion as any).global_remark ? (
                     <div className="flex items-start gap-2 group">
                       <div
