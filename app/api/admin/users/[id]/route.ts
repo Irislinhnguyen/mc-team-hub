@@ -86,8 +86,9 @@ export async function PATCH(
       )
     }
 
-    // Prevent self-demotion for admin
-    if (currentUser?.id === id && role && role !== 'admin' && isAdmin(currentUser)) {
+    // Prevent self-demotion for admin (compare by email since we don't have user id in token)
+    const isSelf = targetUser?.email === currentUser.sub
+    if (isSelf && role && role !== 'admin' && isAdmin(currentUser)) {
       return NextResponse.json(
         { error: 'Cannot demote yourself from admin role' },
         { status: 400 }
@@ -174,22 +175,23 @@ export async function DELETE(
 
     const { id } = await params
 
-    // Prevent self-deletion
-    if (currentUser?.id === id) {
+    const supabase = await createAdminClient()
+
+    // Get target user email and role to check if deleting self or admin
+    const { data: targetUser } = await supabase
+      .from('users')
+      .select('email, role')
+      .eq('id', id)
+      .single()
+
+    // Prevent self-deletion (compare by email)
+    const isSelf = targetUser?.email === currentUser.sub
+    if (isSelf) {
       return NextResponse.json(
         { error: 'Cannot delete your own account' },
         { status: 400 }
       )
     }
-
-    const supabase = await createAdminClient()
-
-    // Check if user exists and is not an admin
-    const { data: targetUser } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', id)
-      .single()
 
     if (!targetUser) {
       return NextResponse.json(
