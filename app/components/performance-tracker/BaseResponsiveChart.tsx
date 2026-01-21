@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useMemo, ReactNode } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { useBreakpoint, type Breakpoint } from '@/app/hooks/use-mobile'
+import { useBreakpoint, type Breakpoint } from '@/hooks/use-mobile'
 import { chartSizes, typography, composedStyles } from '@/lib/design-tokens'
 
 /**

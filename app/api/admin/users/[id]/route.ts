@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser, requireAdminOrManager, isAdmin, requireLeaderOrAbove, canAssignRole } from '@/lib/auth/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { authService } from '@/lib/services/auth'
 
 // GET single user
 export async function GET(
@@ -70,13 +71,14 @@ export async function PATCH(
 
     const supabase = await createAdminClient()
 
-    // Check if trying to modify an admin (only admin can do this)
+    // Get target user data to check if updating own account
     const { data: targetUser } = await supabase
       .from('users')
-      .select('role')
+      .select('email, role')
       .eq('id', id)
       .single()
 
+    // Check if trying to modify an admin (only admin can do this)
     if (targetUser?.role === 'admin' && !isAdmin(currentUser)) {
       return NextResponse.json(
         { error: 'Only admins can modify admin users' },
@@ -119,7 +121,31 @@ export async function PATCH(
       )
     }
 
-    return NextResponse.json({ user: updatedUser })
+    // Check if updating own account - refresh session if role changed
+    const isOwnAccount = targetUser?.email === currentUser.sub
+    const roleChanged = role && updatedUser.role !== targetUser?.role
+    const needsRefresh = isOwnAccount && roleChanged
+
+    const response = NextResponse.json({
+      user: updatedUser,
+      needsRefresh,
+    })
+
+    // If updating own role, set new token in cookie
+    if (needsRefresh && targetUser?.email) {
+      const refreshResult = await authService.refreshAccessToken(targetUser.email)
+      if (refreshResult) {
+        response.cookies.set('__Host-auth_token', refreshResult.token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 8 * 60 * 60, // 8 hours
+        })
+      }
+    }
+
+    return response
   } catch (error: any) {
     console.error('Admin update user error:', error)
     return NextResponse.json(

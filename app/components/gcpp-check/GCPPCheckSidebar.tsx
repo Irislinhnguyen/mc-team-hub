@@ -51,10 +51,14 @@ const GCPP_CHECK_PAGES: PageItem[] = [
 
 export function GCPPCheckSidebar() {
   const pathname = usePathname()
-  const { user, logout } = useAuth()
+  const { user, logout, refreshSession } = useAuth()
 
   const handleLogout = async () => {
     await logout()
+  }
+
+  const handleRefreshSession = async () => {
+    await refreshSession()
   }
 
   return (
@@ -112,7 +116,7 @@ export function GCPPCheckSidebar() {
       {/* Footer - User Profile */}
       <SidebarFooter className="p-3 border-t border-gray-200">
         {user && (
-          <UserDropdown user={user} onLogout={handleLogout} compact />
+          <UserDropdown user={user} onLogout={handleLogout} onRefreshSession={handleRefreshSession} compact />
         )}
       </SidebarFooter>
     </Sidebar>

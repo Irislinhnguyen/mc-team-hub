@@ -11,14 +11,14 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/src/components/ui/button'
-import { ScrollArea } from '@/src/components/ui/scroll-area'
+import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/src/components/ui/dropdown-menu'
+} from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/app/contexts/AuthContext'
 import { UserDropdown } from '../shared/UserDropdown'
 import {
@@ -75,7 +75,7 @@ export default function QueryLabSidebar({
   onToggleCollapse
 }: QueryLabSidebarProps) {
   const router = useRouter()
-  const { user, logout } = useAuth()
+  const { user, logout, refreshSession } = useAuth()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
 
@@ -346,7 +346,7 @@ export default function QueryLabSidebar({
       {/* User Info - Bottom with Dropdown */}
       {user && (
         <div className="p-3 border-t border-gray-100">
-          <UserDropdown user={user} onLogout={logout} align="start" showUpChevron />
+          <UserDropdown user={user} onLogout={logout} onRefreshSession={refreshSession} align="start" showUpChevron />
         </div>
       )}
     </div>

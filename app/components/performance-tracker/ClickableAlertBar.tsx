@@ -3,7 +3,7 @@
 import { ReactNode } from 'react'
 import { ChevronDown, AlertTriangle, TrendingUp, Activity, Minus, Plus } from 'lucide-react'
 import { colors } from '../../../lib/colors'
-import { cn } from '../../../src/lib/utils'
+import { cn } from '@/lib/utils'
 
 export interface AlertCardData {
   type: 'critical' | 'high' | 'moderate' | 'lost' | 'new'

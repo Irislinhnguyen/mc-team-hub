@@ -16,6 +16,7 @@ interface AuthContextType {
   error: string | null
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
+  refreshSession: () => Promise<boolean>
   csrfToken: string | null
 }
 
@@ -67,6 +68,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await fetchUser()
   }
 
+  /**
+   * Refresh session with latest data from database
+   * This calls /api/auth/refresh which fetches fresh user data from DB
+   * and re-issues the JWT token with updated role/permissions
+   * Returns true if successful, false otherwise
+   */
+  const refreshSession = async (): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/auth/refresh')
+
+      if (!response.ok) {
+        console.error('[AuthContext] Failed to refresh session:', response.status)
+        return false
+      }
+
+      const data = await response.json()
+
+      if (data.status === 'ok' && data.user) {
+        setUser(data.user)
+        console.log('[AuthContext] Session refreshed successfully', data.user)
+        return true
+      }
+
+      return false
+    } catch (err) {
+      console.error('[AuthContext] Error refreshing session:', err)
+      return false
+    }
+  }
+
   const fetchCsrfToken = async () => {
     try {
       const response = await fetch('/api/auth/csrf')
@@ -85,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, error, logout, refreshUser, csrfToken }}>
+    <AuthContext.Provider value={{ user, isLoading, error, logout, refreshUser, refreshSession, csrfToken }}>
       {children}
     </AuthContext.Provider>
   )

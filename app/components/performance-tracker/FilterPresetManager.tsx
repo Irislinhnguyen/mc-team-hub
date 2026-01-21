@@ -11,7 +11,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Button } from '../../../src/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { normalizeFilterValue } from '../../../lib/utils/filterHelpers';
 import {
   DropdownMenu,
@@ -21,8 +21,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
   DropdownMenuGroup,
-} from '../../../src/components/ui/dropdown-menu';
-import { Popover, PopoverContent, PopoverTrigger } from '../../../src/components/ui/popover';
+} from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   AlertDialog,
   AlertDialogAction,

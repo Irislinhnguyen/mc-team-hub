@@ -69,10 +69,14 @@ const ANALYTICS_PAGES: PageItem[] = [
 
 export function AnalyticsSidebar() {
   const pathname = usePathname()
-  const { user, logout } = useAuth()
+  const { user, logout, refreshSession } = useAuth()
 
   const handleLogout = async () => {
     await logout()
+  }
+
+  const handleRefreshSession = async () => {
+    await refreshSession()
   }
 
   return (
@@ -135,7 +139,7 @@ export function AnalyticsSidebar() {
       {/* Footer - User Profile with Dropdown */}
       <SidebarFooter className="p-3 border-t border-gray-200">
         {user && (
-          <UserDropdown user={user} onLogout={handleLogout} align="start" showUpChevron />
+          <UserDropdown user={user} onLogout={handleLogout} onRefreshSession={handleRefreshSession} align="start" showUpChevron />
         )}
       </SidebarFooter>
     </Sidebar>

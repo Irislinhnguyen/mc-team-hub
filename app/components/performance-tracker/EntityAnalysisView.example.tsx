@@ -8,7 +8,7 @@
 import EntityAnalysisView, { EntityConfig } from './EntityAnalysisView'
 import SummaryMetrics, { SummaryMetricItem } from './SummaryMetrics'
 import MetricsGrid, { MetricItem } from './MetricsGrid'
-import { Badge } from '../../../src/components/ui/badge'
+import { Badge } from '@/components/ui/badge'
 import { safeToFixed, formatCompactNumber } from '../../../lib/utils/formatters'
 import { getGradeColor, getRiskColor } from '../../../lib/utils/colorUtils'
 

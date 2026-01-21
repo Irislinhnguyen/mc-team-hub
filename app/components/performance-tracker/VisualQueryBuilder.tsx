@@ -7,12 +7,12 @@
  */
 
 import React, { useState } from 'react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../src/components/ui/card'
-import { Button } from '../../../src/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../src/components/ui/select'
-import { Input } from '../../../src/components/ui/input'
-import { Badge } from '../../../src/components/ui/badge'
-import { Separator } from '../../../src/components/ui/separator'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 import type {
   QueryConfig,
   QueryCondition,

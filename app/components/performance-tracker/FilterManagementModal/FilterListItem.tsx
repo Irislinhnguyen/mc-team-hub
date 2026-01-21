@@ -7,7 +7,7 @@
  * Shows name, preview, metadata, and edit/delete actions
  */
 
-import { Button } from '../../../../src/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { Edit, Trash2 } from 'lucide-react'
 import { colors } from '../../../../lib/colors'
 import type { FilterPreset } from '../../../../lib/types/filterPreset'

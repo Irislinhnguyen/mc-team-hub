@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { AnalyticsSidebar } from '../../components/performance-tracker/AnalyticsSidebar'
 import { CrossFilterProvider } from '../../contexts/CrossFilterContext'
 import { SidebarProvider, SidebarInset, SidebarRail, useSidebar } from '@/components/ui/sidebar'
-import { useIsMobile } from '../../hooks/use-mobile'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/utils'
 
 function AnalyticsContent({ children }: { children: React.ReactNode }) {

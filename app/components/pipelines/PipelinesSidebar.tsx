@@ -14,7 +14,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { useIsMobile } from '../../../app/hooks/use-mobile'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { UserDropdown } from '../shared/UserDropdown'
 
 interface PageItem {
@@ -49,12 +49,16 @@ const PIPELINE_PAGES: PageItem[] = [
 
 export function PipelinesSidebar() {
   const pathname = usePathname()
-  const { user, logout } = useAuth()
+  const { user, logout, refreshSession } = useAuth()
   const { setOpenMobile } = useSidebar()
   const isMobile = useIsMobile()
 
   const handleLogout = async () => {
     await logout()
+  }
+
+  const handleRefreshSession = async () => {
+    await refreshSession()
   }
 
   const handleLinkClick = () => {
@@ -125,7 +129,7 @@ export function PipelinesSidebar() {
       {/* Footer - User Profile with Dropdown */}
       <SidebarFooter className="p-3 border-t border-gray-200">
         {user && (
-          <UserDropdown user={user} onLogout={handleLogout} align="start" showUpChevron />
+          <UserDropdown user={user} onLogout={handleLogout} onRefreshSession={handleRefreshSession} align="start" showUpChevron />
         )}
       </SidebarFooter>
     </Sidebar>

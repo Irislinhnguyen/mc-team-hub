@@ -14,10 +14,10 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '../../../../src/components/ui/dialog'
-import { Button } from '../../../../src/components/ui/button'
-import { Label } from '../../../../src/components/ui/label'
-import { Input } from '../../../../src/components/ui/input'
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import { Plus } from 'lucide-react'
 import { colors } from '../../../../lib/colors'
 import type { SimplifiedFilter, AdvancedFilterClause, FilterField } from '../../../../lib/types/performanceTracker'

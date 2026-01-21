@@ -3,7 +3,7 @@
 import { PipelinesSidebar } from '../../components/pipelines/PipelinesSidebar'
 import { PipelineProvider } from '../../contexts/PipelineContext'
 import { SidebarProvider, SidebarInset, SidebarRail, useSidebar } from '@/components/ui/sidebar'
-import { useIsMobile } from '../../hooks/use-mobile'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/utils'
 
 function PipelinesContent({ children }: { children: React.ReactNode }) {

@@ -14,7 +14,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '../../../../src/components/ui/dialog'
+} from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,8 +24,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '../../../../src/components/ui/alert-dialog'
-import { Button } from '../../../../src/components/ui/button'
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import { colors } from '../../../../lib/colors'
 import { useFilterPresets } from '../../../../lib/hooks/useFilterPresets'

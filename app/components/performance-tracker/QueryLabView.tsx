@@ -12,23 +12,23 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Button } from '@/src/components/ui/button'
-import { Textarea } from '@/src/components/ui/textarea'
-import { Alert, AlertDescription } from '@/src/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-} from '@/src/components/ui/drawer'
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import {
   Sparkles, Loader2, AlertCircle, Play, ChevronDown, ChevronUp,
   ThumbsUp, ThumbsDown, PencilLine, RefreshCw, CheckCircle, XCircle,
   PanelLeftClose, PanelLeft, Send, Bot, Maximize2, X, ChevronRight,
   Users, Building, Layers, TrendingUp, Zap
 } from 'lucide-react'
-import { ScrollArea } from '@/src/components/ui/scroll-area'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { DataTable } from './DataTable'
 import QueryLabSidebar from './QueryLabSidebar'
 import { useAuth } from '@/app/contexts/AuthContext'
@@ -996,19 +996,19 @@ export default function QueryLabView() {
                         )}
                       </div>
 
-                      {/* Full Screen Drawer */}
-                      <Drawer open={expandedTableId === msg.id} onOpenChange={(open) => !open && setExpandedTableId(null)}>
-                        <DrawerContent className="h-[90vh] max-h-[90vh]">
-                          <DrawerHeader className="border-b border-gray-100 flex items-center justify-between">
-                            <DrawerTitle className="text-[#1565C0]">
+                      {/* Full Screen Sheet */}
+                      <Sheet open={expandedTableId === msg.id} onOpenChange={(open) => !open && setExpandedTableId(null)}>
+                        <SheetContent className="h-[90vh] max-h-[90vh] w-full sm:max-w-full">
+                          <SheetHeader className="border-b border-gray-100 flex items-center justify-between">
+                            <SheetTitle className="text-[#1565C0]">
                               {msg.result_title || 'Query Results'} ({msg.row_count} rows)
-                            </DrawerTitle>
-                            <DrawerClose asChild>
+                            </SheetTitle>
+                            <SheetClose asChild>
                               <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full">
                                 <X className="h-4 w-4" />
                               </Button>
-                            </DrawerClose>
-                          </DrawerHeader>
+                            </SheetClose>
+                          </SheetHeader>
                           <div className="flex-1 overflow-auto p-4">
                             <DataTable
                               data={msg.results}
@@ -1019,8 +1019,8 @@ export default function QueryLabView() {
                               }))}
                             />
                           </div>
-                        </DrawerContent>
-                      </Drawer>
+                        </SheetContent>
+                      </Sheet>
                     </div>
                   )}
                 </div>

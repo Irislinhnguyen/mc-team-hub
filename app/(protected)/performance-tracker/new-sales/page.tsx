@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { ToggleGroup, ToggleGroupItem } from '../../../../src/components/ui/toggle-group'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { MetadataFilterPanel } from '../../../components/performance-tracker/MetadataFilterPanel'
 import ChartSkeleton from '../../../components/performance-tracker/skeletons/ChartSkeleton'
 import { DataTableSkeleton } from '../../../components/performance-tracker/skeletons/DataTableSkeleton'

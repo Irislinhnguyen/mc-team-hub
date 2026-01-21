@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 
 import React, { useState, useEffect, useRef } from 'react'
 import { PageHeader } from '../../../components/performance-tracker/PageHeader'
-import { Skeleton } from '../../../../src/components/ui/skeleton'
+import { Skeleton } from '@/components/ui/skeleton'
 import TeamSetupCardSkeleton from '../../../components/performance-tracker/skeletons/TeamSetupCardSkeleton'
 import { DynamicTableSkeleton } from '../../../components/performance-tracker/skeletons/DynamicTableSkeleton'
 import type { ColumnConfig } from '../../../../lib/types/performanceTracker'

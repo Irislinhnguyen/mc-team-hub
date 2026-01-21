@@ -4,7 +4,7 @@
  */
 
 import { ReactNode } from 'react'
-import { Card, CardContent, CardHeader } from '../../../src/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { colors } from '../../../lib/colors'
 import { TierInfo } from '../../../lib/utils/tierClassification'

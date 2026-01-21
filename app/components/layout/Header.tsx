@@ -6,17 +6,21 @@ import { Button } from '@/components/ui/button';
 import { Menu, Home, LogOut, LayoutDashboard } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { useIsMobile } from '../../hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useState } from 'react';
 import { UserDropdown } from '../shared/UserDropdown';
 
 export function Header() {
-  const { user, isLoading, logout } = useAuth();
+  const { user, isLoading, logout, refreshSession } = useAuth();
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleRefreshSession = async () => {
+    await refreshSession();
   };
 
   return (
@@ -62,7 +66,7 @@ export function Header() {
           ) : user ? (
             <div className="flex items-center gap-4">
               {/* User Dropdown - Shared Component */}
-              <UserDropdown user={user} onLogout={logout} align="end" />
+              <UserDropdown user={user} onLogout={logout} onRefreshSession={handleRefreshSession} align="end" />
             </div>
           ) : null}
         </div>

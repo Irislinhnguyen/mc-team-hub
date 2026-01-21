@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useAuth } from '@/app/contexts/AuthContext'
 
 interface User {
   id: string
@@ -57,8 +58,10 @@ interface RoleStats {
 }
 
 export default function UsersPage() {
+  const { user: currentUser, refreshSession } = useAuth()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -195,6 +198,8 @@ export default function UsersPage() {
   const handleSaveEdit = async () => {
     if (!editingUser) return
     setSaving(true)
+    setError(null)
+    setSuccessMessage(null)
     try {
       const response = await fetch(`/api/admin/users/${editingUser.id}`, {
         method: 'PATCH',
@@ -207,9 +212,25 @@ export default function UsersPage() {
         throw new Error(data.error || 'Failed to update user')
       }
 
+      const data = await response.json()
+      const isOwnAccount = currentUser?.email === editingUser.email
+      const roleChanged = editRole !== editingUser.role
+
       setEditingUser(null)
       fetchUsers()
       fetchStats()
+
+      // Show success message
+      if (isOwnAccount && roleChanged) {
+        setSuccessMessage(`Your role has been changed to ${editRole.toUpperCase()}. Permissions updated!`)
+        // Refresh session to get new role from database
+        await refreshSession()
+      } else {
+        setSuccessMessage(`User ${editingUser.email} updated successfully`)
+      }
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -372,6 +393,16 @@ export default function UsersPage() {
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-center justify-between">
           <span>{error}</span>
           <button onClick={() => setError(null)}>
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* Success State */}
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6 flex items-center justify-between">
+          <span>{successMessage}</span>
+          <button onClick={() => setSuccessMessage(null)}>
             <X size={16} />
           </button>
         </div>

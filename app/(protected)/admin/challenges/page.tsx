@@ -81,6 +81,7 @@ export default function AdminChallengesPage() {
       setChallenges(data.challenges || []);
     } catch (err) {
       console.error(err);
+      setChallenges([]);
     } finally {
       setLoading(false);
     }
@@ -94,13 +95,18 @@ export default function AdminChallengesPage() {
         body: JSON.stringify(formData),
       });
 
-      if (!res.ok) throw new Error('Failed to create');
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Failed to create challenge');
+        return;
+      }
 
       setShowCreateDialog(false);
       resetForm();
       fetchChallenges();
     } catch (err) {
       console.error(err);
+      alert('Failed to create challenge');
     }
   };
 
@@ -114,17 +120,22 @@ export default function AdminChallengesPage() {
         body: JSON.stringify(formData),
       });
 
-      if (!res.ok) throw new Error('Failed to update');
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Failed to update challenge');
+        return;
+      }
 
       setEditingChallenge(null);
       resetForm();
       fetchChallenges();
     } catch (err) {
       console.error(err);
+      alert('Failed to update challenge');
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this challenge?')) return;
 
     try {

@@ -1,7 +1,7 @@
 'use client'
 
 import { ReactNode } from 'react'
-import { Badge } from '../../../src/components/ui/badge'
+import { Badge } from '@/components/ui/badge'
 import EntityAnalysisView, { EntityConfig } from './EntityAnalysisView'
 import SummaryMetrics, { SummaryMetricItem } from './SummaryMetrics'
 import MetricsGrid, { MetricItem } from './MetricsGrid'

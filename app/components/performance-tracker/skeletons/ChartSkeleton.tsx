@@ -1,4 +1,4 @@
-import { Skeleton } from "../../../../src/components/ui/skeleton"
+import { Skeleton } from "@/components/ui/skeleton"
 import { colors } from "../../../../lib/colors"
 
 export default function ChartSkeleton() {

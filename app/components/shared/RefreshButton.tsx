@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button } from '../../../src/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { RefreshCw } from 'lucide-react'
 
 interface RefreshButtonProps {

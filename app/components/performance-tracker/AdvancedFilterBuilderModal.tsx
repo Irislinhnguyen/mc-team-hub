@@ -15,12 +15,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../../../src/components/ui/dialog'
-import { Button } from '../../../src/components/ui/button'
-import { Badge } from '../../../src/components/ui/badge'
-import { Input } from '../../../src/components/ui/input'
-import { Label } from '../../../src/components/ui/label'
-import { Textarea } from '../../../src/components/ui/textarea'
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Plus, Save, FolderOpen, X, Trash2, Sparkles
 } from 'lucide-react'
@@ -34,7 +34,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../../src/components/ui/select'
+} from '@/components/ui/select'
 
 interface AdvancedFilterBuilderModalProps {
   isOpen: boolean

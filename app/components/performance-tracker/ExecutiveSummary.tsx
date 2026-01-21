@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Card, CardContent } from '../../../src/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { formatCurrency, formatNumber, formatPercent } from '../../../lib/utils/formatters'
 import { getTierInfo } from '../../../lib/utils/tierClassification'
 import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle } from 'lucide-react'

@@ -9,7 +9,7 @@
  */
 
 import React, { useState } from 'react'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../../src/components/ui/collapsible'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import UnifiedDeepDiveView from './UnifiedDeepDiveView'
 import type { Period, TierType } from './UnifiedDeepDiveView'

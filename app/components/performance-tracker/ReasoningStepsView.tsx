@@ -13,11 +13,11 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '../../../src/components/ui/accordion'
-import { Button } from '../../../src/components/ui/button'
-import { Textarea } from '../../../src/components/ui/textarea'
-import { Badge } from '../../../src/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '../../../src/components/ui/card'
+} from '@/components/ui/accordion'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { CoTReasoning, ReasoningStepNumber } from '../../../lib/types/reasoning'
 
 interface ReasoningStepsViewProps {

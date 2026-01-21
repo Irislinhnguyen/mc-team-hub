@@ -13,7 +13,7 @@ import {
 import { Copy } from 'lucide-react'
 import type { Pipeline } from '@/lib/types/pipeline'
 import { generateReport } from '@/lib/utils/pipelineReportFormatter'
-import { useToast } from '@/app/hooks/use-toast'
+import { useToast } from '@/hooks/use-toast'
 import { colors } from '@/lib/colors'
 import { typography } from '@/lib/design-tokens'
 

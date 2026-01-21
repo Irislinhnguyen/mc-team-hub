@@ -11,7 +11,7 @@
  * Example Branch 2: pid equals 1234
  */
 
-import { Button } from '../../../../src/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { Eye, EyeOff, Trash2 } from 'lucide-react'
 import { colors } from '../../../../lib/colors'
 import type { AdvancedFilterClause, FilterField, FilterOperator } from '../../../../lib/types/performanceTracker'

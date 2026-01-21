@@ -14,7 +14,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { usePipeline } from '@/app/contexts/PipelineContext'
 import { usePipelines } from '@/lib/hooks/queries/usePipelines'
 import { usePipelineMetadata } from '@/lib/hooks/queries/usePipelineMetadata'
-import { useToast } from '@/app/hooks/use-toast'
+import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import {
   Popover,

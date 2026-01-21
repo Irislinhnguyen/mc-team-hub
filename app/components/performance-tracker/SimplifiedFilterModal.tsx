@@ -7,10 +7,10 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '../../../src/components/ui/dialog'
-import { Button } from '../../../src/components/ui/button'
-import { Badge } from '../../../src/components/ui/badge'
-import { Label } from '../../../src/components/ui/label'
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
 import { Plus, Trash2 } from 'lucide-react'
 import { colors } from '../../../lib/colors'
 import type { SimplifiedFilter, AdvancedFilterClause, FilterField } from '../../../lib/types/performanceTracker'

@@ -20,7 +20,7 @@ import { useBusinessHealth } from '../../../../lib/hooks/queries/useBusinessHeal
 import { useTeamConfigurations } from '../../../../lib/hooks/queries/useTeamConfigurations'
 import { useTeamBreakdown } from '../../../../lib/hooks/queries/useTeamBreakdown'
 import { usePICBreakdown } from '../../../../lib/hooks/queries/usePICBreakdown'
-import { ToggleGroup, ToggleGroupItem } from '../../../../src/components/ui/toggle-group'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { AnalyticsPageLayout } from '../../../components/performance-tracker/AnalyticsPageLayout'
 import { MetadataFilterPanel } from '../../../components/performance-tracker/MetadataFilterPanel'
 import { MetricFilterPanel } from '../../../components/performance-tracker/MetricFilterPanel'

@@ -3,7 +3,7 @@
 import { GCPPCheckSidebar } from '../../components/gcpp-check/GCPPCheckSidebar'
 import { CrossFilterProvider } from '../../contexts/CrossFilterContext'
 import { SidebarProvider, SidebarInset, SidebarRail, useSidebar } from '@/components/ui/sidebar'
-import { useIsMobile } from '../../hooks/use-mobile'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/utils'
 
 function GCPPContent({ children }: { children: React.ReactNode }) {

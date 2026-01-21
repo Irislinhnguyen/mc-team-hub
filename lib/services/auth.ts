@@ -232,6 +232,46 @@ export class AuthService {
   }
 
   /**
+   * Refresh access token from database
+   * Fetches current user data from database and issues new JWT token
+   */
+  async refreshAccessToken(email: string): Promise<{ user: UserData; token: string } | null> {
+    try {
+      const supabase = createAdminClient()
+
+      // Query user from database
+      const { data: user, error } = (await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .single()) as { data: any; error: any }
+
+      if (error || !user) {
+        logger.warn('Token refresh failed: user not found', { email })
+        return null
+      }
+
+      // Create user data with current database values
+      const userData: UserData = {
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        accessLevel: user.role === 'admin' ? 'write' : 'read',
+        authType: user.password_hash ? 'password' : 'oauth',
+      }
+
+      // Generate new JWT token
+      const token = this.createAccessToken(user.email, userData)
+
+      logger.info('Token refreshed successfully', { email, role: user.role })
+      return { user: userData, token }
+    } catch (error) {
+      logger.error('Error during token refresh', error)
+      return null
+    }
+  }
+
+  /**
    * Login with email and password (for admin users)
    */
   async loginWithPassword(

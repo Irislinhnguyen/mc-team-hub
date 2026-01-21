@@ -16,7 +16,8 @@
 
 'use client'
 
-import { Shield, Users, ChevronDown, ChevronUp } from 'lucide-react'
+import { useState } from 'react'
+import { Shield, Users, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -40,6 +41,7 @@ export interface User {
 export interface UserDropdownProps {
   user: User
   onLogout: () => void
+  onRefreshSession?: () => Promise<void>
   /** Menu alignment - 'end' for header, 'start' for sidebar */
   align?: 'start' | 'end'
   /** Show upward chevron for sidebar */
@@ -99,11 +101,27 @@ function getRoleBadge(role: UserRole) {
 export function UserDropdown({
   user,
   onLogout,
+  onRefreshSession,
   align = 'end',
   showUpChevron = false,
   compact = false,
 }: UserDropdownProps) {
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const { badge, avatarBg, avatarColor, icon } = getRoleBadge(user.role)
+
+  const handleRefreshSession = async () => {
+    if (!onRefreshSession) return
+    setIsRefreshing(true)
+    try {
+      await onRefreshSession()
+      // Optional: reload page to ensure all components pick up new permissions
+      window.location.reload()
+    } catch (error) {
+      console.error('Failed to refresh session:', error)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
   const isAdminOrManager = user.role === 'admin' || user.role === 'manager'
   const initials = user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()
 
@@ -228,6 +246,21 @@ export function UserDropdown({
                 <Users className="mr-2 h-4 w-4" />
                 Team Settings
               </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+
+        {/* Refresh Session - Manual refresh for role changes */}
+        {onRefreshSession && (
+          <>
+            <DropdownMenuItem
+              onClick={handleRefreshSession}
+              disabled={isRefreshing}
+              className="cursor-pointer"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh Session'}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
           </>
