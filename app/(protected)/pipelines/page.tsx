@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
 import { usePipeline } from '@/app/contexts/PipelineContext'
 import { usePipelines } from '@/lib/hooks/queries/usePipelines'
