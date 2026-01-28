@@ -153,6 +153,9 @@ export function useCascadingFilters({
       console.log('[useCascadingFilters] PIC constraint:', selectedPics.length, 'PICs selected →', validPids.size, 'PIDs,', validMids.size, 'MIDs,', validZids.size, 'ZIDs,', validProducts.size, 'Products')
     }
 
+    // 🔴 FIX: Save validPids BEFORE pubname constraint for availablePubnames calculation
+    const validPidsBeforePubname = new Set(validPids)
+
     // CONSTRAINT 3: Pubname selection (reverse to PIDs, NO upstream cascade)
     if (selectedPubnames.length > 0) {
       const pidsFromPubnames = relationshipMap.getPidsFromPubnames(selectedPubnames)
@@ -178,6 +181,9 @@ export function useCascadingFilters({
       console.log('[useCascadingFilters] PID constraint:', selectedPids.length, '→', validMids.size, 'MIDs,', validZids.size, 'ZIDs,', validProducts.size, 'Products')
     }
 
+    // 🔴 FIX: Save validMids BEFORE medianame constraint for availableMedianames calculation
+    const validMidsBeforeMedianame = new Set(validMids)
+
     // CONSTRAINT 5: Medianame selection (reverse to MIDs, NO upstream cascade)
     if (selectedMedianames.length > 0) {
       const midsFromMedianames = relationshipMap.getMidsFromMedianames(selectedMedianames)
@@ -198,6 +204,9 @@ export function useCascadingFilters({
 
       console.log('[useCascadingFilters] MID constraint:', selectedMids.length, '→', validZids.size, 'ZIDs,', validProducts.size, 'Products')
     }
+
+    // 🔴 FIX: Save validZids BEFORE zonename constraint for availableZonenames calculation
+    const validZidsBeforeZonename = new Set(validZids)
 
     // CONSTRAINT 7: Zonename selection (reverse to ZIDs, NO upstream cascade)
     if (selectedZonenames.length > 0) {
@@ -237,6 +246,10 @@ export function useCascadingFilters({
       validMids,
       validZids,
       validProducts,
+      // 🔴 FIX: Pre-constraint states for name field dropdowns (prevent self-constraining)
+      validPidsBeforePubname,
+      validMidsBeforeMedianame,
+      validZidsBeforeZonename,
     }
   }, [
     enableCascading,
@@ -265,18 +278,21 @@ export function useCascadingFilters({
 
   const availablePids = useMemo(() => {
     if (!metadata?.pids) return []
-    return metadata.pids.filter(p => computedIds.validPids.has(p.value))
-  }, [metadata?.pids, computedIds.validPids])
+    // 🔴 FIX: Use validPidsBeforePubname to prevent constraining by pubname selection
+    return metadata.pids.filter(p => computedIds.validPidsBeforePubname.has(p.value))
+  }, [metadata?.pids, computedIds.validPidsBeforePubname])
 
   const availableMids = useMemo(() => {
     if (!metadata?.mids) return []
-    return metadata.mids.filter(m => computedIds.validMids.has(m.value))
-  }, [metadata?.mids, computedIds.validMids])
+    // 🔴 FIX: Use validMidsBeforeMedianame to prevent constraining by medianame selection
+    return metadata.mids.filter(m => computedIds.validMidsBeforeMedianame.has(m.value))
+  }, [metadata?.mids, computedIds.validMidsBeforeMedianame])
 
   const availableZids = useMemo(() => {
     if (!metadata?.zids) return []
-    return metadata.zids.filter(z => computedIds.validZids.has(z.value))
-  }, [metadata?.zids, computedIds.validZids])
+    // 🔴 FIX: Use validZidsBeforeZonename to prevent constraining by zonename selection
+    return metadata.zids.filter(z => computedIds.validZidsBeforeZonename.has(z.value))
+  }, [metadata?.zids, computedIds.validZidsBeforeZonename])
 
   const availableProducts = useMemo(() => {
     if (!metadata?.products) return []
@@ -290,41 +306,44 @@ export function useCascadingFilters({
   const availablePubnames = useMemo(() => {
     if (!metadata?.pubnames || !relationshipMap) return metadata?.pubnames || []
 
-    // Show pubnames that exist in valid PIDs
+    // 🔴 FIX: Use validPidsBeforePubname to prevent self-constraining
+    // This allows multi-select of pubnames without dropdown shrinking to only selected items
     const validPubnames = new Set<string>()
-    Array.from(computedIds.validPids).forEach(pid => {
+    Array.from(computedIds.validPidsBeforePubname).forEach(pid => {
       const pubnames = relationshipMap.getPubnamesFromPids([pid])
       pubnames.forEach(pn => validPubnames.add(pn))
     })
 
     return metadata.pubnames.filter(pn => validPubnames.has(pn.value))
-  }, [metadata?.pubnames, computedIds.validPids, relationshipMap])
+  }, [metadata?.pubnames, computedIds.validPidsBeforePubname, relationshipMap])
 
   const availableMedianames = useMemo(() => {
     if (!metadata?.medianames || !relationshipMap) return metadata?.medianames || []
 
-    // Show medianames that exist in valid MIDs
+    // 🔴 FIX: Use validMidsBeforeMedianame to prevent self-constraining
+    // This allows multi-select of medianames without dropdown shrinking to only selected items
     const validMedianames = new Set<string>()
-    Array.from(computedIds.validMids).forEach(mid => {
+    Array.from(computedIds.validMidsBeforeMedianame).forEach(mid => {
       const medianames = relationshipMap.getMedianamesFromMids([mid])
       medianames.forEach(mn => validMedianames.add(mn))
     })
 
     return metadata.medianames.filter(mn => validMedianames.has(mn.value))
-  }, [metadata?.medianames, computedIds.validMids, relationshipMap])
+  }, [metadata?.medianames, computedIds.validMidsBeforeMedianame, relationshipMap])
 
   const availableZonenames = useMemo(() => {
     if (!metadata?.zonenames || !relationshipMap) return metadata?.zonenames || []
 
-    // Show zonenames that exist in valid ZIDs
+    // 🔴 FIX: Use validZidsBeforeZonename to prevent self-constraining
+    // This allows multi-select of zonenames without dropdown shrinking to only selected items
     const validZonenames = new Set<string>()
-    Array.from(computedIds.validZids).forEach(zid => {
+    Array.from(computedIds.validZidsBeforeZonename).forEach(zid => {
       const zonenames = relationshipMap.getZonenamesFromZids([zid])
       zonenames.forEach(zn => validZonenames.add(zn))
     })
 
     return metadata.zonenames.filter(zn => validZonenames.has(zn.value))
-  }, [metadata?.zonenames, computedIds.validZids, relationshipMap])
+  }, [metadata?.zonenames, computedIds.validZidsBeforeZonename, relationshipMap])
 
   /**
    * Loading states - simplified (only metadata loading matters now)
