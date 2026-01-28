@@ -55,6 +55,7 @@ export function MultiSelectFilter({
     } else {
       onChange(options.map((opt) => opt.value))
     }
+    setSearchQuery('') // Clear search
   }
 
   const handleToggle = (optionValue: string) => {
@@ -62,6 +63,7 @@ export function MultiSelectFilter({
       ? value.filter((v) => v !== optionValue)
       : [...value, optionValue]
     onChange(newValue)
+    setSearchQuery('') // Clear search sau khi chọn để user có thể search tiếp
   }
 
   const selectedLabels = React.useMemo(() => {
