@@ -773,24 +773,16 @@ export async function syncQuarterlySheet(
 
         console.log(`[Sync] Batch ${batchNumber}: Upserting ${validBatch.length} pipelines to database...`)
 
-        // Debug: Log first pipeline's root-level keys to check for accidental metadata spread
-        if (batchNumber === 1 && validBatch.length > 0) {
-          const sample = validBatch[0]
-          const rootKeys = Object.keys(sample).filter(k => !['monthly_forecasts'].includes(k))
-          console.log(`[Sync] DEBUG Sample pipeline root keys:`, rootKeys.slice(0, 20).join(', '))
-          if ('ma_mi' in sample) {
-            console.error(`[Sync] ❌ ERROR: 'ma_mi' found at root level! Should be in metadata.`)
-          }
-          if (sample.metadata && 'ma_mi' in sample.metadata) {
-            console.log(`[Sync] ✅ OK: 'ma_mi' is correctly in metadata`)
-          }
-        }
+        // WORKAROUND: Strip metadata before upsert to avoid Supabase schema cache issues
+        // Supabase sometimes throws "column not found in schema cache" for JSONB fields
+        const pipelinesWithoutMetadata = validBatch.map(({ metadata, monthly_forecasts, ...rest }) => rest)
+        const metadataMap = new Map(validBatch.map(p => [p.id, p.metadata]))
 
         let updateError
         try {
           const result = await supabase
             .from('pipelines')
-            .upsert(validBatch, {
+            .upsert(pipelinesWithoutMetadata, {
               onConflict: 'id' // Use primary key for update
             })
           updateError = result.error
@@ -804,8 +796,30 @@ export async function syncQuarterlySheet(
           console.error(`[Sync] ❌ Batch ${batchNumber}: Upsert failed: ${updateError.message}`)
           errors.push(`Batch ${batchNumber} update failed: ${updateError.message}`)
         } else {
+          // Update metadata separately for each pipeline
+          let metadataUpdateErrors = 0
+          for (const [pipelineId, metadata] of metadataMap.entries()) {
+            try {
+              const { error: metaError } = await supabase
+                .from('pipelines')
+                .update({ metadata })
+                .eq('id', pipelineId)
+
+              if (metaError) {
+                metadataUpdateErrors++
+                console.warn(`[Sync] Batch ${batchNumber}: Failed to update metadata for pipeline ${pipelineId}`)
+              }
+            } catch (e: any) {
+              metadataUpdateErrors++
+            }
+          }
+
           updatedCount += validBatch.length
-          console.log(`[Sync] ✅ Batch ${batchNumber}: ${validBatch.length} updated successfully`)
+          if (metadataUpdateErrors > 0) {
+            console.warn(`[Sync] ✅ Batch ${batchNumber}: ${validBatch.length} updated (${metadataUpdateErrors} metadata updates failed)`)
+          } else {
+            console.log(`[Sync] ✅ Batch ${batchNumber}: ${validBatch.length} updated successfully`)
+          }
         }
       }
     }
@@ -817,7 +831,9 @@ export async function syncQuarterlySheet(
       console.log(`[Sync] ➕ Creating ${toCreate.length} new pipelines...`)
 
       const batchSize = 100
+      let batchNumber = 0
       for (let i = 0; i < toCreate.length; i += batchSize) {
+        batchNumber++
         const batch = toCreate.slice(i, i + batchSize)
 
         // Validate each pipeline can be serialized before insert
@@ -833,23 +849,68 @@ export async function syncQuarterlySheet(
         }
 
         if (validBatch.length === 0) {
-          console.warn(`Batch ${Math.floor(i / batchSize) + 1}: All rows failed validation, skipping`)
+          console.warn(`Batch ${batchNumber}: All rows failed validation, skipping`)
           continue
         }
 
         if (validBatch.length < batch.length) {
-          console.warn(`Batch ${Math.floor(i / batchSize) + 1}: ${batch.length - validBatch.length} rows failed validation`)
+          console.warn(`Batch ${batchNumber}: ${batch.length - validBatch.length} rows failed validation`)
         }
 
-        const { error: insertError } = await supabase
-          .from('pipelines')
-          .insert(validBatch)
+        console.log(`[Sync] Batch ${batchNumber}: Inserting ${validBatch.length} pipelines...`)
+
+        // WORKAROUND: Strip metadata before insert to avoid Supabase schema cache issues
+        const pipelinesWithoutMetadata = validBatch.map(({ metadata, monthly_forecasts, ...rest }) => rest)
+        const metadataMap = new Map<string, any>()
+
+        let insertError
+        try {
+          const result = await supabase
+            .from('pipelines')
+            .insert(pipelinesWithoutMetadata)
+            .select('id')
+
+          insertError = result.error
+
+          if (!insertError && result.data) {
+            // Map inserted IDs to their metadata
+            result.data.forEach((row, idx) => {
+              metadataMap.set(row.id, validBatch[idx].metadata)
+            })
+          }
+        } catch (e: any) {
+          console.error(`[Sync] ❌ Batch ${batchNumber}: Exception during insert:`, e.message)
+          errors.push(`Batch ${batchNumber} exception: ${e.message}`)
+          continue
+        }
 
         if (insertError) {
-          errors.push(`Batch insert failed (${validBatch.length} pipelines): ${insertError.message}`)
+          console.error(`[Sync] ❌ Batch ${batchNumber}: Insert failed: ${insertError.message}`)
+          errors.push(`Batch ${batchNumber} insert failed: ${insertError.message}`)
         } else {
+          // Update metadata separately for each inserted pipeline
+          let metadataUpdateErrors = 0
+          for (const [pipelineId, metadata] of metadataMap.entries()) {
+            try {
+              const { error: metaError } = await supabase
+                .from('pipelines')
+                .update({ metadata })
+                .eq('id', pipelineId)
+
+              if (metaError) {
+                metadataUpdateErrors++
+              }
+            } catch (e: any) {
+              metadataUpdateErrors++
+            }
+          }
+
           createdCount += validBatch.length
-          console.log(`[Sync] ✅ Batch INSERT: ${validBatch.length} created`)
+          if (metadataUpdateErrors > 0) {
+            console.warn(`[Sync] ✅ Batch ${batchNumber}: ${validBatch.length} created (${metadataUpdateErrors} metadata updates failed)`)
+          } else {
+            console.log(`[Sync] ✅ Batch ${batchNumber}: ${validBatch.length} created successfully`)
+          }
         }
       }
     }
