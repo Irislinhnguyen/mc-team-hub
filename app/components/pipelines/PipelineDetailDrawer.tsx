@@ -141,6 +141,7 @@ export function PipelineDetailDrawer({ pipeline, open, onClose }: PipelineDetail
                 <InfoRow label="MID" value={pipeline.mid} />
                 <InfoRow label="Domain" value={pipeline.domain} />
                 <InfoRow label="Product" value={pipeline.product} />
+                <InfoRow label="Channel" value={pipeline.channel} />
                 <InfoRow label="Progress %" value={`${pipeline.progress_percent || 0}%`} />
 
                 {/* CS-specific: ZID, ready_to_deliver_date, closed_date */}
@@ -152,9 +153,10 @@ export function PipelineDetailDrawer({ pipeline, open, onClose }: PipelineDetail
                   </>
                 )}
 
-                {/* Sales-specific: ZID (single string), C+ Upgrade */}
+                {/* Sales-specific: Region, ZID, C+ Upgrade */}
                 {isSalesPipeline && (
                   <>
+                    <InfoRow label="Region" value={pipeline.region} />
                     <InfoRow label="ZID" value={pipeline.zid} />
                     <InfoRow label="C+ Upgrade" value={pipeline.c_plus_upgrade || '—'} />
                   </>
