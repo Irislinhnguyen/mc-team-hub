@@ -80,11 +80,13 @@ export async function POST(request: NextRequest) {
     if (teams.length > 0) {
       const { data: teamMappings } = await supabase
         .from('team_pic_mappings')
-        .select('pic_name')
+        .select('pipeline_poc_name')
         .in('team_id', teams)
 
       if (teamMappings) {
-        teamPICs = teamMappings.map(m => m.pic_name)
+        teamPICs = teamMappings
+          .map(m => m.pipeline_poc_name)
+          .filter(poc => poc != null) as string[]
       }
     }
 
