@@ -226,6 +226,13 @@ export function transformRowToPipeline(
     pipeline.region = null
   }
 
+  // IMPORTANT: Populate affected_zones from zid for Impact calculations
+  // Impact API uses affected_zones array, not zid string directly
+  // This connects Google Sheet ZID data to Impact calculations
+  if (pipeline.zid && (!pipeline.affected_zones || pipeline.affected_zones.length === 0)) {
+    pipeline.affected_zones = [pipeline.zid]
+  }
+
   // Extract additional fields and quarterly breakdown into metadata
   // These fields don't have dedicated database columns but are useful for reporting
   pipeline.metadata = {
