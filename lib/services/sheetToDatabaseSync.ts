@@ -738,9 +738,16 @@ export async function syncQuarterlySheet(
 
     if (toUpdate.length > 0) {
       console.log(`[Sync] 🔄 Updating ${toUpdate.length} existing pipelines...`)
+      console.log(`[Sync] Will process ${Math.ceil(toUpdate.length / 100)} batches`)
 
       const batchSize = 100
+      let batchNumber = 0
       for (let i = 0; i < toUpdate.length; i += batchSize) {
+        batchNumber++
+        const batchStart = i
+        const batchEnd = Math.min(i + batchSize, toUpdate.length)
+        console.log(`[Sync] Batch ${batchNumber}: Processing rows ${batchStart + 1}-${batchEnd} (${batchEnd - batchStart} pipelines)`)
+
         const batch = toUpdate.slice(i, i + batchSize)
 
         // Validate each pipeline can be serialized before upsert
@@ -756,25 +763,36 @@ export async function syncQuarterlySheet(
         }
 
         if (validBatch.length === 0) {
-          console.warn(`Batch ${Math.floor(i / batchSize) + 1}: All rows failed validation, skipping`)
+          console.warn(`Batch ${batchNumber}: All rows failed validation, skipping`)
           continue
         }
 
         if (validBatch.length < batch.length) {
-          console.warn(`Batch ${Math.floor(i / batchSize) + 1}: ${batch.length - validBatch.length} rows failed validation`)
+          console.warn(`Batch ${batchNumber}: ${batch.length - validBatch.length} rows failed validation`)
         }
 
-        const { error: updateError } = await supabase
-          .from('pipelines')
-          .upsert(validBatch, {
-            onConflict: 'id' // Use primary key for update
-          })
+        console.log(`[Sync] Batch ${batchNumber}: Upserting ${validBatch.length} pipelines to database...`)
+
+        let updateError
+        try {
+          const result = await supabase
+            .from('pipelines')
+            .upsert(validBatch, {
+              onConflict: 'id' // Use primary key for update
+            })
+          updateError = result.error
+        } catch (e: any) {
+          console.error(`[Sync] ❌ Batch ${batchNumber}: Exception during upsert:`, e.message)
+          errors.push(`Batch ${batchNumber} exception: ${e.message}`)
+          continue
+        }
 
         if (updateError) {
-          errors.push(`Batch update failed (${validBatch.length} pipelines): ${updateError.message}`)
+          console.error(`[Sync] ❌ Batch ${batchNumber}: Upsert failed: ${updateError.message}`)
+          errors.push(`Batch ${batchNumber} update failed: ${updateError.message}`)
         } else {
           updatedCount += validBatch.length
-          console.log(`[Sync] ✅ Batch UPDATE: ${validBatch.length} updated`)
+          console.log(`[Sync] ✅ Batch ${batchNumber}: ${validBatch.length} updated successfully`)
         }
       }
     }
@@ -823,6 +841,7 @@ export async function syncQuarterlySheet(
       }
     }
 
+    console.log(`[Sync] ✅ All batches processed`)
     console.log(`[Sync] ✅ Sync completed: ${createdCount} created, ${updatedCount} updated`)
 
 
