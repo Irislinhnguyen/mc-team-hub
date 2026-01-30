@@ -1,14 +1,17 @@
 /**
  * Column Mapping Configuration for SEA_CS Google Sheet
  *
- * DIFFERENT from Sales sheet in columns 23-25 and 33-34
+ * DIFFERENT from Sales sheet in columns 9, 23-25, and 33-34
  *
  * Spreadsheet ID: 1LGZxn4_pJwsS5LDBgkHT6BDU0E3XQmTsjMnR3ziuYSM
  * Sheet: SEA_CS
  *
  * Key Differences from Sales:
+ * - Column 9 (J): ZID (Sales has Product here)
+ * - Column 10 (K): Channel (Sales has Channel here too)
+ * - NO Region column (Sales has Region at column 11)
  * - Action fields (23-25): Different order
- * - Status dates (33-34): AH=ready_to_deliver_date, AI=closed_date (not ZID)
+ * - Status dates (33-34): AH=ready_to_deliver_date, AI=closed_date (NOT zid/c_plus_upgrade)
  */
 
 /**
@@ -17,7 +20,7 @@
  */
 const COLUMN_MAPPING = {
   // ============================================
-  // Basic Info (0-22) - SAME AS SALES
+  // Basic Info (0-22) - DIFFERENT from Sales at column 9!
   // ============================================
   0: { field: 'key', type: 'string', required: true },           // A: key
   1: { field: 'classification', type: 'string' },                // B: Classification
@@ -28,9 +31,10 @@ const COLUMN_MAPPING = {
   6: { field: 'publisher', type: 'string', required: true },     // G: Publisher
   7: { field: 'mid', type: 'string' },                           // H: MID/siteID
   8: { field: 'domain', type: 'string' },                        // I: domain
-  9: { field: 'channel', type: 'string' },                       // J: Channel
-  10: { field: 'region', type: 'string' },                       // K: Region
+  9: { field: 'zid', type: 'string' },                           // J: ZID (CS-specific!)
+  10: { field: 'channel', type: 'string' },                      // K: Channel
   11: { field: 'competitors', type: 'string' },                  // L: Competitors
+  // NOTE: CS sheet does NOT have Region field (unlike Sales)
   // Column 12 (M: Pipeline Quarter) - stored in metadata
   13: { field: 'description', type: 'string' },                  // N: Pipeline detail
   14: { field: 'product', type: 'string' },                      // O: Product

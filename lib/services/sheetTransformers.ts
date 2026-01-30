@@ -15,15 +15,12 @@ import {
   COLUMN_MAPPING_CS,
   MONTHLY_COLUMNS_CS,
   VALID_STATUSES_CS,
-  DEFAULT_VALUES_CS
+  DEFAULT_VALUES_CS,
+  COLUMN_MAPPING_SALES,
+  MONTHLY_COLUMNS_SALES,
+  VALID_STATUSES_SALES,
+  DEFAULT_VALUES_SALES
 } from './sheetToDatabaseSync'
-
-// TODO: Add Sales column mapping if needed
-// For now, use CS mapping as fallback
-const COLUMN_MAPPING_SALES = COLUMN_MAPPING_CS
-const MONTHLY_COLUMNS_SALES = MONTHLY_COLUMNS_CS
-const VALID_STATUSES_SALES = VALID_STATUSES_CS
-const DEFAULT_VALUES_SALES = DEFAULT_VALUES_CS
 
 /**
  * Parse decimal/numeric values from sheet cells
@@ -204,13 +201,29 @@ export function transformRowToPipeline(
     if (pipeline.progress_percent > 100) pipeline.progress_percent = 100
   }
 
-  // Handle ZID field (Sales only - column 33/AH)
-  // CS sheet uses column 33 for ready_to_deliver_date instead
+  // Handle ZID field and group-specific columns
+  // Sales: ZID at column 34 (AI), C+↑ at column 35 (AJ)
+  // CS: ZID at column 9 (J), ready_to_deliver_date at column 33 (AH), closed_date at column 34 (AI)
   if (group === 'sales') {
-    pipeline.zid = row[33] ? row[33].toString().trim() : null  // AH: ZID
+    pipeline.zid = row[34] ? row[34].toString().trim() : null  // AI: ZID
+    pipeline.c_plus_upgrade = row[35] ? row[35].toString().trim() : null  // AJ: C+↑
+    // Sales doesn't have these fields in the sheet - set to null
+    pipeline.ready_to_deliver_date = null
+    pipeline.closed_date = null
   } else {
-    // CS doesn't have ZID column
-    pipeline.zid = null
+    // CS: ZID is at column 9 (J), ready_to_deliver_date and closed_date at 33-34
+    pipeline.zid = row[9] ? row[9].toString().trim() : null   // J: ZID
+    pipeline.ready_to_deliver_date = parseDate(row[33])       // AH: 【S-】/【A】
+    pipeline.closed_date = parseDate(row[34])                 // AI: 【Z】
+    // CS doesn't have c_plus_upgrade
+    pipeline.c_plus_upgrade = null
+  }
+
+  // Region field handling
+  // Sales has region at column 11, CS does NOT have region
+  if (group === 'cs') {
+    // CS: Ensure region is NULL (CS sheet doesn't have this field)
+    pipeline.region = null
   }
 
   // Extract additional fields and quarterly breakdown into metadata
@@ -224,9 +237,8 @@ export function transformRowToPipeline(
     estimation_logic: row[21] ? row[21].toString().trim() : null, // V: logic of Estimation
     update_target: row[26] ? row[26].toString().trim() : null,    // AA: Update Target
 
-    // C+↑ field (Sales only - column 34/AI)
-    // CS uses column 34 for closed_date instead
-    c_plus_upgrade: (group === 'sales' && row[34]) ? row[34].toString().trim() : null,
+    // Note: c_plus_upgrade is now a direct field (not just metadata)
+    // It's set above in the group-specific handling
 
     // Summary columns (computed in Google Sheets)
     estimate_total: parseDecimal(row[95]),           // CR: Estimate

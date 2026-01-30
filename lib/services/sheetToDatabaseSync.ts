@@ -17,6 +17,7 @@
 import { google } from 'googleapis'
 import { createClient } from '@supabase/supabase-js'
 import { transformRowToPipeline, extractMonthlyForecasts } from './sheetTransformers'
+import { getSheetsClient } from './googleSheetsClient'
 
 // ========================================
 // CS Column Mapping Constants
@@ -26,9 +27,15 @@ import { transformRowToPipeline, extractMonthlyForecasts } from './sheetTransfor
  * Column mapping for SEA_CS Google Sheet
  * Inlined from scripts/lib/pipeline-column-mapping-cs.cjs
  * to avoid dynamic require in production
+ *
+ * CRITICAL: CS sheet has ZID at column 9, NOT Channel!
+ * Column 9 (J): ZID
+ * Column 10 (K): Channel
+ * Column 11 (L): Competitors
+ * NO Region field in CS sheet
  */
 const COLUMN_MAPPING_CS = {
-  // Basic Info (0-22)
+  // Basic Info (0-22) - DIFFERENT from Sales at column 9!
   0: { field: 'key', type: 'string', required: true },
   1: { field: 'classification', type: 'string' },
   2: { field: 'poc', type: 'string', required: true },
@@ -37,9 +44,10 @@ const COLUMN_MAPPING_CS = {
   6: { field: 'publisher', type: 'string', required: true },
   7: { field: 'mid', type: 'string' },
   8: { field: 'domain', type: 'string' },
-  9: { field: 'channel', type: 'string' },
-  10: { field: 'region', type: 'string' },
-  11: { field: 'competitors', type: 'string' },
+  9: { field: 'zid', type: 'string' },           // J: ZID (CS-specific!)
+  10: { field: 'channel', type: 'string' },      // K: Channel
+  11: { field: 'competitors', type: 'string' },  // L: Competitors
+  // NOTE: CS sheet does NOT have Region field (unlike Sales)
   13: { field: 'description', type: 'string' },
   14: { field: 'product', type: 'string' },
   15: { field: 'day_gross', type: 'decimal' },
@@ -91,6 +99,100 @@ export {
   MONTHLY_COLUMNS_CS,
   VALID_STATUSES_CS,
   DEFAULT_VALUES_CS
+}
+
+// ========================================
+// Sales Column Mapping Constants
+// ========================================
+
+/**
+ * Column mapping for SEA_Sales Google Sheet
+ * Inlined from scripts/lib/pipeline-column-mapping-sales.cjs
+ * to avoid dynamic require in production
+ *
+ * Key differences from CS:
+ * - Columns 4-6: PID at E, Publisher at F, MA/MI at G (metadata)
+ * - Columns 9-12: Product (J), Channel (K), Region (L), Competitors (M)
+ * - Column 15 (P): Duplicate "Product" - SKIPPED
+ * - Revenue columns start at 16 (Q), not 15
+ * - Action fields (24-26): Different order from CS
+ * - Timeline columns (28-33): Shifted by 1
+ * - ZID at column 34 (AI), not column 9
+ * - Columns 34-35: zid, c_plus_upgrade (NOT ready_to_deliver_date, closed_date)
+ */
+const COLUMN_MAPPING_SALES = {
+  // Basic Info (0-14) - DIFFERENT from CS!
+  0: { field: 'key', type: 'string', required: true },
+  1: { field: 'classification', type: 'string' },
+  2: { field: 'poc', type: 'string', required: true },
+  3: { field: 'team', type: 'string' },
+  4: { field: 'pid', type: 'string' },                      // E: PID (Sales-specific!)
+  5: { field: 'publisher', type: 'string', required: true }, // F: Publisher
+  // Column 6 (G: MA/MI) - stored in metadata
+  7: { field: 'mid', type: 'string' },
+  8: { field: 'domain', type: 'string' },
+  9: { field: 'product', type: 'string' },                   // J: Product (Sales-specific!)
+  10: { field: 'channel', type: 'string' },                  // K: Channel
+  11: { field: 'region', type: 'string' },                   // L: Region
+  12: { field: 'competitors', type: 'string' },              // M: Competitors
+  // Column 13 (N: Pipeline Quarter) - stored in metadata
+  14: { field: 'description', type: 'string' },              // O: Pipeline detail
+  // Column 15 (P): Duplicate "Product" - SKIP
+  // Revenue Metrics - Start at column 16 (Q)
+  16: { field: 'day_gross', type: 'decimal' },               // Q: day gross
+  17: { field: 'day_net_rev', type: 'decimal' },             // R: day net rev
+  18: { field: 'imp', type: 'bigint' },                      // S: IMP (30days)
+  19: { field: 'ecpm', type: 'decimal' },                    // T: eCPM
+  20: { field: 'max_gross', type: 'decimal' },               // U: Max Gross
+  21: { field: 'revenue_share', type: 'decimal' },           // V: R/S
+  // Column 22 (W: logic of Estimation) - stored in metadata
+  23: { field: 'action_date', type: 'date' },                // X: Action Date
+  // Sales-Specific: Action Fields (24-26) - Different order from CS
+  24: { field: 'next_action', type: 'string' },              // Y: Next Action
+  25: { field: 'action_detail', type: 'string' },            // Z: DETAIL
+  26: { field: 'action_progress', type: 'string' },          // AA: Action Progress
+  // Column 27 (AB: Update Target) - stored in metadata
+  // Status & Timeline (28-33) - Shifted by 1 from original
+  28: { field: 'starting_date', type: 'date' },              // AC: Starting Date
+  29: { field: 'status', type: 'string', default: '【E】' }, // AD: Status
+  30: { field: 'progress_percent', type: 'integer' },        // AE: %
+  31: { field: 'proposal_date', type: 'date' },              // AF: Date of first proposal
+  32: { field: 'interested_date', type: 'date' },            // AG: Interested date
+  33: { field: 'acceptance_date', type: 'date' },            // AH: Acceptance date
+  // Sales-Specific: ZID and C+↑ (34-35)
+  // These replace ready_to_deliver_date and closed_date from CS
+  34: { field: 'zid', type: 'string' },                      // AI: ZID
+  35: { field: 'c_plus_upgrade', type: 'string' },           // AJ: C+↑
+  // Quarter Summary (36-37)
+  36: { field: 'q_gross', type: 'decimal' },                 // AK: GR
+  37: { field: 'q_net_rev', type: 'decimal' },               // AL: NR
+  // NOTE: ready_to_deliver_date and closed_date are NOT in Sales sheet
+  // These will be set to NULL in sheetTransformers.ts for Sales group
+}
+
+const MONTHLY_COLUMNS_SALES = {
+  endDates: { start: 49, count: 15, field: 'end_date' },
+  deliveryDays: { start: 64, count: 15, field: 'delivery_days' },
+  validation: { start: 79, count: 15, field: 'validation_flag' }
+}
+
+const VALID_STATUSES_SALES = [
+  '【S】', '【S-】', '【A】', '【B】', '【C+】', '【C】', '【C-】', '【D】', '【E】', '【Z】'
+]
+
+const DEFAULT_VALUES_SALES = {
+  status: '【E】',
+  progress_percent: 0,
+  forecast_type: 'estimate',
+  metadata: {}
+}
+
+// Export Sales column mapping constants for sheetTransformers.ts to use
+export {
+  COLUMN_MAPPING_SALES,
+  MONTHLY_COLUMNS_SALES,
+  VALID_STATUSES_SALES,
+  DEFAULT_VALUES_SALES
 }
 
 // Supabase client
@@ -186,31 +288,16 @@ const SYNCABLE_FIELDS = [
 
 /**
  * Initialize Google Sheets API client
+ * Uses the centralized getSheetsClient from googleSheetsClient.ts
  */
 async function getGoogleSheetsClient() {
-  // Use base64 encoded credentials - avoids all control character issues
-  const credentialsBase64 = process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64
-
-  if (!credentialsBase64) {
-    throw new Error('GOOGLE_APPLICATION_CREDENTIALS_BASE64 not set')
-  }
-
-  // Decode base64 to JSON string - this handles all characters safely
-  const credentialsJson = Buffer.from(credentialsBase64, 'base64').toString('utf-8')
-
-  const credentials = JSON.parse(credentialsJson)
-
-  if (!credentials.client_email) {
-    throw new Error('Missing Google credentials')
-  }
-
-  const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: [
-      'https://www.googleapis.com/auth/spreadsheets.readonly',
-      'https://www.googleapis.com/auth/drive.readonly'
-    ]
-  })
+  // Use the centralized auth client which supports:
+  // - GOOGLE_APPLICATION_CREDENTIALS_JSON (inline JSON)
+  // - GOOGLE_APPLICATION_CREDENTIALS_BASE64 (base64 encoded)
+  const auth = getSheetsClient([
+    'https://www.googleapis.com/auth/spreadsheets.readonly',
+    'https://www.googleapis.com/auth/drive.readonly'
+  ])
 
   return google.sheets({ version: 'v4', auth })
 }

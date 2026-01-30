@@ -101,21 +101,9 @@ export function PipelineDetailDrawer({ pipeline, open, onClose }: PipelineDetail
 
   console.log('[PipelineDetailDrawer] Render - sheetRowUrl:', sheetRowUrl, 'buttonText:', buttonText)
 
-  // Only handle CS pipelines for now - Sales coming later
-  if (pipeline.group !== 'cs') {
-    return (
-      <Sheet open={open} onOpenChange={onClose}>
-        <SheetContent className="w-[480px] sm:w-[540px]">
-          <SheetHeader>
-            <SheetTitle>Sales Pipeline View</SheetTitle>
-          </SheetHeader>
-          <div className="p-8 text-center text-muted-foreground">
-            Sales pipeline detail view coming soon...
-          </div>
-        </SheetContent>
-      </Sheet>
-    )
-  }
+  const isCSPipeline = pipeline.group === 'cs'
+  const isSalesPipeline = pipeline.group === 'sales'
+  const groupLabel = pipeline.group?.toUpperCase() || 'CS'
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -126,7 +114,7 @@ export function PipelineDetailDrawer({ pipeline, open, onClose }: PipelineDetail
           </SheetTitle>
           <div className="flex items-center gap-2 mt-2">
             <Badge>{pipeline.status}</Badge>
-            <Badge variant="outline">CS</Badge>
+            <Badge variant="outline">{groupLabel}</Badge>
           </div>
         </SheetHeader>
 
@@ -141,7 +129,7 @@ export function PipelineDetailDrawer({ pipeline, open, onClose }: PipelineDetail
             {/* 1. Financial Summary */}
             <FinancialSummaryCard pipeline={pipeline} />
 
-            {/* 2. Pipeline Details (CS-specific fields) */}
+            {/* 2. Pipeline Details - Common fields + group-specific fields */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm">Details</CardTitle>
@@ -153,23 +141,50 @@ export function PipelineDetailDrawer({ pipeline, open, onClose }: PipelineDetail
                 <InfoRow label="MID" value={pipeline.mid} />
                 <InfoRow label="Domain" value={pipeline.domain} />
                 <InfoRow label="Product" value={pipeline.product} />
-                <InfoRow label="ZID" value={pipeline.zid} />
                 <InfoRow label="Progress %" value={`${pipeline.progress_percent || 0}%`} />
+
+                {/* CS-specific: ZID, ready_to_deliver_date, closed_date */}
+                {isCSPipeline && (
+                  <>
+                    <InfoRow label="ZID" value={pipeline.zid || '—'} />
+                    <InfoRow label="Ready to Deliver Date" value={formatDate(pipeline.ready_to_deliver_date)} />
+                    <InfoRow label="Closed Date" value={formatDate(pipeline.closed_date)} />
+                  </>
+                )}
+
+                {/* Sales-specific: ZID (single string), C+ Upgrade */}
+                {isSalesPipeline && (
+                  <>
+                    <InfoRow label="ZID" value={pipeline.zid} />
+                    <InfoRow label="C+ Upgrade" value={pipeline.c_plus_upgrade || '—'} />
+                  </>
+                )}
               </CardContent>
             </Card>
 
-            {/* 3. Timeline (CS-specific) */}
+            {/* 3. Timeline */}
             <TimelineCard pipeline={pipeline} />
 
-            {/* 4. Actions (CS-specific: action_date, action_progress, next_action) */}
+            {/* 4. Actions - Different field order for CS vs Sales */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm">Current Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-0">
                 <InfoRow label="Action Date" value={formatDate(pipeline.action_date)} />
-                <InfoRow label="Action Progress" value={pipeline.action_progress} />
-                <InfoRow label="Next Action" value={pipeline.next_action} />
+                {isCSPipeline && (
+                  <>
+                    <InfoRow label="Action Progress" value={pipeline.action_progress} />
+                    <InfoRow label="Next Action" value={pipeline.next_action} />
+                  </>
+                )}
+                {isSalesPipeline && (
+                  <>
+                    <InfoRow label="Next Action" value={pipeline.next_action} />
+                    <InfoRow label="Action Detail" value={pipeline.action_detail} />
+                    <InfoRow label="Action Progress" value={pipeline.action_progress} />
+                  </>
+                )}
               </CardContent>
             </Card>
 
