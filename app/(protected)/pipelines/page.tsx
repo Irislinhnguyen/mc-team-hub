@@ -295,14 +295,15 @@ function PipelinesPageContent() {
     const total_gross = filteredPipelines.reduce((sum, p) => sum + (p.q_gross || 0), 0)
     const total_net = filteredPipelines.reduce((sum, p) => sum + (p.q_net_rev || 0), 0)
 
-    // Sales Cycle: Average days from proposal to acceptance for Won pipelines
-    const wonPipelines = filteredPipelines.filter(p => p.status === '【S】' || p.status === '【S-】')
+    // Sales Cycle: Average days from proposal to starting (S status only) for Won pipelines
+    // Note: 【S-】 is excluded because it can still change to 【Z】(lost)
+    const wonPipelines = filteredPipelines.filter(p => p.status === '【S】')
     const cyclesWithDates = wonPipelines
-      .filter(p => p.proposal_date && p.acceptance_date)
+      .filter(p => p.proposal_date && p.starting_date)
       .map(p => {
         const proposal = new Date(p.proposal_date!)
-        const acceptance = new Date(p.acceptance_date!)
-        const diffTime = Math.abs(acceptance.getTime() - proposal.getTime())
+        const starting = new Date(p.starting_date!)
+        const diffTime = Math.abs(starting.getTime() - proposal.getTime())
         return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
       })
     const avg_sales_cycle = cyclesWithDates.length > 0
