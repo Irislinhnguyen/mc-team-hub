@@ -254,27 +254,29 @@ export function transformRowToPipeline(
     report_text: row[98] ? row[98].toString() : null, // CU: Report
     masaya_check: parseBoolean(row[100]),            // CW: Masaya Check
 
-    // Quarterly breakdown from columns 37-48 (same for both Sales and CS)
+    // Quarterly breakdown from columns 37-48 (CS) or 38-49 (Sales, offset by +1 due to duplicate Product column at index 15)
+    const quarterlyOffset = group === 'sales' ? 1 : 0
+
     quarterly_breakdown: {
       gross: {
-        first_month: parseDecimal(row[37]),    // AL: Q粗利 初月
-        middle_month: parseDecimal(row[38]),   // AM: Q粗利 中月
-        last_month: parseDecimal(row[39])      // AN: Q粗利 終月
+        first_month: parseDecimal(row[37 + quarterlyOffset]),    // AL (CS) / AM (Sales): Q粗利 初月
+        middle_month: parseDecimal(row[38 + quarterlyOffset]),   // AM (CS) / AN (Sales): Q粗利 中月
+        last_month: parseDecimal(row[39 + quarterlyOffset])      // AN (CS) / AO (Sales): Q粗利 終月
       },
       net: {
-        first_month: parseDecimal(row[40]),    // AO: Q純収益 初月
-        middle_month: parseDecimal(row[41]),   // AP: Q純収益 中月
-        last_month: parseDecimal(row[42])      // AQ: Q純収益 終月
+        first_month: parseDecimal(row[40 + quarterlyOffset]),    // AO (CS) / AP (Sales): Q純収益 初月
+        middle_month: parseDecimal(row[41 + quarterlyOffset]),   // AP (CS) / AQ (Sales): Q純収益 中月
+        last_month: parseDecimal(row[42 + quarterlyOffset])      // AQ (CS) / AR (Sales): Q純収益 終月
       },
       max_gross: {
-        first_month: parseDecimal(row[43]),    // AR: Q最大粗利 初月
-        middle_month: parseDecimal(row[44]),   // AS: Q最大粗利 中月
-        last_month: parseDecimal(row[45])      // AT: Q最大粗利 終月
+        first_month: parseDecimal(row[43 + quarterlyOffset]),    // AR (CS) / AS (Sales): Q最大粗利 初月
+        middle_month: parseDecimal(row[44 + quarterlyOffset]),   // AS (CS) / AT (Sales): Q最大粗利 中月
+        last_month: parseDecimal(row[45 + quarterlyOffset])      // AT (CS) / AU (Sales): Q最大粗利 終月
       },
       max_net: {
-        first_month: parseDecimal(row[46]),    // AU: Q最大純収益 初月
-        middle_month: parseDecimal(row[47]),   // AV: Q最大純収益 中月
-        last_month: parseDecimal(row[48])      // AW: Q最大純収益 終月
+        first_month: parseDecimal(row[46 + quarterlyOffset]),    // AU (CS) / AV (Sales): Q最大純収益 初月
+        middle_month: parseDecimal(row[47 + quarterlyOffset]),   // AV (CS) / AW (Sales): Q最大純収益 中月
+        last_month: parseDecimal(row[48 + quarterlyOffset])      // AW (CS) / AX (Sales): Q最大純収益 終月
       }
     }
   }
