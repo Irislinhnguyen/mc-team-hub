@@ -144,22 +144,16 @@ export function PipelineDetailDrawer({ pipeline, open, onClose }: PipelineDetail
                 <InfoRow label="Channel" value={pipeline.channel} />
                 <InfoRow label="Progress %" value={`${pipeline.progress_percent || 0}%`} />
 
-                {/* CS-specific: ZID, ready_to_deliver_date, closed_date */}
-                {isCSPipeline && (
-                  <>
-                    <InfoRow label="ZID" value={pipeline.zid || '—'} />
-                    <InfoRow label="Ready to Deliver Date" value={formatDate(pipeline.ready_to_deliver_date)} />
-                    <InfoRow label="Closed Date" value={formatDate(pipeline.closed_date)} />
-                  </>
-                )}
+                {/* Common: ZID (both CS and Sales) */}
+                <InfoRow label="ZID" value={pipeline.zid || '—'} />
 
-                {/* Sales-specific: Region, ZID, C+ Upgrade */}
+                {/* Common: ready_to_deliver_date, closed_date (both CS and Sales) */}
+                <InfoRow label="Ready to Deliver Date" value={formatDate(pipeline.ready_to_deliver_date)} />
+                <InfoRow label="Closed Date" value={formatDate(pipeline.closed_date)} />
+
+                {/* Sales-specific: C+ Upgrade */}
                 {isSalesPipeline && (
-                  <>
-                    <InfoRow label="Region" value={pipeline.region} />
-                    <InfoRow label="ZID" value={pipeline.zid} />
-                    <InfoRow label="C+ Upgrade" value={pipeline.c_plus_upgrade || '—'} />
-                  </>
+                  <InfoRow label="C+ Upgrade" value={pipeline.c_plus_upgrade || '—'} />
                 )}
               </CardContent>
             </Card>
@@ -182,9 +176,8 @@ export function PipelineDetailDrawer({ pipeline, open, onClose }: PipelineDetail
                 )}
                 {isSalesPipeline && (
                   <>
-                    <InfoRow label="Next Action" value={pipeline.next_action} />
-                    <InfoRow label="Action Detail" value={pipeline.action_detail} />
                     <InfoRow label="Action Progress" value={pipeline.action_progress} />
+                    <InfoRow label="Next Action" value={pipeline.next_action} />
                   </>
                 )}
               </CardContent>
