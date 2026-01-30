@@ -449,7 +449,9 @@ function PipelinesPageContent() {
         <div className="container mx-auto">
           <div className="flex items-center justify-between gap-4">
             {/* Left Section - Title */}
-            <h1 className="text-2xl font-bold text-[#1565C0]">Sales Pipelines</h1>
+            <h1 className="text-2xl font-bold text-[#1565C0]">
+              {activeGroup === 'sales' ? 'Sales Pipelines' : 'CS Pipelines'}
+            </h1>
 
             {/* Center Section - Group Tabs */}
             <div className="flex-1 flex justify-center">
