@@ -15,9 +15,14 @@ export function MonthlyForecastView({ pipeline }: MonthlyForecastViewProps) {
     }).format(amount)
   }
 
-  const monthlyForecasts = (pipeline.monthly_forecasts || []).slice(0, 3)
+  const quarterlyBreakdown = pipeline.metadata?.quarterly_breakdown
+  const monthlyData = [
+    { month: 1, gross: quarterlyBreakdown?.gross?.first_month, net: quarterlyBreakdown?.net?.first_month },
+    { month: 2, gross: quarterlyBreakdown?.gross?.middle_month, net: quarterlyBreakdown?.net?.middle_month },
+    { month: 3, gross: quarterlyBreakdown?.gross?.last_month, net: quarterlyBreakdown?.net?.last_month }
+  ].filter(m => m.gross !== null || m.net !== null)
 
-  if (monthlyForecasts.length === 0) {
+  if (monthlyData.length === 0) {
     return (
       <div className="p-4 text-center text-muted-foreground">
         <p className="text-sm">No monthly forecast data available</p>
@@ -41,17 +46,11 @@ export function MonthlyForecastView({ pipeline }: MonthlyForecastViewProps) {
             </tr>
           </thead>
           <tbody>
-            {monthlyForecasts.map((forecast, index) => (
-              <tr key={`${forecast.year}-${forecast.month}`} className="border-b last:border-0">
-                <td className="p-3 font-medium">
-                  Month {index + 1}
-                </td>
-                <td className="p-3 text-right">
-                  {formatCurrency(forecast.gross_revenue)}
-                </td>
-                <td className="p-3 text-right">
-                  {formatCurrency(forecast.net_revenue)}
-                </td>
+            {monthlyData.map((data) => (
+              <tr key={data.month} className="border-b last:border-0">
+                <td className="p-3 font-medium">Month {data.month}</td>
+                <td className="p-3 text-right">{formatCurrency(data.gross)}</td>
+                <td className="p-3 text-right">{formatCurrency(data.net)}</td>
               </tr>
             ))}
           </tbody>
