@@ -161,11 +161,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Show ALL pipelines, but mark which ones can actually be calculated
-    // Pipelines need actual_starting_date + 30 days elapsed for actual revenue calculation
+    // Pipelines need actual_starting_date OR starting_date (fallback) for revenue calculation
     // EXCLUDE "adjustment" pipelines from impact calculation
     const today = new Date()
     const validPipelines = filteredPipelines.filter(p =>
-      p.classification && p.classification.toLowerCase() !== 'adjustment'
+      p.classification &&
+      p.classification.toLowerCase() !== 'adjustment' &&
+      (p.actual_starting_date || p.starting_date)  // Require at least one date
     )
 
     console.log(`[Impact API] Processing ${validPipelines.length} pipelines`)
@@ -269,32 +271,32 @@ export async function POST(request: NextRequest) {
       // Level 6: PID + MID + ZID (most granular)
       pid_mid_zid: validPipelines.filter(p => {
         if (!p.pid || !p.mid || !p.affected_zones || p.affected_zones.length === 0) return false
-        return !!p.actual_starting_date
+        return true  // Already filtered for date above
       }),
       // Level 5: PID + MID (no zones)
       pid_mid: validPipelines.filter(p => {
         if (!p.pid || !p.mid || (p.affected_zones && p.affected_zones.length > 0)) return false
-        return !!p.actual_starting_date
+        return true  // Already filtered for date above
       }),
       // Level 4: PID only
       pid: validPipelines.filter(p => {
         if (!p.pid || p.mid) return false
-        return !!p.actual_starting_date
+        return true  // Already filtered for date above
       }),
       // Level 3: MID + ZID (no PID)
       mid_zid: validPipelines.filter(p => {
         if (p.pid || !p.mid || !p.affected_zones || p.affected_zones.length === 0) return false
-        return !!p.actual_starting_date
+        return true  // Already filtered for date above
       }),
       // Level 2: MID only (no PID, no zones)
       mid: validPipelines.filter(p => {
         if (p.pid || !p.mid || (p.affected_zones && p.affected_zones.length > 0)) return false
-        return !!p.actual_starting_date
+        return true  // Already filtered for date above
       }),
       // Level 1: ZID only (no PID, no MID)
       zid: validPipelines.filter(p => {
         if (p.pid || p.mid || !p.affected_zones || p.affected_zones.length === 0) return false
-        return !!p.actual_starting_date
+        return true  // Already filtered for date above
       })
     }
 
