@@ -773,53 +773,39 @@ export async function syncQuarterlySheet(
 
         console.log(`[Sync] Batch ${batchNumber}: Upserting ${validBatch.length} pipelines to database...`)
 
-        // WORKAROUND: Strip metadata before upsert to avoid Supabase schema cache issues
-        // Supabase sometimes throws "column not found in schema cache" for JSONB fields
-        const pipelinesWithoutMetadata = validBatch.map(({ metadata, monthly_forecasts, ...rest }) => rest)
-        const metadataMap = new Map(validBatch.map(p => [p.id, p.metadata]))
-
-        let updateError
+        // SOLUTION: Use PostgreSQL RPC function to bypass PostgREST schema cache
+        // PostgREST has a known bug (Issue #39446) where schema cache reload doesn't fix PGRST204 errors
+        // RPC functions execute directly in PostgreSQL, bypassing PostgREST entirely
+        let rpcError
         try {
-          const result = await supabase
-            .from('pipelines')
-            .upsert(pipelinesWithoutMetadata, {
-              onConflict: 'id' // Use primary key for update
+          const { data: rpcResult, error } = await supabase.rpc('upsert_pipelines_batch', {
+            pipelines_json: JSON.stringify(validBatch)
+          })
+          rpcError = error
+
+          if (error) {
+            console.error(`[Sync] ❌ Batch ${batchNumber}: RPC error: ${error.message}`)
+            console.error(`[Sync] Details: ${error.hint}`)
+            errors.push(`Batch ${batchNumber} RPC failed: ${error.message}`)
+            continue
+          }
+
+          // Check if any individual pipelines failed
+          const failedPipelines = rpcResult?.filter((r: any) => !r.success)
+          if (failedPipelines && failedPipelines.length > 0) {
+            console.warn(`[Sync] ⚠️  Batch ${batchNumber}: ${failedPipelines.length} pipelines failed to upsert`)
+            failedPipelines.forEach((f: any) => {
+              console.warn(`[Sync]    - Pipeline ${f.id}: ${f.error_message}`)
             })
-          updateError = result.error
-        } catch (e: any) {
-          console.error(`[Sync] ❌ Batch ${batchNumber}: Exception during upsert:`, e.message)
-          errors.push(`Batch ${batchNumber} exception: ${e.message}`)
-          continue
-        }
-
-        if (updateError) {
-          console.error(`[Sync] ❌ Batch ${batchNumber}: Upsert failed: ${updateError.message}`)
-          errors.push(`Batch ${batchNumber} update failed: ${updateError.message}`)
-        } else {
-          // Update metadata separately for each pipeline
-          let metadataUpdateErrors = 0
-          for (const [pipelineId, metadata] of metadataMap.entries()) {
-            try {
-              const { error: metaError } = await supabase
-                .from('pipelines')
-                .update({ metadata })
-                .eq('id', pipelineId)
-
-              if (metaError) {
-                metadataUpdateErrors++
-                console.warn(`[Sync] Batch ${batchNumber}: Failed to update metadata for pipeline ${pipelineId}`)
-              }
-            } catch (e: any) {
-              metadataUpdateErrors++
-            }
           }
 
           updatedCount += validBatch.length
-          if (metadataUpdateErrors > 0) {
-            console.warn(`[Sync] ✅ Batch ${batchNumber}: ${validBatch.length} updated (${metadataUpdateErrors} metadata updates failed)`)
-          } else {
-            console.log(`[Sync] ✅ Batch ${batchNumber}: ${validBatch.length} updated successfully`)
-          }
+          console.log(`[Sync] ✅ Batch ${batchNumber}: ${validBatch.length} updated successfully via RPC`)
+
+        } catch (e: any) {
+          console.error(`[Sync] ❌ Batch ${batchNumber}: Exception during RPC:`, e.message)
+          errors.push(`Batch ${batchNumber} exception: ${e.message}`)
+          continue
         }
       }
     }
@@ -859,58 +845,38 @@ export async function syncQuarterlySheet(
 
         console.log(`[Sync] Batch ${batchNumber}: Inserting ${validBatch.length} pipelines...`)
 
-        // WORKAROUND: Strip metadata before insert to avoid Supabase schema cache issues
-        const pipelinesWithoutMetadata = validBatch.map(({ metadata, monthly_forecasts, ...rest }) => rest)
-        const metadataMap = new Map<string, any>()
-
-        let insertError
+        // SOLUTION: Use PostgreSQL RPC function to bypass PostgREST schema cache
+        // Same approach as UPDATE - RPC executes directly in PostgreSQL
+        let rpcError
         try {
-          const result = await supabase
-            .from('pipelines')
-            .insert(pipelinesWithoutMetadata)
-            .select('id')
+          const { data: rpcResult, error } = await supabase.rpc('upsert_pipelines_batch', {
+            pipelines_json: JSON.stringify(validBatch)
+          })
+          rpcError = error
 
-          insertError = result.error
-
-          if (!insertError && result.data) {
-            // Map inserted IDs to their metadata
-            result.data.forEach((row, idx) => {
-              metadataMap.set(row.id, validBatch[idx].metadata)
-            })
+          if (error) {
+            console.error(`[Sync] ❌ Batch ${batchNumber}: RPC error: ${error.message}`)
+            console.error(`[Sync] Details: ${error.hint}`)
+            errors.push(`Batch ${batchNumber} RPC failed: ${error.message}`)
+            continue
           }
-        } catch (e: any) {
-          console.error(`[Sync] ❌ Batch ${batchNumber}: Exception during insert:`, e.message)
-          errors.push(`Batch ${batchNumber} exception: ${e.message}`)
-          continue
-        }
 
-        if (insertError) {
-          console.error(`[Sync] ❌ Batch ${batchNumber}: Insert failed: ${insertError.message}`)
-          errors.push(`Batch ${batchNumber} insert failed: ${insertError.message}`)
-        } else {
-          // Update metadata separately for each inserted pipeline
-          let metadataUpdateErrors = 0
-          for (const [pipelineId, metadata] of metadataMap.entries()) {
-            try {
-              const { error: metaError } = await supabase
-                .from('pipelines')
-                .update({ metadata })
-                .eq('id', pipelineId)
-
-              if (metaError) {
-                metadataUpdateErrors++
-              }
-            } catch (e: any) {
-              metadataUpdateErrors++
-            }
+          // Check if any individual pipelines failed
+          const failedPipelines = rpcResult?.filter((r: any) => !r.success)
+          if (failedPipelines && failedPipelines.length > 0) {
+            console.warn(`[Sync] ⚠️  Batch ${batchNumber}: ${failedPipelines.length} pipelines failed to insert`)
+            failedPipelines.forEach((f: any) => {
+              console.warn(`[Sync]    - Pipeline ${f.id}: ${f.error_message}`)
+            })
           }
 
           createdCount += validBatch.length
-          if (metadataUpdateErrors > 0) {
-            console.warn(`[Sync] ✅ Batch ${batchNumber}: ${validBatch.length} created (${metadataUpdateErrors} metadata updates failed)`)
-          } else {
-            console.log(`[Sync] ✅ Batch ${batchNumber}: ${validBatch.length} created successfully`)
-          }
+          console.log(`[Sync] ✅ Batch ${batchNumber}: ${validBatch.length} created successfully via RPC`)
+
+        } catch (e: any) {
+          console.error(`[Sync] ❌ Batch ${batchNumber}: Exception during RPC:`, e.message)
+          errors.push(`Batch ${batchNumber} exception: ${e.message}`)
+          continue
         }
       }
     }
