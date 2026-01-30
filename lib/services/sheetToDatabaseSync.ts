@@ -779,7 +779,7 @@ export async function syncQuarterlySheet(
         let rpcError
         try {
           const { data: rpcResult, error } = await supabase.rpc('upsert_pipelines_batch', {
-            pipelines_json: JSON.stringify(validBatch)
+            pipelines_array: validBatch  // Pass array directly, Supabase auto-converts to JSONB
           })
           rpcError = error
 
@@ -850,7 +850,7 @@ export async function syncQuarterlySheet(
         let rpcError
         try {
           const { data: rpcResult, error } = await supabase.rpc('upsert_pipelines_batch', {
-            pipelines_json: JSON.stringify(validBatch)
+            pipelines_array: validBatch  // Pass array directly, Supabase auto-converts to JSONB
           })
           rpcError = error
 
