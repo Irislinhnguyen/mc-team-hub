@@ -105,6 +105,31 @@ function parseBoolean(value: any): boolean | null {
 }
 
 /**
+ * Validate row has minimum required columns
+ *
+ * @param row - Row data from Google Sheets
+ * @param group - Pipeline group: 'sales' or 'cs'
+ * @returns Validation result with valid flag and optional error message
+ */
+export function validateRowStructure(
+  row: any[],
+  group: 'sales' | 'cs'
+): { valid: boolean; error?: string } {
+  // Sales needs at least 95 columns (due to C+↑ at col 35)
+  // CS needs at least 94 columns
+  const minColumns = group === 'sales' ? 95 : 94
+
+  if (row.length < minColumns) {
+    return {
+      valid: false,
+      error: `Row has only ${row.length} columns, expected at least ${minColumns}`
+    }
+  }
+
+  return { valid: true }
+}
+
+/**
  * Transform a sheet row to a pipeline object
  *
  * @param row - Row data from Google Sheets

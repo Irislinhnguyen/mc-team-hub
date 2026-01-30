@@ -16,7 +16,7 @@
 
 import { google } from 'googleapis'
 import { createClient } from '@supabase/supabase-js'
-import { transformRowToPipeline, extractMonthlyForecasts } from './sheetTransformers'
+import { transformRowToPipeline, extractMonthlyForecasts, validateRowStructure } from './sheetTransformers'
 import { getSheetsClient } from './googleSheetsClient'
 
 // ========================================
@@ -473,6 +473,13 @@ function parseSheetRows(
       continue
     }
 
+    // Validate row structure before transformation
+    const validation = validateRowStructure(row, group)
+    if (!validation.valid) {
+      console.error(`Row ${sheetRowNumber}: ${validation.error}`)
+      continue
+    }
+
     try {
       // Transform row using existing transformer
       const pipeline = transformRowToPipeline(row, userId, group, fiscalYear)
@@ -501,7 +508,18 @@ function parseSheetRows(
 
       pipelines.push(finalPipeline)
     } catch (error: any) {
-      console.error(`Row ${sheetRowNumber}: Failed to transform - ${error.message}`)
+      // Enhanced error logging for debugging
+      console.error(`\n❌ Row ${sheetRowNumber}: Transformation failed`)
+      console.error(`   Key (Col A): ${row[0]}`)
+      console.error(`   Publisher (Col G): ${row[6]}`)
+      console.error(`   Row length: ${row.length} columns`)
+      console.error(`   Error: ${error.message}`)
+
+      // Log first few non-null values for context
+      const nonNullValues = row.slice(0, 20).map((val, idx) =>
+        val != null ? `[${idx}]: ${String(val).substring(0, 30)}` : null
+      ).filter(Boolean)
+      console.error(`   Sample values: ${nonNullValues.slice(0, 5).join(', ')}`)
       continue
     }
   }
@@ -725,17 +743,38 @@ export async function syncQuarterlySheet(
       for (let i = 0; i < toUpdate.length; i += batchSize) {
         const batch = toUpdate.slice(i, i + batchSize)
 
+        // Validate each pipeline can be serialized before upsert
+        const validBatch: typeof batch = []
+        for (const pipeline of batch) {
+          try {
+            JSON.stringify(pipeline) // Test serialization
+            validBatch.push(pipeline)
+          } catch (e: any) {
+            console.error(`Row ${pipeline.sheet_row_number}: Cannot serialize - may contain control characters`)
+            errors.push(`Row ${pipeline.sheet_row_number}: JSON serialization failed`)
+          }
+        }
+
+        if (validBatch.length === 0) {
+          console.warn(`Batch ${Math.floor(i / batchSize) + 1}: All rows failed validation, skipping`)
+          continue
+        }
+
+        if (validBatch.length < batch.length) {
+          console.warn(`Batch ${Math.floor(i / batchSize) + 1}: ${batch.length - validBatch.length} rows failed validation`)
+        }
+
         const { error: updateError } = await supabase
           .from('pipelines')
-          .upsert(batch, {
+          .upsert(validBatch, {
             onConflict: 'id' // Use primary key for update
           })
 
         if (updateError) {
-          errors.push(`Batch update failed (${batch.length} pipelines): ${updateError.message}`)
+          errors.push(`Batch update failed (${validBatch.length} pipelines): ${updateError.message}`)
         } else {
-          updatedCount += batch.length
-          console.log(`[Sync] ✅ Batch UPDATE: ${batch.length} updated`)
+          updatedCount += validBatch.length
+          console.log(`[Sync] ✅ Batch UPDATE: ${validBatch.length} updated`)
         }
       }
     }
@@ -750,15 +789,36 @@ export async function syncQuarterlySheet(
       for (let i = 0; i < toCreate.length; i += batchSize) {
         const batch = toCreate.slice(i, i + batchSize)
 
+        // Validate each pipeline can be serialized before insert
+        const validBatch: typeof batch = []
+        for (const pipeline of batch) {
+          try {
+            JSON.stringify(pipeline) // Test serialization
+            validBatch.push(pipeline)
+          } catch (e: any) {
+            console.error(`Row ${pipeline.sheet_row_number}: Cannot serialize - may contain control characters`)
+            errors.push(`Row ${pipeline.sheet_row_number}: JSON serialization failed`)
+          }
+        }
+
+        if (validBatch.length === 0) {
+          console.warn(`Batch ${Math.floor(i / batchSize) + 1}: All rows failed validation, skipping`)
+          continue
+        }
+
+        if (validBatch.length < batch.length) {
+          console.warn(`Batch ${Math.floor(i / batchSize) + 1}: ${batch.length - validBatch.length} rows failed validation`)
+        }
+
         const { error: insertError } = await supabase
           .from('pipelines')
-          .insert(batch)
+          .insert(validBatch)
 
         if (insertError) {
-          errors.push(`Batch insert failed (${batch.length} pipelines): ${insertError.message}`)
+          errors.push(`Batch insert failed (${validBatch.length} pipelines): ${insertError.message}`)
         } else {
-          createdCount += batch.length
-          console.log(`[Sync] ✅ Batch INSERT: ${batch.length} created`)
+          createdCount += validBatch.length
+          console.log(`[Sync] ✅ Batch INSERT: ${validBatch.length} created`)
         }
       }
     }
