@@ -152,11 +152,11 @@ const COLUMN_MAPPING_SALES = {
   25: { field: 'action_detail', type: 'string' },            // Z: DETAIL
   26: { field: 'action_progress', type: 'string' },          // AA: Action Progress
   // Column 27 (AB: Update Target) - stored in metadata
-  // Status & Timeline (28-33) - Shifted by 1 from original
-  28: { field: 'starting_date', type: 'date' },              // AC: Starting Date
-  29: { field: 'status', type: 'string', default: '【E】' }, // AD: Status
-  30: { field: 'progress_percent', type: 'integer' },        // AE: %
-  31: { field: 'proposal_date', type: 'date' },              // AF: Date of first proposal
+  // Status & Timeline (28-33) - FIXED to match Google Sheet columns
+  28: { field: 'status', type: 'string', default: '【E】' },  // AC: Status ✓
+  29: { field: 'progress_percent', type: 'integer' },        // AD: % ✓
+  30: { field: 'proposal_date', type: 'date' },              // AE: Date of first proposal ✓
+  31: { field: 'starting_date', type: 'date' },              // AF: Starting Date ✓
   32: { field: 'interested_date', type: 'date' },            // AG: Interested date
   33: { field: 'acceptance_date', type: 'date' },            // AH: Acceptance date
   // Sales-Specific: ZID and C+↑ (34-35)
