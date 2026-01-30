@@ -201,30 +201,31 @@ export function transformRowToPipeline(
     if (pipeline.progress_percent > 100) pipeline.progress_percent = 100
   }
 
-  // Handle ZID field and group-specific columns
-  // Sales: ZID at column 34 (AI), C+↑ at column 35 (AJ)
-  // CS: ZID at column 9 (J), ready_to_deliver_date at column 33 (AH), closed_date at column 34 (AI)
+  // Handle group-specific columns
+  // Both CS and Sales have:
+  //   - ZID at column 9 (J)
+  //   - ready_to_deliver_date at 33 (AH)
+  //   - closed_date at 34 (AI)
+  // Sales-specific: C+↑ at 35 (AJ)
+  // CS-specific: NO c_plus_upgrade
   if (group === 'sales') {
-    pipeline.zid = row[34] ? row[34].toString().trim() : null  // AI: ZID
-    pipeline.c_plus_upgrade = row[35] ? row[35].toString().trim() : null  // AJ: C+↑
-    // Sales doesn't have these fields in the sheet - set to null
-    pipeline.ready_to_deliver_date = null
-    pipeline.closed_date = null
-  } else {
-    // CS: ZID is at column 9 (J), ready_to_deliver_date and closed_date at 33-34
     pipeline.zid = row[9] ? row[9].toString().trim() : null   // J: ZID
-    pipeline.ready_to_deliver_date = parseDate(row[33])       // AH: 【S-】/【A】
+    pipeline.ready_to_deliver_date = parseDate(row[33])       // AH: 【A】
+    pipeline.closed_date = parseDate(row[34])                 // AI: 【Z】
+    pipeline.c_plus_upgrade = row[35] ? row[35].toString().trim() : null  // AJ: C+↑
+  } else {
+    // CS: Same ZID and status transition dates
+    pipeline.zid = row[9] ? row[9].toString().trim() : null   // J: ZID
+    pipeline.ready_to_deliver_date = parseDate(row[33])       // AH: 【A】
     pipeline.closed_date = parseDate(row[34])                 // AI: 【Z】
     // CS doesn't have c_plus_upgrade
     pipeline.c_plus_upgrade = null
   }
 
   // Region field handling
-  // Sales has region at column 11, CS does NOT have region
-  if (group === 'cs') {
-    // CS: Ensure region is NULL (CS sheet doesn't have this field)
-    pipeline.region = null
-  }
+  // Neither CS nor Sales sheets have region column anymore
+  // Ensure region is NULL for both groups
+  pipeline.region = null
 
   // IMPORTANT: Populate affected_zones from zid for Impact calculations
   // Impact API uses affected_zones array, not zid string directly
@@ -236,7 +237,9 @@ export function transformRowToPipeline(
   // Extract additional fields and quarterly breakdown into metadata
   // These fields don't have dedicated database columns but are useful for reporting
 
-  // Quarterly breakdown column offset: Sales has +1 offset due to duplicate Product column at index 15
+  // Quarterly breakdown: Sales has +1 offset due to C+↑ column at 35
+  // CS: quarterly_breakdown at 37-48 (AL-AW)
+  // Sales: q_gross/q_net_rev at 36-37, quarterly_breakdown at 38-49 (AM-AX)
   const quarterlyOffset = group === 'sales' ? 1 : 0
 
   pipeline.metadata = {
@@ -258,7 +261,7 @@ export function transformRowToPipeline(
     report_text: row[98] ? row[98].toString() : null, // CU: Report
     masaya_check: parseBoolean(row[100]),            // CW: Masaya Check
 
-    // Quarterly breakdown from columns 37-48 (CS) or 38-49 (Sales, offset by +1 due to duplicate Product column at index 15)
+    // Quarterly breakdown from columns 37-48 (CS) or 38-49 (Sales, +1 offset due to C+↑)
     quarterly_breakdown: {
       gross: {
         first_month: parseDecimal(row[37 + quarterlyOffset]),    // AL (CS) / AM (Sales): Q粗利 初月
