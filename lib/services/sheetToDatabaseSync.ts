@@ -773,6 +773,19 @@ export async function syncQuarterlySheet(
 
         console.log(`[Sync] Batch ${batchNumber}: Upserting ${validBatch.length} pipelines to database...`)
 
+        // Debug: Log first pipeline's root-level keys to check for accidental metadata spread
+        if (batchNumber === 1 && validBatch.length > 0) {
+          const sample = validBatch[0]
+          const rootKeys = Object.keys(sample).filter(k => !['monthly_forecasts'].includes(k))
+          console.log(`[Sync] DEBUG Sample pipeline root keys:`, rootKeys.slice(0, 20).join(', '))
+          if ('ma_mi' in sample) {
+            console.error(`[Sync] ❌ ERROR: 'ma_mi' found at root level! Should be in metadata.`)
+          }
+          if (sample.metadata && 'ma_mi' in sample.metadata) {
+            console.log(`[Sync] ✅ OK: 'ma_mi' is correctly in metadata`)
+          }
+        }
+
         let updateError
         try {
           const result = await supabase
