@@ -235,6 +235,10 @@ export function transformRowToPipeline(
 
   // Extract additional fields and quarterly breakdown into metadata
   // These fields don't have dedicated database columns but are useful for reporting
+
+  // Quarterly breakdown column offset: Sales has +1 offset due to duplicate Product column at index 15
+  const quarterlyOffset = group === 'sales' ? 1 : 0
+
   pipeline.metadata = {
     ...pipeline.metadata,
 
@@ -255,8 +259,6 @@ export function transformRowToPipeline(
     masaya_check: parseBoolean(row[100]),            // CW: Masaya Check
 
     // Quarterly breakdown from columns 37-48 (CS) or 38-49 (Sales, offset by +1 due to duplicate Product column at index 15)
-    const quarterlyOffset = group === 'sales' ? 1 : 0
-
     quarterly_breakdown: {
       gross: {
         first_month: parseDecimal(row[37 + quarterlyOffset]),    // AL (CS) / AM (Sales): Q粗利 初月
