@@ -1,0 +1,10 @@
+type,question,choices,items,zones,correct,points
+essay,"Describe the key principles of machine learning and how they apply to real-world business problems.",,,,,10
+essay,"Explain the difference between supervised and unsupervised learning. Provide examples of each.",,,,,8
+essay,"What are the ethical considerations when deploying AI systems in a corporate environment? Discuss at least three major concerns.",,,,,12
+cloze,"In machine learning, {1} is the process of training a model on labeled data, while {2} works with unlabeled data to find hidden patterns.",supervised learning|unsupervised learning|reinforcement learning|deep learning,,,4
+cloze,"The capital of {1} is Paris, and the capital of {2} is Tokyo.",France|Japan|Germany|Italy,,,3
+cloze,"Python is a {1} programming language commonly used in {2} and {3}.",high-level|interpreted|compiled|assembly|data science|web development|machine learning|game development,,,5
+drag_drop,"Match the programming languages to their primary use cases","Python|JavaScript|SQL|R","Data Science|Frontend Web|Database Queries|Statistical Analysis","Python->Data Science,JavaScript->Frontend Web,SQL->Database Queries,R->Statistical Analysis",6
+drag_drop,"Match the machine learning terms to their definitions","Supervised Learning|Unsupervised Learning|Neural Network|Overfitting","Learning with labeled data|Finding patterns in unlabeled data|Algorithm inspired by human brain|Model memorizing training data","Supervised Learning->Learning with labeled data,Unsupervised Learning->Finding patterns in unlabeled data,Neural Network->Algorithm inspired by human brain,Overfitting->Model memorizing training data",8
+drag_drop,"Match the cloud concepts to their descriptions","IaaS|PaaS|SaaS|FaaS","Infrastructure as a Service|Platform as a Service|Software as a Service|Function as a Service","IaaS->Infrastructure as a Service,PaaS->Platform as a Service,SaaS->Software as a Service,FaaS->Function as a Service",5
