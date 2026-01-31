@@ -451,16 +451,15 @@ export function PipelineImpactTable({
                   >
                     {impact.mid || '-'}
                   </td>
-                  {/* ZID (show count if available) */}
+                  {/* ZID (show values) */}
                   <td
-                    className="px-2 py-2 leading-tight text-center"
+                    className="px-2 py-2 leading-tight"
                     style={{
                       fontSize: typography.sizes.dataPoint,
                       color: colors.text.secondary
                     }}
-                    title={impact.affected_zones_count > 0 ? `Zone IDs: ${impact.affected_zones.join(', ')}` : 'No specific zones'}
                   >
-                    {impact.affected_zones_count > 0 ? `${impact.affected_zones_count}` : '-'}
+                    {impact.affected_zones_count > 0 ? impact.affected_zones.join(', ') : '-'}
                   </td>
                   {/* Projected 30d */}
                   <td
