@@ -44,19 +44,35 @@ export async function GET(
     const challengeId = params.id
     const supabase = createAdminClient()
 
-    // Fetch challenge with related data
+    // Fetch challenge - explicitly select columns to avoid foreign key issues
     const { data: challenge, error } = await supabase
       .from('challenges')
-      .select(`
-        *,
-        creator:users!challenges_created_by_fkey(id, name),
-        publisher:users!challenges_leaderboard_published_by_fkey(id, name)
-      `)
+      .select('id, name, description, open_date, close_date, duration_minutes, max_attempts, status, leaderboard_published_at, leaderboard_published_by, created_by, updated_by, created_at, updated_at')
       .eq('id', challengeId)
       .single()
 
     if (error || !challenge) {
       return NextResponse.json({ error: 'Challenge not found' }, { status: 404 })
+    }
+
+    // Fetch creator name separately
+    let creatorName: string | undefined
+    let publisherName: string | undefined
+    if (challenge.created_by) {
+      const { data: creator } = await supabase
+        .from('users')
+        .select('name')
+        .eq('id', challenge.created_by)
+        .single()
+      creatorName = creator?.name
+    }
+    if (challenge.leaderboard_published_by) {
+      const { data: publisher } = await supabase
+        .from('users')
+        .select('name')
+        .eq('id', challenge.leaderboard_published_by)
+        .single()
+      publisherName = publisher?.name
     }
 
     // Check access permission
@@ -99,7 +115,8 @@ export async function GET(
       updated_at: challenge.updated_at,
       question_count: questionCount || 0,
       submission_count: submissionCount || 0,
-      creator_name: challenge.creator?.name,
+      creator_name: creatorName,
+      publisher_name: publisherName,
     }
 
     return NextResponse.json({

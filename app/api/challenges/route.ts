@@ -44,14 +44,10 @@ export async function GET(request: NextRequest) {
     const statusParam = searchParams.get('status')
     const statuses = statusParam ? statusParam.split(',') : []
 
-    // Build query
+    // Build query - explicitly select columns to avoid foreign key issues
     let query = supabase
       .from('challenges')
-      .select(`
-        *,
-        creator:users!challenges_created_by_fkey(id, name),
-        _count:challenge_questions(count)
-      `)
+      .select('id, name, description, open_date, close_date, duration_minutes, max_attempts, status, leaderboard_published_at, leaderboard_published_by, created_by, updated_by, created_at, updated_at')
       .order('created_at', { ascending: false })
 
     // Filter by status if provided
@@ -71,6 +67,37 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    // Fetch question counts separately
+    const challengeIds = (challenges || []).map((c: any) => c.id)
+    let questionCountMap: Record<string, number> = {}
+
+    if (challengeIds.length > 0) {
+      // Use RPC to count questions per challenge efficiently
+      const { data: questionCounts, error: countError } = await supabase
+        .from('challenge_questions')
+        .select('challenge_id')
+
+      if (!countError && questionCounts) {
+        questionCounts.forEach((qc: any) => {
+          questionCountMap[qc.challenge_id] = (questionCountMap[qc.challenge_id] || 0) + 1
+        })
+      }
+    }
+
+    // Fetch creator names separately
+    const creatorIds = [...new Set((challenges || []).map((c: any) => c.created_by))]
+    const creatorNameMap: Record<string, string> = {}
+    if (creatorIds.length > 0) {
+      const { data: creators } = await supabase
+        .from('users')
+        .select('id, name')
+        .in('id', creatorIds)
+
+      creators?.forEach((creator: any) => {
+        creatorNameMap[creator.id] = creator.name
+      })
+    }
+
     // Format response
     const formattedChallenges: Challenge[] = (challenges || []).map((c: any) => ({
       id: c.id,
@@ -87,8 +114,8 @@ export async function GET(request: NextRequest) {
       updated_by: c.updated_by,
       created_at: c.created_at,
       updated_at: c.updated_at,
-      question_count: c._count?.[0]?.count || 0,
-      creator_name: c.creator?.name,
+      question_count: questionCountMap[c.id] || 0,
+      creator_name: creatorNameMap[c.created_by],
     }))
 
     return NextResponse.json({

@@ -47,7 +47,7 @@ export async function GET(
     // Check if challenge exists and user has access
     const { data: challenge } = await supabase
       .from('challenges')
-      .select('id, status, created_by')
+      .select('id, status')
       .eq('id', challengeId)
       .single()
 
@@ -113,7 +113,7 @@ export async function POST(
     // Check if challenge exists and is in draft status
     const { data: challenge } = await supabase
       .from('challenges')
-      .select('id, status')
+      .select('id, status, created_by')
       .eq('id', challengeId)
       .single()
 
