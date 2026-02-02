@@ -535,12 +535,14 @@ function parseSheetRows(
  * @param userId - Optional: User ID of who triggered the sync
  * @param userEmail - Optional: Email of user who triggered the sync
  * @param changedRows - Optional array of row numbers for incremental sync
+ * @param enableDelete - Optional: Enable deletion of orphan records (DB records not in sheet)
  */
 export async function syncQuarterlySheet(
   quarterlySheetId: string,
   userId?: string,
   userEmail?: string,
-  changedRows?: number[]
+  changedRows?: number[],
+  enableDelete?: boolean = false
 ): Promise<SyncResult> {
   const startTime = Date.now()
   const errors: string[] = []
@@ -622,6 +624,57 @@ export async function syncQuarterlySheet(
     const sanitizedSheetPipelines = sheetPipelines.map(p => sanitizeObject(p))
 
     console.log(`[Sync] Parsed ${sanitizedSheetPipelines.length} valid pipelines (sanitized)`)
+
+    // Step 3.5: DELETE MODE - Remove orphan records (if enabled)
+    let deletedCount = 0
+    if (enableDelete) {
+      console.log('[Sync] 🗑️  DELETE MODE: Identifying orphan records...')
+
+      // Get all sheet_row_numbers from fetched data
+      const actualRowNumbers = new Set(
+        sanitizedSheetPipelines.map(p => p.sheet_row_number)
+      )
+
+      console.log(`[Sync] Found ${actualRowNumbers.size} unique row numbers in sheet`)
+
+      // Fetch all pipelines for this quarterly sheet
+      const { data: allPipelines, error: fetchAllError } = await supabase
+        .from('pipelines')
+        .select('id, sheet_row_number, key')
+        .eq('quarterly_sheet_id', quarterlySheetId)
+
+      if (fetchAllError) {
+        console.error('[Sync] ⚠️  Warning: Could not fetch all pipelines for deletion check:', fetchAllError.message)
+      } else {
+        // Find orphans (DB records not in sheet)
+        const orphans = allPipelines?.filter(
+          p => !actualRowNumbers.has(p.sheet_row_number)
+        ) || []
+
+        if (orphans.length > 0) {
+          console.log(`[Sync] 🗑️  Found ${orphans.length} orphan records to delete:`)
+          orphans.forEach(o => {
+            console.log(`[Sync]    - Row ${o.sheet_row_number}: ${o.key}`)
+          })
+
+          // Delete orphans
+          const { error: deleteError } = await supabase
+            .from('pipelines')
+            .delete()
+            .in('id', orphans.map(o => o.id))
+
+          if (deleteError) {
+            console.error('[Sync] ❌ Failed to delete orphan records:', deleteError.message)
+            errors.push(`Failed to delete ${orphans.length} orphan records: ${deleteError.message}`)
+          } else {
+            deletedCount = orphans.length
+            console.log(`[Sync] ✅ Deleted ${deletedCount} orphan records`)
+          }
+        } else {
+          console.log('[Sync] ✅ No orphan records found - database is in sync with sheet')
+        }
+      }
+    }
 
     // Step 4: UPSERT MODE - Create new or update existing pipelines
     // Same sheet sync → UPDATE existing pipelines
@@ -913,7 +966,7 @@ export async function syncQuarterlySheet(
       rows_processed: sanitizedSheetPipelines.length,
       rows_created: createdCount,
       rows_updated: updatedCount, // UPSERT mode: tracks both creates and updates
-      rows_deleted: 0, // UPSERT mode: no deletes
+      rows_deleted: deletedCount, // DELETE mode: tracks deleted orphans
       processing_duration_ms: duration
     })
 
@@ -936,7 +989,7 @@ export async function syncQuarterlySheet(
       total: sanitizedSheetPipelines.length,
       created: createdCount,
       updated: updatedCount, // UPSERT mode: tracks both creates and updates
-      deleted: 0,
+      deleted: deletedCount, // DELETE mode: tracks deleted orphans
       errors,
       duration_ms: duration
     }

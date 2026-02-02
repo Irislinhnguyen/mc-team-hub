@@ -58,12 +58,14 @@ async function processSyncAsync(quarterlySheetId: string, changedRows?: number[]
     }
 
     // CRITICAL FIX: Pass arguments in correct order
-    // syncQuarterlySheet(quarterlySheetId, userId?, userEmail?, changedRows?)
+    // syncQuarterlySheet(quarterlySheetId, userId?, userEmail?, changedRows?, enableDelete?)
+    // Webhook always enables delete mode to keep database in sync with sheet
     const result = await syncQuarterlySheet(
       quarterlySheetId,
       undefined, // userId - not available from webhook
       userEmail, // userEmail from payload
-      changedRows // changedRows from payload
+      changedRows, // changedRows from payload
+      true // enableDelete - always true for webhooks to keep DB in sync with sheet
     )
 
     const duration = Date.now() - startTime

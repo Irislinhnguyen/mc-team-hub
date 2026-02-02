@@ -31,6 +31,8 @@ export async function POST(
 
   try {
     const { id } = params
+    const { searchParams } = new URL(request.url)
+    const enableDelete = searchParams.get('delete') === 'true'
 
     // Verify quarterly sheet exists and is active
     const { data: quarterlySheet, error: qsError } = await supabase
@@ -64,8 +66,12 @@ export async function POST(
       `[Manual Sync] Starting sync for Q${quarterlySheet.quarter} ${quarterlySheet.year} (${quarterlySheet.group})...`
     )
 
+    if (enableDelete) {
+      console.log(`[Manual Sync] 🗑️  DELETE MODE ENABLED - Orphan records will be removed`)
+    }
+
     // Execute sync
-    const result = await syncQuarterlySheet(id)
+    const result = await syncQuarterlySheet(id, undefined, undefined, undefined, enableDelete)
 
     const duration = Date.now() - startTime
 
