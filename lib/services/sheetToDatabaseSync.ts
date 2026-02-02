@@ -542,7 +542,7 @@ export async function syncQuarterlySheet(
   userId?: string,
   userEmail?: string,
   changedRows?: number[],
-  enableDelete?: boolean = false
+  enableDelete = false
 ): Promise<SyncResult> {
   const startTime = Date.now()
   const errors: string[] = []
