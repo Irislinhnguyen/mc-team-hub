@@ -1,21 +1,21 @@
 /**
  * Column Mapping Configuration for SEA_Sales Google Sheet
  *
- * DIFFERENT from CS sheet in columns 4-6, 9-14, 23-26, and 34-35
+ * Updated: 2025-02-02 - Major column restructure
  *
  * Spreadsheet ID: 1LGZxn4_pJwsS5LDBgkHT6BDU0E3XQmTsjMnR3ziuYSM
  * Sheet: SEA_Sales
  *
- * Key Differences from CS:
- * - Columns 4-6: PID at E (not metadata), Publisher at F, MA/MI at G (not F)
- * - Columns 9-12: Product (J), Channel (K), Region (L), Competitors (M) - different from CS
- * - Column 13-14: Pipeline Quarter at N (metadata), Pipeline detail at O
- * - Column 15: Duplicate "Product" header - SKIP THIS COLUMN
- * - Revenue columns start at 16 (Q), not 15 (P)
- * - Action fields (24-26): Different order from CS
- * - ZID at column 34 (AI), not column 9 like CS
- * - Status dates (34-35): zid, c_plus_upgrade (NOT ready_to_deliver_date, closed_date)
- * - ready_to_deliver_date and closed_date are NULL for Sales (not in sheet)
+ * Current Structure (2025-02-02):
+ * - ZID moved to column 9 (J) - was at column 34
+ * - Region field removed (was at column 11)
+ * - MA/MI at column 4 (E), PID at 5 (F), Publisher at 6 (G)
+ * - Product at column 14 (O)
+ * - Action fields at columns 22-24 (skip 26 - duplicate Action Progress)
+ * - Timeline fields at columns 27-34 (ready_to_deliver_date, closed_date now included)
+ * - c_plus_upgrade removed (was at column 35)
+ * - Quarterly columns at 35-48
+ * - Monthly data starts at 49, 64, 79
  */
 
 /**
@@ -24,67 +24,62 @@
  */
 const COLUMN_MAPPING = {
   // ============================================
-  // Basic Info (0-14) - DIFFERENT from CS!
+  // Basic Info (0-14)
   // ============================================
   0: { field: 'key', type: 'string', required: true },           // A: key
   1: { field: 'classification', type: 'string' },                // B: Classification
   2: { field: 'poc', type: 'string', required: true },           // C: AM (Account Manager)
   3: { field: 'team', type: 'string' },                          // D: Team
-  4: { field: 'pid', type: 'string' },                           // E: PID (Sales-specific!)
-  5: { field: 'publisher', type: 'string', required: true },     // F: Publisher
-  // Column 6 (G: MA/MI) - stored in metadata
+  4: { field: 'ma_mi', type: 'string' },                         // E: MA/MI
+  5: { field: 'pid', type: 'string' },                           // F: PID
+  6: { field: 'publisher', type: 'string', required: true },     // G: Publisher
   7: { field: 'mid', type: 'string' },                           // H: MID/siteID
   8: { field: 'domain', type: 'string' },                        // I: domain
-  9: { field: 'product', type: 'string' },                       // J: Product (Sales-specific!)
+  9: { field: 'zid', type: 'string' },                           // J: ZID (moved from col 34!)
   10: { field: 'channel', type: 'string' },                      // K: Channel
-  11: { field: 'region', type: 'string' },                       // L: Region
-  12: { field: 'competitors', type: 'string' },                  // M: Competitors
-  // Column 13 (N: Pipeline Quarter) - stored in metadata
-  14: { field: 'description', type: 'string' },                  // O: Pipeline detail
-  // Column 15 (P): Duplicate "Product" header - SKIP
-
-  // Revenue Metrics - Start at column 16 (Q) due to skipped column 15
-  16: { field: 'day_gross', type: 'decimal' },                   // Q: day gross
-  17: { field: 'day_net_rev', type: 'decimal' },                 // R: day net rev
-  18: { field: 'imp', type: 'bigint' },                          // S: IMP (30days)
-  19: { field: 'ecpm', type: 'decimal' },                        // T: eCPM
-  20: { field: 'max_gross', type: 'decimal' },                   // U: Max Gross
-  21: { field: 'revenue_share', type: 'decimal' },               // V: R/S
-  // Column 22 (W: logic of Estimation) - stored in metadata
-  23: { field: 'action_date', type: 'date' },                    // X: Action Date
+  11: { field: 'competitors', type: 'string' },                  // L: Competitors
+  // Column 12 (M: Pipeline Quarter) - stored in metadata
+  13: { field: 'description', type: 'string' },                  // N: Pipeline detail
+  14: { field: 'product', type: 'string' },                      // O: Product
 
   // ============================================
-  // ⚠️ SALES-SPECIFIC: Action Fields (24-26)
-  // DIFFERENT ORDER from CS!
+  // Daily Metrics (15-20)
   // ============================================
-  24: { field: 'next_action', type: 'string' },                  // Y: Next Action
-  25: { field: 'action_detail', type: 'string' },                // Z: DETAIL
-  26: { field: 'action_progress', type: 'string' },              // AA: Action Progress
-  // Column 27 (AB: Update Target) - stored in metadata
+  15: { field: 'day_gross', type: 'decimal' },                   // P: day gross
+  16: { field: 'day_net_rev', type: 'decimal' },                 // Q: day net rev
+  17: { field: 'imp', type: 'bigint' },                          // R: IMP (30days)
+  18: { field: 'ecpm', type: 'decimal' },                        // S: eCPM
+  19: { field: 'max_gross', type: 'decimal' },                   // T: Max Gross
+  20: { field: 'revenue_share', type: 'decimal' },               // U: R/S
+  // Column 21 (V: Action Date) - stored in metadata
 
   // ============================================
-  // Status & Timeline (28-33) - Shifted by 1 from original
+  // Action Fields (22-24) - skip column 26 (duplicate)
   // ============================================
-  28: { field: 'starting_date', type: 'date' },                  // AC: Starting Date
-  29: { field: 'status', type: 'string', default: '【E】' },     // AD: Status
-  30: { field: 'progress_percent', type: 'integer' },            // AE: %
-  31: { field: 'proposal_date', type: 'date' },                  // AF: Date of first proposal
-  32: { field: 'interested_date', type: 'date' },                // AG: Interested date (C/C-)
-  33: { field: 'acceptance_date', type: 'date' },                // AH: Acceptance date (B)
+  22: { field: 'next_action', type: 'string' },                  // W: Next Action
+  23: { field: 'action_detail', type: 'string' },                // X: DETAIL
+  24: { field: 'action_progress', type: 'string' },              // Y: Action Progress
+  // Column 25 (Z: Update Target) - stored in metadata
+  // Column 26 (AA: Action Progress) - DUPLICATE, SKIP
 
   // ============================================
-  // ⚠️ SALES-SPECIFIC: ZID and C+↑ (34-35)
-  // COMPLETELY DIFFERENT from CS!
-  // ready_to_deliver_date and closed_date are NOT in Sales sheet
+  // Timeline (27-34)
   // ============================================
-  34: { field: 'zid', type: 'string' },                          // AI: ZID
-  35: { field: 'c_plus_upgrade', type: 'string' },               // AJ: C+↑
+  27: { field: 'starting_date', type: 'date' },                  // AB: Starting Date
+  28: { field: 'status', type: 'string', default: '【E】' },     // AC: Status
+  29: { field: 'progress_percent', type: 'integer' },            // AD: %
+  30: { field: 'proposal_date', type: 'date' },                  // AE: Date of first proposal
+  31: { field: 'interested_date', type: 'date' },                // AF: Interested date
+  32: { field: 'acceptance_date', type: 'date' },                // AG: Acceptance date
+  33: { field: 'ready_to_deliver_date', type: 'date' },          // AH: 【A】
+  34: { field: 'closed_date', type: 'date' },                    // AI: 【Z】
 
   // ============================================
-  // Quarter Summary (36-37) - Now enabled!
+  // Quarterly Summary (35-48) - c_plus_upgrade removed
   // ============================================
-  36: { field: 'q_gross', type: 'decimal' },                     // AK: GR (Q粗利)
-  37: { field: 'q_net_rev', type: 'decimal' },                   // AL: NR (Q純収益)
+  35: { field: 'q_gross', type: 'decimal' },                     // AJ: GR
+  36: { field: 'q_net_rev', type: 'decimal' },                   // AK: NR
+  // Columns 37-48: Quarterly breakdown (not mapped to DB fields)
 }
 
 /**
@@ -107,7 +102,7 @@ const MONTHLY_COLUMNS = {
     field: 'delivery_days'
   },
 
-  // Validation flags: Columns CB-CP (79-93)
+  // Validation flags: Columns CB-CO (79-93)
   validation: {
     start: 79,
     count: 15,
@@ -144,12 +139,21 @@ const DEFAULT_VALUES = {
 }
 
 /**
- * Fields that exist in CS but NOT in Sales sheet
- * These will be set to NULL for Sales pipelines
+ * Metadata fields that are stored in the metadata JSONB column
+ * instead of as direct database columns
  */
-const SALES_NULL_FIELDS = [
-  'ready_to_deliver_date',  // CS column AH (33) - Sales has ZID instead
-  'closed_date'             // CS column AI (34) - Sales has C+↑ instead
+const METADATA_FIELDS = [
+  'ma_mi',              // Column 4 (E)
+  'pipeline_quarter',   // Column 12 (M)
+  'action_date',        // Column 21 (V)
+  'update_target'       // Column 25 (Z)
+]
+
+/**
+ * Fields to skip (not mapped to database)
+ */
+const SKIP_COLUMNS = [
+  26  // Column AA: Duplicate "Action Progress" - skip this
 ]
 
 module.exports = {
@@ -157,5 +161,6 @@ module.exports = {
   MONTHLY_COLUMNS,
   VALID_STATUSES,
   DEFAULT_VALUES,
-  SALES_NULL_FIELDS
+  METADATA_FIELDS,
+  SKIP_COLUMNS
 }
