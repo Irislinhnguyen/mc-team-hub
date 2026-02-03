@@ -392,10 +392,7 @@ export async function POST(request: NextRequest) {
     const newSlotLevel3 = validatePipelineIds(newSlotLevel3Raw, { requirePid: true, requireMid: true })
     if (newSlotLevel3.length > 0) {
       const rows = newSlotLevel3.map(p => {
-          const zones = p.affected_zones!.map(z => {
-            const num = Number(z)
-            return isNaN(num) ? `'${z}'` : String(num)
-          }).join(', ')
+          const zones = p.affected_zones!.map(z => `'${z}'`).join(', ')
           const sDate = new Date(p.actual_starting_date)
           const maxEndDate = new Date(sDate)
           maxEndDate.setDate(sDate.getDate() + 29) // 30 days total
@@ -410,7 +407,7 @@ export async function POST(request: NextRequest) {
       FROM new_slot_level3_pipelines p
       CROSS JOIN UNNEST(p.zones) as zone_id
       INNER JOIN \`gcpp-check.GI_publisher.agg_monthly_with_pic_table_6_month\` agg
-        ON agg.pid = p.pid AND agg.mid = p.mid AND agg.zid = zone_id
+        ON agg.pid = p.pid AND agg.mid = p.mid AND CAST(agg.zid AS STRING) = zone_id
         AND agg.DATE >= DATE(p.start_date) AND agg.DATE <= DATE(p.end_date)
       GROUP BY p.pid, p.mid, p.pipeline_id
     )`)
@@ -481,10 +478,7 @@ export async function POST(request: NextRequest) {
     const existingSlotLevel3 = validatePipelineIds(existingSlotLevel3Raw, { requirePid: true, requireMid: true })
     if (existingSlotLevel3.length > 0) {
       const rows = existingSlotLevel3.map(p => {
-        const zones = p.affected_zones!.map(z => {
-          const num = Number(z)
-          return isNaN(num) ? `'${z}'` : String(num)
-        }).join(', ')
+        const zones = p.affected_zones!.map(z => `'${z}'`).join(', ')
         const sDate = new Date(p.actual_starting_date)
 
         const baselineStart = new Date(sDate)
@@ -508,7 +502,7 @@ export async function POST(request: NextRequest) {
       FROM existing_slot_level3_pipelines p
       CROSS JOIN UNNEST(p.zones) as zone_id
       INNER JOIN \`gcpp-check.GI_publisher.agg_monthly_with_pic_table_6_month\` agg
-        ON agg.pid = p.pid AND agg.mid = p.mid AND agg.zid = zone_id
+        ON agg.pid = p.pid AND agg.mid = p.mid AND CAST(agg.zid AS STRING) = zone_id
         AND ((agg.DATE >= DATE(p.baseline_start) AND agg.DATE <= DATE(p.baseline_end)) OR (agg.DATE >= DATE(p.after_start) AND agg.DATE <= DATE(p.after_end)))
       GROUP BY p.pid, p.mid, p.pipeline_id
     )`)
@@ -598,10 +592,7 @@ export async function POST(request: NextRequest) {
     const newSlotMidZid = validatePipelineIds(newSlotMidZidRaw, { requirePid: false, requireMid: true })
     if (newSlotMidZid.length > 0) {
       const rows = newSlotMidZid.map(p => {
-        const zones = p.affected_zones!.map(z => {
-          const num = Number(z)
-          return isNaN(num) ? `'${z}'` : String(num)
-        }).join(', ')
+        const zones = p.affected_zones!.map(z => `'${z}'`).join(', ')
         const sDate = new Date(p.actual_starting_date)
         const maxEndDate = new Date(sDate)
         maxEndDate.setDate(sDate.getDate() + 29) // 30 days total
@@ -616,7 +607,7 @@ export async function POST(request: NextRequest) {
       FROM new_slot_mid_zid_pipelines p
       CROSS JOIN UNNEST(p.zones) as zone_id
       INNER JOIN \`gcpp-check.GI_publisher.agg_monthly_with_pic_table_6_month\` agg
-        ON agg.mid = p.mid AND agg.zid = zone_id
+        ON agg.mid = p.mid AND CAST(agg.zid AS STRING) = zone_id
         AND agg.DATE >= DATE(p.start_date) AND agg.DATE <= DATE(p.end_date)
       GROUP BY p.mid, p.pipeline_id
     )`)
@@ -661,10 +652,7 @@ export async function POST(request: NextRequest) {
     const existingSlotMidZid = validatePipelineIds(existingSlotMidZidRaw, { requirePid: false, requireMid: true })
     if (existingSlotMidZid.length > 0) {
       const rows = existingSlotMidZid.map(p => {
-        const zones = p.affected_zones!.map(z => {
-          const num = Number(z)
-          return isNaN(num) ? `'${z}'` : String(num)
-        }).join(', ')
+        const zones = p.affected_zones!.map(z => `'${z}'`).join(', ')
         const sDate = new Date(p.actual_starting_date)
 
         const baselineStart = new Date(sDate)
@@ -688,7 +676,7 @@ export async function POST(request: NextRequest) {
       FROM existing_slot_mid_zid_pipelines p
       CROSS JOIN UNNEST(p.zones) as zone_id
       INNER JOIN \`gcpp-check.GI_publisher.agg_monthly_with_pic_table_6_month\` agg
-        ON agg.mid = p.mid AND agg.zid = zone_id
+        ON agg.mid = p.mid AND CAST(agg.zid AS STRING) = zone_id
         AND ((agg.DATE >= DATE(p.baseline_start) AND agg.DATE <= DATE(p.baseline_end)) OR (agg.DATE >= DATE(p.after_start) AND agg.DATE <= DATE(p.after_end)))
       GROUP BY p.mid, p.pipeline_id
     )`)
@@ -751,10 +739,9 @@ export async function POST(request: NextRequest) {
         const actualEndDate = maxEndDate <= now ? maxEndDate : now // Use available data
 
         // Create one row per zone
-        return p.affected_zones!.map(zone => {
-          const zoneValue = isNaN(Number(zone)) ? `'${zone}'` : zone
-          return `SELECT ${zoneValue} as zid, '${p.id}' as pipeline_id, '${formatDateForBQ(sDate)}' as start_date, '${formatDateForBQ(actualEndDate)}' as end_date`
-        })
+        return p.affected_zones!.map(zone =>
+          `SELECT '${zone}' as zid, '${p.id}' as pipeline_id, '${formatDateForBQ(sDate)}' as start_date, '${formatDateForBQ(actualEndDate)}' as end_date`
+        )
       }).join(' UNION ALL\n      ')
 
       cteSections.push(`new_slot_zid_pipelines AS (\n      ${rows}\n    )`)
@@ -762,7 +749,7 @@ export async function POST(request: NextRequest) {
       SELECT NULL as pid, NULL as mid, p.pipeline_id, SUM(agg.rev) as actual_revenue, 'zid' as granularity, 'new_slot' as slot_type
       FROM new_slot_zid_pipelines p
       INNER JOIN \`gcpp-check.GI_publisher.agg_monthly_with_pic_table_6_month\` agg
-        ON agg.zid = p.zid
+        ON CAST(agg.zid AS STRING) = p.zid
         AND agg.DATE >= DATE(p.start_date) AND agg.DATE <= DATE(p.end_date)
       GROUP BY p.pipeline_id
     )`)
@@ -789,10 +776,9 @@ export async function POST(request: NextRequest) {
         afterEnd.setDate(sDate.getDate() + 29)
 
         // Create one row per zone
-        return p.affected_zones!.map(zone => {
-          const zoneValue = isNaN(Number(zone)) ? `'${zone}'` : zone
-          return `SELECT ${zoneValue} as zid, '${p.id}' as pipeline_id, '${formatDateForBQ(baselineStart)}' as baseline_start, '${formatDateForBQ(baselineEnd)}' as baseline_end, '${formatDateForBQ(afterStart)}' as after_start, '${formatDateForBQ(afterEnd)}' as after_end`
-        })
+        return p.affected_zones!.map(zone =>
+          `SELECT '${zone}' as zid, '${p.id}' as pipeline_id, '${formatDateForBQ(baselineStart)}' as baseline_start, '${formatDateForBQ(baselineEnd)}' as baseline_end, '${formatDateForBQ(afterStart)}' as after_start, '${formatDateForBQ(afterEnd)}' as after_end`
+        )
       }).join(' UNION ALL\n      ')
 
       cteSections.push(`existing_slot_zid_pipelines AS (\n      ${rows}\n    )`)
@@ -803,7 +789,7 @@ export async function POST(request: NextRequest) {
         'zid' as granularity, 'existing_slot' as slot_type
       FROM existing_slot_zid_pipelines p
       INNER JOIN \`gcpp-check.GI_publisher.agg_monthly_with_pic_table_6_month\` agg
-        ON agg.zid = p.zid
+        ON CAST(agg.zid AS STRING) = p.zid
         AND ((agg.DATE >= DATE(p.baseline_start) AND agg.DATE <= DATE(p.baseline_end)) OR (agg.DATE >= DATE(p.after_start) AND agg.DATE <= DATE(p.after_end)))
       GROUP BY p.pipeline_id
     )`)
