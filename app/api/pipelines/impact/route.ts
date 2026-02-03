@@ -392,7 +392,10 @@ export async function POST(request: NextRequest) {
     const newSlotLevel3 = validatePipelineIds(newSlotLevel3Raw, { requirePid: true, requireMid: true })
     if (newSlotLevel3.length > 0) {
       const rows = newSlotLevel3.map(p => {
-          const zones = p.affected_zones!.map(z => `'${z}'`).join(', ')
+          const zones = p.affected_zones!.map(z => {
+            const num = Number(z)
+            return isNaN(num) ? `'${z}'` : String(num)
+          }).join(', ')
           const sDate = new Date(p.actual_starting_date)
           const maxEndDate = new Date(sDate)
           maxEndDate.setDate(sDate.getDate() + 29) // 30 days total
@@ -478,7 +481,10 @@ export async function POST(request: NextRequest) {
     const existingSlotLevel3 = validatePipelineIds(existingSlotLevel3Raw, { requirePid: true, requireMid: true })
     if (existingSlotLevel3.length > 0) {
       const rows = existingSlotLevel3.map(p => {
-        const zones = p.affected_zones!.map(z => `'${z}'`).join(', ')
+        const zones = p.affected_zones!.map(z => {
+          const num = Number(z)
+          return isNaN(num) ? `'${z}'` : String(num)
+        }).join(', ')
         const sDate = new Date(p.actual_starting_date)
 
         const baselineStart = new Date(sDate)
@@ -592,7 +598,10 @@ export async function POST(request: NextRequest) {
     const newSlotMidZid = validatePipelineIds(newSlotMidZidRaw, { requirePid: false, requireMid: true })
     if (newSlotMidZid.length > 0) {
       const rows = newSlotMidZid.map(p => {
-        const zones = p.affected_zones!.map(z => `'${z}'`).join(', ')
+        const zones = p.affected_zones!.map(z => {
+          const num = Number(z)
+          return isNaN(num) ? `'${z}'` : String(num)
+        }).join(', ')
         const sDate = new Date(p.actual_starting_date)
         const maxEndDate = new Date(sDate)
         maxEndDate.setDate(sDate.getDate() + 29) // 30 days total
@@ -652,7 +661,10 @@ export async function POST(request: NextRequest) {
     const existingSlotMidZid = validatePipelineIds(existingSlotMidZidRaw, { requirePid: false, requireMid: true })
     if (existingSlotMidZid.length > 0) {
       const rows = existingSlotMidZid.map(p => {
-        const zones = p.affected_zones!.map(z => `'${z}'`).join(', ')
+        const zones = p.affected_zones!.map(z => {
+          const num = Number(z)
+          return isNaN(num) ? `'${z}'` : String(num)
+        }).join(', ')
         const sDate = new Date(p.actual_starting_date)
 
         const baselineStart = new Date(sDate)
@@ -739,9 +751,10 @@ export async function POST(request: NextRequest) {
         const actualEndDate = maxEndDate <= now ? maxEndDate : now // Use available data
 
         // Create one row per zone
-        return p.affected_zones!.map(zone =>
-          `SELECT '${zone}' as zid, '${p.id}' as pipeline_id, '${formatDateForBQ(sDate)}' as start_date, '${formatDateForBQ(actualEndDate)}' as end_date`
-        )
+        return p.affected_zones!.map(zone => {
+          const zoneValue = isNaN(Number(zone)) ? `'${zone}'` : zone
+          return `SELECT ${zoneValue} as zid, '${p.id}' as pipeline_id, '${formatDateForBQ(sDate)}' as start_date, '${formatDateForBQ(actualEndDate)}' as end_date`
+        })
       }).join(' UNION ALL\n      ')
 
       cteSections.push(`new_slot_zid_pipelines AS (\n      ${rows}\n    )`)
@@ -776,9 +789,10 @@ export async function POST(request: NextRequest) {
         afterEnd.setDate(sDate.getDate() + 29)
 
         // Create one row per zone
-        return p.affected_zones!.map(zone =>
-          `SELECT '${zone}' as zid, '${p.id}' as pipeline_id, '${formatDateForBQ(baselineStart)}' as baseline_start, '${formatDateForBQ(baselineEnd)}' as baseline_end, '${formatDateForBQ(afterStart)}' as after_start, '${formatDateForBQ(afterEnd)}' as after_end`
-        )
+        return p.affected_zones!.map(zone => {
+          const zoneValue = isNaN(Number(zone)) ? `'${zone}'` : zone
+          return `SELECT ${zoneValue} as zid, '${p.id}' as pipeline_id, '${formatDateForBQ(baselineStart)}' as baseline_start, '${formatDateForBQ(baselineEnd)}' as baseline_end, '${formatDateForBQ(afterStart)}' as after_start, '${formatDateForBQ(afterEnd)}' as after_end`
+        })
       }).join(' UNION ALL\n      ')
 
       cteSections.push(`existing_slot_zid_pipelines AS (\n      ${rows}\n    )`)
