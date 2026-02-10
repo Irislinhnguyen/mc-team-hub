@@ -187,14 +187,17 @@ function rowToCsv(row: ZoneCsvRow): string {
  * @returns CSV string with header row
  */
 export function generateZoneCsv(zones: ZoneCsvRow[]): string {
+  const bom = '\uFEFF' // UTF-8 BOM for Excel compatibility
+
   if (zones.length === 0) {
-    return CSV_HEADERS.join(',')
+    return bom + CSV_HEADERS.join(',')
   }
 
   const header = CSV_HEADERS.join(',')
   const rows = zones.map(rowToCsv).join('\n')
 
-  return `${header}\n${rows}`
+  // Add UTF-8 BOM at the beginning for Excel compatibility
+  return bom + `${header}\n${rows}`
 }
 
 /**
