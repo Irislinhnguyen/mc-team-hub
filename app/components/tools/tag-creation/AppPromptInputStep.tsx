@@ -34,6 +34,7 @@ export function AppPromptInputStep({
 }: AppPromptInputStepProps) {
   // Input fields
   const [selectedMid, setSelectedMid] = useState('')
+  const [manualMid, setManualMid] = useState('')
   const [zoneUrl, setZoneUrl] = useState('')
   const [prompt, setPrompt] = useState('Create 3 reward zones with FP: 0.4, 0.12, 0.67 respectively - add "_pack 1" at the end of each zone name, and 2 interstitial zones with FP: 0.85, 0.90 - add "_pack 2" at the end')
   const [payoutRate, setPayoutRate] = useState('0.85')
@@ -48,9 +49,11 @@ export function AppPromptInputStep({
     if (selectedMid && step0Data?.byMid[selectedMid]) {
       const mediaData = step0Data.byMid[selectedMid]
       setZoneUrl(mediaData.siteUrl || '')
+      setManualMid(selectedMid) // Auto-fill MID input
     } else if (!selectedMid) {
       // Clear if no MID selected
       setZoneUrl('')
+      // Don't clear manualMid - let user keep typing
     }
   }, [selectedMid, step0Data])
 
@@ -85,8 +88,8 @@ export function AppPromptInputStep({
 
   const handleAddZones = async () => {
     // Validation
-    if (!selectedMid && availableMids.length > 0) {
-      setError('Please select a MID from Step 0, or enter Zone URL manually')
+    if (!manualMid.trim()) {
+      setError('Please enter a MID (Media ID)')
       return
     }
 
@@ -144,7 +147,7 @@ export function AppPromptInputStep({
 
       // Notify parent (will accumulate zones - NO CSV download yet)
       if (onAddMidZones) {
-        onAddMidZones(selectedMid || 'manual', siteAppName, actualZones, zoneUrl, payoutRate)
+        onAddMidZones(manualMid, siteAppName, actualZones, zoneUrl, payoutRate)
       }
 
       // Extract App ID from URL and pass to Step 3
@@ -163,6 +166,7 @@ export function AppPromptInputStep({
       // Clear inputs for next MID
       setSelectedMid('')
       setZoneUrl('')
+      setManualMid('') // Also clear MID input
     } catch (err: any) {
       console.error('Error generating zones:', err)
       setError(err.message)
@@ -258,6 +262,24 @@ export function AppPromptInputStep({
             </Select>
           </div>
         )}
+
+        {/* MID Input - Always Visible */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700 block">
+            MID (Media ID) <span className="text-red-500">*</span>
+          </label>
+          <Input
+            value={manualMid}
+            onChange={(e) => {
+              setManualMid(e.target.value)
+              setError(null)
+            }}
+            placeholder="Enter MID (e.g., 12345)"
+          />
+          {selectedMid && selectedMid === manualMid && (
+            <p className="text-xs text-green-600">Auto-filled from Step 0</p>
+          )}
+        </div>
 
         {/* Row 1: Zone URL and Payout Rate */}
         <div className="grid grid-cols-2 gap-4">

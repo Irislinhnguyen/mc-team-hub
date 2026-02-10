@@ -108,6 +108,7 @@ export function WebPromptInputStep({
   onRemoveMid,
 }: WebPromptInputStepProps) {
   const [selectedMid, setSelectedMid] = useState('')
+  const [manualMid, setManualMid] = useState('')
   const [mediaName, setMediaName] = useState('')
   const [products, setProducts] = useState<{label: string, value: string}[]>([])
   const [selectedProducts, setSelectedProducts] = useState<ProductSelection[]>([])
@@ -129,8 +130,10 @@ export function WebPromptInputStep({
     if (selectedMid && step0Data?.byMid[selectedMid]) {
       const mediaData = step0Data.byMid[selectedMid]
       setMediaName(mediaData.siteAppName || '')
+      setManualMid(selectedMid) // Auto-fill MID input
     } else if (!selectedMid) {
       setMediaName('')
+      // Don't clear manualMid - let user keep typing
     }
   }, [selectedMid, step0Data])
 
@@ -298,8 +301,8 @@ export function WebPromptInputStep({
   // Add zones for selected MID
   const handleAddZones = async () => {
     // Validation
-    if (!selectedMid && availableMids.length > 0) {
-      setError('Please select a MID from Step 0, or enter Media Name manually')
+    if (!manualMid.trim()) {
+      setError('Please enter a MID (Media ID)')
       return
     }
 
@@ -359,7 +362,7 @@ export function WebPromptInputStep({
 
       // Notify parent (will accumulate zones - NO CSV download yet)
       if (onAddMidZones) {
-        onAddMidZones(selectedMid || 'manual', mediaName, placeholderZones, mediaName, payoutRate)
+        onAddMidZones(manualMid, mediaName, placeholderZones, mediaName, payoutRate)
       }
 
       onComplete([], undefined, mediaName, payoutRate)
@@ -367,6 +370,7 @@ export function WebPromptInputStep({
       // Clear inputs for next MID
       setSelectedMid('')
       setMediaName('')
+      setManualMid('') // Also clear MID input
       setSelectedProducts([])
       setAiPrompt('')
     } catch (err: any) {
@@ -443,6 +447,24 @@ export function WebPromptInputStep({
             </Select>
           </div>
         )}
+
+        {/* MID Input - Always Visible */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700 block">
+            MID (Media ID) <span className="text-red-500">*</span>
+          </label>
+          <Input
+            value={manualMid}
+            onChange={(e) => {
+              setManualMid(e.target.value)
+              setError(null)
+            }}
+            placeholder="Enter MID (e.g., 12345)"
+          />
+          {selectedMid && selectedMid === manualMid && (
+            <p className="text-xs text-green-600">Auto-filled from Step 0</p>
+          )}
+        </div>
 
         {/* Row 1: Media Name, Payout Rate, and Products */}
         <div className="grid grid-cols-3 gap-4">
