@@ -31,7 +31,7 @@ export function RevenueForecastTable({ pipelines }: RevenueForecastTableProps) {
       // Handle quarter that crosses year boundary (Q4: Jan-Mar)
       if (targetMonth > 12) {
         targetMonth -= 12
-        targetYear += 1
+        targetYear += 1 // Increment year when we cross into January
       }
 
       const targetDate = new Date(targetYear, targetMonth - 1, 1)
