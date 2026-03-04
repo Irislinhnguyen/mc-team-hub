@@ -129,7 +129,8 @@ const COLUMN_MAPPING_SALES = {
   1: { field: 'classification', type: 'string' },
   2: { field: 'poc', type: 'string', required: true },
   3: { field: 'team', type: 'string' },
-  4: { field: 'ma_mi', type: 'string' },                     // E: MA/MI
+  // TEMPORARY: Skip ma_mi (column E) until database column is added
+  // 4: { field: 'ma_mi', type: 'string' },                 // E: MA/MI
   5: { field: 'pid', type: 'string' },                       // F: PID
   6: { field: 'publisher', type: 'string', required: true }, // G: Publisher
   7: { field: 'mid', type: 'string' },                       // H: MID/siteID
@@ -460,25 +461,55 @@ function parseSheetRows(
 ): PipelineRow[] {
   const pipelines: PipelineRow[] = []
 
+  // Detailed tracking
+  let emptyRowCount = 0
+  let noKeyCount = 0
+  let validationFailCount = 0
+  let transformFailCount = 0
+  let successCount = 0
+
+  console.log(`[ParseSheetRows] Processing ${rows.length} rows from ${group} sheet...`)
+
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
     const sheetRowNumber = i + 3 // Row 3 is first data row
 
     // Skip empty rows (check if columns A, B, C are all empty)
-    if (!row[0] && !row[1] && !row[2]) continue
-
-    // Skip rows without key (Column A)
-    // Fix: Check for null/undefined first, then check if empty string
-    // This allows keys like "0" or "0001" which are falsy but valid
-    if (row[0] == null || (typeof row[0] === 'string' && row[0].trim() === '')) {
-      console.warn(`Row ${sheetRowNumber}: Skipping - no key in Column A`)
+    if (!row[0] && !row[1] && !row[2]) {
+      emptyRowCount++
+      if (emptyRowCount <= 5) { // Log first 5 examples
+        console.log(`Row ${sheetRowNumber}: Skipping empty row (A,B,C all empty)`)
+      }
       continue
+    }
+
+    // Skip rows without key (Column A) - BUT be more tolerant for new rows
+    // New rows might have empty keys initially, so check if the row has other meaningful data
+    const hasKey = row[0] != null && (typeof row[0] !== 'string' || row[0].trim() !== '')
+    const hasOtherData = row[6] || row[5] // Check if Publisher (Col G) or PID (Col F) exists
+
+    if (!hasKey && !hasOtherData) {
+      // Only skip if BOTH key and other data are missing (truly empty row)
+      emptyRowCount++
+      if (emptyRowCount <= 5) {
+        console.log(`Row ${sheetRowNumber}: Skipping empty row (no key, no publisher/pid)`)
+      }
+      continue
+    }
+
+    // For rows with data but no key, generate a temporary key
+    if (!hasKey) {
+      console.log(`Row ${sheetRowNumber}: No key found, but has data - will generate temp key`)
+      // Continue processing - the transformer will handle missing keys
     }
 
     // Validate row structure before transformation
     const validation = validateRowStructure(row, group)
     if (!validation.valid) {
-      console.error(`Row ${sheetRowNumber}: ${validation.error}`)
+      validationFailCount++
+      if (validationFailCount <= 5) { // Log first 5 examples
+        console.error(`Row ${sheetRowNumber}: ${validation.error}`)
+      }
       continue
     }
 
@@ -501,30 +532,55 @@ function parseSheetRows(
       sanitizedPipeline.fiscal_year = fiscalYear
 
       // Ensure key is set from Column A (sanitize it!)
-      if (!sanitizedPipeline.key) {
-        sanitizedPipeline.key = sanitizeCellValue(row[0]?.toString()?.trim() || '')
+      // For new rows without keys, generate a temporary key based on available data
+      if (!sanitizedPipeline.key || sanitizedPipeline.key.trim() === '') {
+        const colAValue = sanitizeCellValue(row[0]?.toString()?.trim() || '')
+
+        if (colAValue) {
+          sanitizedPipeline.key = colAValue
+        } else {
+          // Generate temporary key for new rows
+          const publisher = sanitizedPipeline.publisher?.substring(0, 3).toUpperCase() || 'NEW'
+          const pid = sanitizedPipeline.pid?.substring(0, 3) || 'XXX'
+          const tempKey = `TEMP-${publisher}-${pid}-${sheetRowNumber}`
+          sanitizedPipeline.key = tempKey
+          console.log(`Row ${sheetRowNumber}: Generated temporary key: ${tempKey}`)
+        }
       }
 
       // CRITICAL: Sanitize again after adding new fields
       const finalPipeline = sanitizeObject(sanitizedPipeline)
 
       pipelines.push(finalPipeline)
+      successCount++
     } catch (error: any) {
       // Enhanced error logging for debugging
-      console.error(`\n❌ Row ${sheetRowNumber}: Transformation failed`)
-      console.error(`   Key (Col A): ${row[0]}`)
-      console.error(`   Publisher (Col G): ${row[6]}`)
-      console.error(`   Row length: ${row.length} columns`)
-      console.error(`   Error: ${error.message}`)
+      transformFailCount++
+      if (transformFailCount <= 5) { // Log first 5 examples
+        console.error(`\n❌ Row ${sheetRowNumber}: Transformation failed`)
+        console.error(`   Key (Col A): ${row[0]}`)
+        console.error(`   Publisher (Col G): ${row[6]}`)
+        console.error(`   Row length: ${row.length} columns`)
+        console.error(`   Error: ${error.message}`)
 
-      // Log first few non-null values for context
-      const nonNullValues = row.slice(0, 20).map((val, idx) =>
-        val != null ? `[${idx}]: ${String(val).substring(0, 30)}` : null
-      ).filter(Boolean)
-      console.error(`   Sample values: ${nonNullValues.slice(0, 5).join(', ')}`)
+        // Log first few non-null values for context
+        const nonNullValues = row.slice(0, 20).map((val, idx) =>
+          val != null ? `[${idx}]: ${String(val).substring(0, 30)}` : null
+        ).filter(Boolean)
+        console.error(`   Sample values: ${nonNullValues.slice(0, 5).join(', ')}`)
+      }
       continue
     }
   }
+
+  // Log detailed summary
+  console.log(`[ParseSheetRows] ✅ Processing complete:`)
+  console.log(`[ParseSheetRows]    Total rows: ${rows.length}`)
+  console.log(`[ParseSheetRows]    ✅ Success: ${successCount}`)
+  console.log(`[ParseSheetRows]    ⚠️  Skipped empty rows: ${emptyRowCount}`)
+  console.log(`[ParseSheetRows]    ⚠️  Skipped no key: ${noKeyCount}`)
+  console.log(`[ParseSheetRows]    ⚠️  Validation failed: ${validationFailCount}`)
+  console.log(`[ParseSheetRows]    ❌ Transform failed: ${transformFailCount}`)
 
   return pipelines
 }
@@ -828,37 +884,35 @@ export async function syncQuarterlySheet(
 
         console.log(`[Sync] Batch ${batchNumber}: Upserting ${validBatch.length} pipelines to database...`)
 
-        // SOLUTION: Use PostgreSQL RPC function to bypass PostgREST schema cache
-        // PostgREST has a known bug (Issue #39446) where schema cache reload doesn't fix PGRST204 errors
-        // RPC functions execute directly in PostgreSQL, bypassing PostgREST entirely
-        let rpcError
+        // TEMPORARY FIX: Use standard update until RPC function migration is applied
+        // TODO: After migration applied, switch back to RPC approach for better performance
         try {
-          const { data: rpcResult, error } = await supabase.rpc('upsert_pipelines_batch', {
-            pipelines_array: validBatch  // Pass array directly, Supabase auto-converts to JSONB
-          })
-          rpcError = error
+          // For updates, use direct UPDATE statement instead of UPSERT
+          // UPSERT with onConflict: 'id' doesn't work well for updates
+          let batchUpdatedCount = 0
+          for (const pipeline of validBatch) {
+            const { id, ...updateData } = pipeline
 
-          if (error) {
-            console.error(`[Sync] ❌ Batch ${batchNumber}: RPC error: ${error.message}`)
-            console.error(`[Sync] Details: ${error.hint}`)
-            errors.push(`Batch ${batchNumber} RPC failed: ${error.message}`)
-            continue
+            const { error: updateError } = await supabase
+              .from('pipelines')
+              .update(updateData)
+              .eq('id', id)
+
+            if (updateError) {
+              console.error(`[Sync] ❌ Failed to update pipeline ${id}: ${updateError.message}`)
+              errors.push(`Update failed for ${id}: ${updateError.message}`)
+            } else {
+              batchUpdatedCount++
+            }
           }
 
-          // Check if any individual pipelines failed
-          const failedPipelines = rpcResult?.filter((r: any) => !r.success)
-          if (failedPipelines && failedPipelines.length > 0) {
-            console.warn(`[Sync] ⚠️  Batch ${batchNumber}: ${failedPipelines.length} pipelines failed to upsert`)
-            failedPipelines.forEach((f: any) => {
-              console.warn(`[Sync]    - Pipeline ${f.id}: ${f.error_message}`)
-            })
+          if (batchUpdatedCount > 0) {
+            console.log(`[Sync] ✅ Batch ${batchNumber}: ${batchUpdatedCount}/${validBatch.length} updated successfully`)
+            updatedCount += batchUpdatedCount
           }
-
-          updatedCount += validBatch.length
-          console.log(`[Sync] ✅ Batch ${batchNumber}: ${validBatch.length} updated successfully via RPC`)
 
         } catch (e: any) {
-          console.error(`[Sync] ❌ Batch ${batchNumber}: Exception during RPC:`, e.message)
+          console.error(`[Sync] ❌ Batch ${batchNumber}: Exception during update:`, e.message)
           errors.push(`Batch ${batchNumber} exception: ${e.message}`)
           continue
         }
@@ -900,36 +954,31 @@ export async function syncQuarterlySheet(
 
         console.log(`[Sync] Batch ${batchNumber}: Inserting ${validBatch.length} pipelines...`)
 
-        // SOLUTION: Use PostgreSQL RPC function to bypass PostgREST schema cache
-        // Same approach as UPDATE - RPC executes directly in PostgreSQL
-        let rpcError
+        // TEMPORARY FIX: Use standard insert until RPC function migration is applied
+        // TODO: After migration applied, switch back to RPC approach for better performance
         try {
-          const { data: rpcResult, error } = await supabase.rpc('upsert_pipelines_batch', {
-            pipelines_array: validBatch  // Pass array directly, Supabase auto-converts to JSONB
+          // Remove 'id' field from new pipelines (let PostgreSQL generate UUID)
+          const pipelinesToInsert = validBatch.map(p => {
+            const { id, ...pipelineData } = p
+            return pipelineData
           })
-          rpcError = error
 
-          if (error) {
-            console.error(`[Sync] ❌ Batch ${batchNumber}: RPC error: ${error.message}`)
-            console.error(`[Sync] Details: ${error.hint}`)
-            errors.push(`Batch ${batchNumber} RPC failed: ${error.message}`)
+          const { data: insertedData, error: insertError } = await supabase
+            .from('pipelines')
+            .insert(pipelinesToInsert)
+
+          if (insertError) {
+            console.error(`[Sync] ❌ Batch ${batchNumber}: Insert error: ${insertError.message}`)
+            console.error(`[Sync] Details: ${insertError.hint}`)
+            errors.push(`Batch ${batchNumber} insert failed: ${insertError.message}`)
             continue
           }
 
-          // Check if any individual pipelines failed
-          const failedPipelines = rpcResult?.filter((r: any) => !r.success)
-          if (failedPipelines && failedPipelines.length > 0) {
-            console.warn(`[Sync] ⚠️  Batch ${batchNumber}: ${failedPipelines.length} pipelines failed to insert`)
-            failedPipelines.forEach((f: any) => {
-              console.warn(`[Sync]    - Pipeline ${f.id}: ${f.error_message}`)
-            })
-          }
-
           createdCount += validBatch.length
-          console.log(`[Sync] ✅ Batch ${batchNumber}: ${validBatch.length} created successfully via RPC`)
+          console.log(`[Sync] ✅ Batch ${batchNumber}: ${validBatch.length} created successfully via insert`)
 
         } catch (e: any) {
-          console.error(`[Sync] ❌ Batch ${batchNumber}: Exception during RPC:`, e.message)
+          console.error(`[Sync] ❌ Batch ${batchNumber}: Exception during insert:`, e.message)
           errors.push(`Batch ${batchNumber} exception: ${e.message}`)
           continue
         }
