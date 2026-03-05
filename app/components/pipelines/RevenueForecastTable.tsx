@@ -28,10 +28,11 @@ export function RevenueForecastTable({ pipelines }: RevenueForecastTableProps) {
       let targetMonth = quarterStartMonth + i
       let targetYear = currentYear
 
-      // Handle quarter that crosses year boundary (Q4: Jan-Mar)
+      // Handle Q4 (Jan-Mar) - fiscal calendar uses 13,14,15 for Q4 months
+      // When converting back to calendar months 1,2,3, stay in same calendar year
       if (targetMonth > 12) {
         targetMonth -= 12
-        targetYear += 1 // Increment year when we cross into January
+        // DON'T increment year - months 13,14,15 represent Jan,Feb,Mar of current year
       }
 
       const targetDate = new Date(targetYear, targetMonth - 1, 1)
