@@ -231,21 +231,12 @@ export function transformRowToPipeline(
   //   - ZID at column 9 (J)
   //   - ready_to_deliver_date at 33 (AH)
   //   - closed_date at 34 (AI)
-  // Sales-specific: C+↑ at 35 (AJ)
-  // CS-specific: NO c_plus_upgrade
-  if (group === 'sales') {
-    pipeline.zid = row[9] ? row[9].toString().trim() : null   // J: ZID
-    pipeline.ready_to_deliver_date = parseDate(row[33])       // AH: 【A】
-    pipeline.closed_date = parseDate(row[34])                 // AI: 【Z】
-    pipeline.c_plus_upgrade = row[35] ? row[35].toString().trim() : null  // AJ: C+↑
-  } else {
-    // CS: Same ZID and status transition dates
-    pipeline.zid = row[9] ? row[9].toString().trim() : null   // J: ZID
-    pipeline.ready_to_deliver_date = parseDate(row[33])       // AH: 【A】
-    pipeline.closed_date = parseDate(row[34])                 // AI: 【Z】
-    // CS doesn't have c_plus_upgrade
-    pipeline.c_plus_upgrade = null
-  }
+  //   - NO c_plus_upgrade (removed in 2025-02-02 update)
+  // Note: Columns 35-36 are now q_gross and q_net_rev (same for both groups)
+  pipeline.zid = row[9] ? row[9].toString().trim() : null   // J: ZID
+  pipeline.ready_to_deliver_date = parseDate(row[33])       // AH: 【A】
+  pipeline.closed_date = parseDate(row[34])                 // AI: 【Z】
+  pipeline.c_plus_upgrade = null  // C+↑ column removed - same for both Sales and CS
 
   // Region field handling
   // Neither CS nor Sales sheets have region column anymore
@@ -262,10 +253,10 @@ export function transformRowToPipeline(
   // Extract additional fields and quarterly breakdown into metadata
   // These fields don't have dedicated database columns but are useful for reporting
 
-  // Quarterly breakdown: Sales has +1 offset due to C+↑ column at 35
-  // CS: quarterly_breakdown at 37-48 (AL-AW)
-  // Sales: q_gross/q_net_rev at 36-37, quarterly_breakdown at 38-49 (AM-AX)
-  const quarterlyOffset = group === 'sales' ? 1 : 0
+  // Quarterly breakdown: Both Sales and CS have the SAME column structure
+  // Columns 37-48: quarterly_breakdown (First month, middle month, last month for Gross, Net, Max Gross, Max Net)
+  // NOTE: quarterlyOffset removed - both sheets have identical structure as of 2025-02-02 update
+  const quarterlyOffset = 0  // Both Sales and CS use same columns
 
   pipeline.metadata = {
     ...pipeline.metadata,
@@ -276,9 +267,6 @@ export function transformRowToPipeline(
     estimation_logic: row[21] ? row[21].toString().trim() : null, // V: logic of Estimation
     update_target: row[26] ? row[26].toString().trim() : null,    // AA: Update Target
 
-    // Note: c_plus_upgrade is now a direct field (not just metadata)
-    // It's set above in the group-specific handling
-
     // Summary columns (computed in Google Sheets)
     estimate_total: parseDecimal(row[95]),           // CR: Estimate
     out_of_estimate_total: parseDecimal(row[96]),    // CS: Out of estimate
@@ -286,27 +274,28 @@ export function transformRowToPipeline(
     report_text: row[98] ? row[98].toString() : null, // CU: Report
     masaya_check: parseBoolean(row[100]),            // CW: Masaya Check
 
-    // Quarterly breakdown from columns 37-48 (CS) or 38-49 (Sales, +1 offset due to C+↑)
+    // Quarterly breakdown from columns 37-48 (same for both Sales and CS)
+    // Sales & CS both use: 37-39 (Gross), 40-42 (Net), 43-45 (Max Gross), 46-48 (Max Net)
     quarterly_breakdown: {
       gross: {
-        first_month: parseDecimal(row[37 + quarterlyOffset]),    // AL (CS) / AM (Sales): Q粗利 初月
-        middle_month: parseDecimal(row[38 + quarterlyOffset]),   // AM (CS) / AN (Sales): Q粗利 中月
-        last_month: parseDecimal(row[39 + quarterlyOffset])      // AN (CS) / AO (Sales): Q粗利 終月
+        first_month: parseDecimal(row[37 + quarterlyOffset]),    // AL (both): Q粗利 初月 / First month
+        middle_month: parseDecimal(row[38 + quarterlyOffset]),   // AM (both): Q粗利 中月 / middle month
+        last_month: parseDecimal(row[39 + quarterlyOffset])      // AN (both): Q粗利 終月 / last month
       },
       net: {
-        first_month: parseDecimal(row[40 + quarterlyOffset]),    // AO (CS) / AP (Sales): Q純収益 初月
-        middle_month: parseDecimal(row[41 + quarterlyOffset]),   // AP (CS) / AQ (Sales): Q純収益 中月
-        last_month: parseDecimal(row[42 + quarterlyOffset])      // AQ (CS) / AR (Sales): Q純収益 終月
+        first_month: parseDecimal(row[40 + quarterlyOffset]),    // AO (both): Q純収益 初月 / First month
+        middle_month: parseDecimal(row[41 + quarterlyOffset]),   // AP (both): Q純収益 中月 / middle month
+        last_month: parseDecimal(row[42 + quarterlyOffset])      // AQ (both): Q純収益 終月 / last month
       },
       max_gross: {
-        first_month: parseDecimal(row[43 + quarterlyOffset]),    // AR (CS) / AS (Sales): Q最大粗利 初月
-        middle_month: parseDecimal(row[44 + quarterlyOffset]),   // AS (CS) / AT (Sales): Q最大粗利 中月
-        last_month: parseDecimal(row[45 + quarterlyOffset])      // AT (CS) / AU (Sales): Q最大粗利 終月
+        first_month: parseDecimal(row[43 + quarterlyOffset]),    // AR (both): Q最大粗利 初月 / First month
+        middle_month: parseDecimal(row[44 + quarterlyOffset]),   // AS (both): Q最大粗利 中月 / middle month
+        last_month: parseDecimal(row[45 + quarterlyOffset])      // AT (both): Q最大粗利 終月 / last month
       },
       max_net: {
-        first_month: parseDecimal(row[46 + quarterlyOffset]),    // AU (CS) / AV (Sales): Q最大純収益 初月
-        middle_month: parseDecimal(row[47 + quarterlyOffset]),   // AV (CS) / AW (Sales): Q最大純収益 中月
-        last_month: parseDecimal(row[48 + quarterlyOffset])      // AW (CS) / AX (Sales): Q最大純収益 終月
+        first_month: parseDecimal(row[46 + quarterlyOffset]),    // AU (both): Q最大純収益 初月 / First month
+        middle_month: parseDecimal(row[47 + quarterlyOffset]),   // AV (both): Q最大純収益 中月 / middle month
+        last_month: parseDecimal(row[48 + quarterlyOffset])      // AW (both): Q最大純収益 終月 / last month
       }
     }
   }
