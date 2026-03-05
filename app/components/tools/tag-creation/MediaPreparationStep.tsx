@@ -3,22 +3,35 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Upload, Loader2, FileText, AlertCircle, X, ArrowRight } from 'lucide-react'
+import { Upload, Loader2, FileText, AlertCircle, X, ArrowRight, Plus, FileSpreadsheet } from 'lucide-react'
 import type { MediaTemplateRow } from '@/lib/types/tools'
 import { parseCsvFile } from '@/lib/utils/csvParser'
+import { parseXlsxFile } from '@/lib/utils/xlsxParser'
 import { HelpIcon } from './HelpIcon'
 
 interface MediaPreparationStepProps {
   onComplete: (mediaData: MediaTemplateRow[], childNetworkCode?: string, pic?: string) => void
 }
 
+type InputMode = 'upload' | 'manual'
+
 export function MediaPreparationStep({ onComplete }: MediaPreparationStepProps) {
+  const [inputMode, setInputMode] = useState<InputMode>('upload')
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [parsedData, setParsedData] = useState<MediaTemplateRow[]>([])
   const [isParsing, setIsParsing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Manual entry form state
+  const [manualEntry, setManualEntry] = useState({
+    pid: '',
+    siteAppName: '',
+    siteUrl: '',
+    pubname: '',
+    mid: '',
+  })
 
   // Common fields (CHUNG CHO TẤT CẢ ROWS)
   const [childNetworkCode, setChildNetworkCode] = useState('')
@@ -41,14 +54,17 @@ export function MediaPreparationStep({ onComplete }: MediaPreparationStepProps) 
 
   const processFile = useCallback(async (file: File) => {
     // Validate file type
-    if (!file.name.endsWith('.csv') && file.type !== 'text/csv' && file.type !== 'application/vnd.ms-excel') {
-      setError('Please upload a CSV file')
+    const isCsv = file.name.endsWith('.csv') || file.type === 'text/csv' || file.type === 'application/vnd.ms-excel'
+    const isXlsx = file.name.endsWith('.xlsx') || file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+    if (!isCsv && !isXlsx) {
+      setError('Please upload a CSV or XLSX file')
       return
     }
 
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('File size must be less than 5MB')
+    // Validate file size (10MB max for XLSX support)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File size must be less than 10MB')
       return
     }
 
@@ -57,10 +73,13 @@ export function MediaPreparationStep({ onComplete }: MediaPreparationStepProps) 
     setCsvFile(file)
 
     try {
-      const result = await parseCsvFile(file)
+      // Use appropriate parser based on file type
+      const result = isXlsx
+        ? await parseXlsxFile(file)
+        : await parseCsvFile(file)
 
       if (!result.success || !result.data) {
-        setError(result.error || 'Failed to parse CSV file')
+        setError(result.error || `Failed to parse ${isXlsx ? 'XLSX' : 'CSV'} file`)
         setParsedData([])
         setIsParsing(false)
         return
@@ -69,8 +88,8 @@ export function MediaPreparationStep({ onComplete }: MediaPreparationStepProps) 
       setParsedData(result.data)
       setIsParsing(false)
     } catch (err) {
-      console.error('Error parsing CSV:', err)
-      setError('Failed to parse CSV file')
+      console.error('Error parsing file:', err)
+      setError(`Failed to parse ${file.name.endsWith('.xlsx') ? 'XLSX' : 'CSV'} file`)
       setParsedData([])
       setIsParsing(false)
     }
@@ -131,9 +150,11 @@ export function MediaPreparationStep({ onComplete }: MediaPreparationStepProps) 
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i]
-      if (item.type.indexOf('csv') !== -1 || item.type === 'text/csv') {
+      const type = item.type
+      if (type.includes('csv') || type.includes('sheet') || type === 'text/csv') {
         const file = item.getAsFile()
         if (file) {
+          setInputMode('upload')
           processFile(file)
           break
         }
@@ -162,6 +183,66 @@ export function MediaPreparationStep({ onComplete }: MediaPreparationStepProps) 
     setParsedData(updated)
   }
 
+  // Add manual entry row
+  const addManualEntry = () => {
+    if (!manualEntry.pid?.trim()) {
+      setError('PID is required')
+      return
+    }
+    if (!manualEntry.siteAppName?.trim()) {
+      setError('Site/App Name is required')
+      return
+    }
+    if (!manualEntry.siteUrl?.trim()) {
+      setError('Site URL is required')
+      return
+    }
+
+    const newRow: MediaTemplateRow = {
+      pid: manualEntry.pid.trim(),
+      siteAppName: manualEntry.siteAppName.trim(),
+      siteUrl: manualEntry.siteUrl.trim(),
+      pubname: manualEntry.pubname?.trim() || undefined,
+      mid: manualEntry.mid?.trim() || undefined,
+    }
+
+    setParsedData(prev => [...prev, newRow])
+    setError(null)
+
+    // Clear form for next entry
+    setManualEntry({
+      pid: '',
+      siteAppName: '',
+      siteUrl: '',
+      pubname: '',
+      mid: '',
+    })
+  }
+
+  // Add an empty row for manual editing
+  const addEmptyRow = () => {
+    const newRow: MediaTemplateRow = {
+      pid: '',
+      siteAppName: '',
+      siteUrl: '',
+      pubname: '',
+      mid: '',
+    }
+    setParsedData(prev => [...prev, newRow])
+  }
+
+  const switchToManualMode = () => {
+    setInputMode('manual')
+    setCsvFile(null)
+    setParsedData([])
+    setError(null)
+  }
+
+  const switchToUploadMode = () => {
+    setInputMode('upload')
+    setError(null)
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -171,8 +252,32 @@ export function MediaPreparationStep({ onComplete }: MediaPreparationStepProps) 
       </div>
 
       <div className="space-y-4">
-        {/* File Upload */}
-        {!csvFile && (
+        {/* Mode Toggle */}
+        <div className="flex items-center gap-2 border-b border-gray-200">
+          <button
+            onClick={switchToUploadMode}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              inputMode === 'upload'
+                ? 'border-[#1565C0] text-[#1565C0]'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            File Upload
+          </button>
+          <button
+            onClick={switchToManualMode}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              inputMode === 'manual'
+                ? 'border-[#1565C0] text-[#1565C0]'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Manual Entry
+          </button>
+        </div>
+
+        {/* File Upload Mode */}
+        {inputMode === 'upload' && !csvFile && (
           <div
             className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
               isDragging
@@ -188,15 +293,17 @@ export function MediaPreparationStep({ onComplete }: MediaPreparationStepProps) 
             <Input
               ref={fileInputRef}
               type="file"
-              accept=".csv,text/csv"
+              accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               onChange={handleFileChange}
               className="hidden"
             />
             <div className="space-y-3">
-              <Upload className="h-10 w-10 mx-auto text-gray-400" />
+              <div className="flex justify-center gap-3">
+                <FileSpreadsheet className="h-10 w-10 text-gray-400" />
+              </div>
               <div>
                 <p className="text-sm font-medium text-gray-900">
-                  {isDragging ? 'Drop CSV file here' : 'Click to upload CSV file'}
+                  {isDragging ? 'Drop file here' : 'Click to upload CSV or XLSX file'}
                 </p>
                 {!isDragging && (
                   <p className="text-xs text-gray-500 mt-2">
@@ -211,11 +318,81 @@ export function MediaPreparationStep({ onComplete }: MediaPreparationStepProps) 
           </div>
         )}
 
+        {/* Manual Entry Mode */}
+        {inputMode === 'manual' && !csvFile && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-700 block">
+                  PID (Publisher ID) <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  value={manualEntry.pid}
+                  onChange={(e) => setManualEntry(prev => ({ ...prev, pid: e.target.value }))}
+                  placeholder="e.g., 12345"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-700 block">
+                  Site/App Name <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  value={manualEntry.siteAppName}
+                  onChange={(e) => setManualEntry(prev => ({ ...prev, siteAppName: e.target.value }))}
+                  placeholder="e.g., My Mobile App"
+                />
+              </div>
+
+              <div className="space-y-1 col-span-2">
+                <label className="text-sm font-medium text-gray-700 block">
+                  Site URL <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  value={manualEntry.siteUrl}
+                  onChange={(e) => setManualEntry(prev => ({ ...prev, siteUrl: e.target.value }))}
+                  placeholder="e.g., https://example.com"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-700 block">
+                  Publisher Name
+                </label>
+                <Input
+                  value={manualEntry.pubname}
+                  onChange={(e) => setManualEntry(prev => ({ ...prev, pubname: e.target.value }))}
+                  placeholder="e.g., Acme Corp"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-700 block">
+                  MID (Media ID)
+                </label>
+                <Input
+                  value={manualEntry.mid}
+                  onChange={(e) => setManualEntry(prev => ({ ...prev, mid: e.target.value }))}
+                  placeholder="e.g., 67890"
+                />
+              </div>
+            </div>
+
+            <Button
+              onClick={addManualEntry}
+              className="w-full bg-[#1565C0] hover:bg-[#0D47A1] text-white"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Row
+            </Button>
+          </div>
+        )}
+
         {/* Parsing State */}
         {isParsing && (
           <div className="flex items-center justify-center gap-2 py-8">
             <Loader2 className="h-5 w-5 animate-spin text-gray-700" />
-            <p className="text-sm text-gray-600">Parsing CSV file...</p>
+            <p className="text-sm text-gray-600">Parsing file...</p>
           </div>
         )}
 
@@ -283,59 +460,87 @@ export function MediaPreparationStep({ onComplete }: MediaPreparationStepProps) 
         {/* Data Table */}
         {parsedData.length > 0 && (
           <div className="space-y-3">
-            <p className="text-sm font-medium text-gray-700">
-              Fill in Publisher Name and MID for each row:
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-gray-700">
+                Fill in Publisher Name and MID for each row:
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={addEmptyRow}
+                className="h-8 text-xs"
+              >
+                <Plus className="mr-1 h-3 w-3" />
+                Add Empty Row
+              </Button>
+            </div>
             <div className="rounded-lg overflow-auto max-h-80 bg-white border">
               <table className="w-full">
-                <thead className="sticky top-0">
+                <thead className="sticky top-0 bg-gray-50">
                   <tr className="border-b">
-                    <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">PID</th>
-                    <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">Site/App Name</th>
-                    <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">Site URL</th>
-                    <th className="px-3 py-2 text-left text-sm font-medium text-gray-700 w-40">
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 w-24">PID</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-700">Site/App Name</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-700">Site URL</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 w-32">
                       Publisher Name <span className="text-red-500">*</span>
                     </th>
-                    <th className="px-3 py-2 text-left text-sm font-medium text-gray-700 w-32">
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 w-28">
                       MID <span className="text-red-500">*</span>
                     </th>
-                    <th className="px-3 py-2 text-left text-sm font-medium text-gray-700 w-16"></th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 w-10"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {parsedData.map((row, index) => (
-                    <tr key={index} className="border-b">
-                      <td className="px-3 py-2 font-mono text-sm text-gray-900">{row.pid}</td>
-                      <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate" title={row.siteAppName}>
-                        {row.siteAppName}
+                    <tr key={index} className="border-b hover:bg-gray-50">
+                      <td className="px-2 py-2">
+                        <Input
+                          value={row.pid || ''}
+                          onChange={(e) => updateField(index, 'pid', e.target.value)}
+                          placeholder="PID"
+                          className="h-8 text-xs font-mono"
+                        />
                       </td>
-                      <td className="px-3 py-2 text-sm text-gray-500 max-w-xs truncate" title={row.siteUrl}>
-                        {row.siteUrl.length > 40 ? row.siteUrl.substring(0, 40) + '...' : row.siteUrl}
+                      <td className="px-2 py-2">
+                        <Input
+                          value={row.siteAppName || ''}
+                          onChange={(e) => updateField(index, 'siteAppName', e.target.value)}
+                          placeholder="Site/App Name"
+                          className="h-8 text-xs"
+                        />
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-2 py-2">
+                        <Input
+                          value={row.siteUrl || ''}
+                          onChange={(e) => updateField(index, 'siteUrl', e.target.value)}
+                          placeholder="Site URL"
+                          className="h-8 text-xs"
+                        />
+                      </td>
+                      <td className="px-2 py-2">
                         <Input
                           value={row.pubname || ''}
                           onChange={(e) => updateField(index, 'pubname', e.target.value)}
-                          placeholder="Enter..."
-                          className="h-9 text-sm"
+                          placeholder="Publisher Name"
+                          className="h-8 text-xs"
                         />
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-2 py-2">
                         <Input
                           value={row.mid || ''}
                           onChange={(e) => updateField(index, 'mid', e.target.value)}
-                          placeholder="Enter..."
-                          className="h-9 text-sm"
+                          placeholder="MID"
+                          className="h-8 text-xs font-mono"
                         />
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-2 py-2">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => deleteRow(index)}
-                          className="h-9 w-9 p-0 hover:bg-red-50 hover:text-red-600"
+                          className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
                         >
-                          <X className="h-4 w-4" />
+                          <X className="h-3 w-3" />
                         </Button>
                       </td>
                     </tr>
