@@ -140,8 +140,8 @@ export default function HomePage() {
               title="MC Bible (Course Edition)"
               description="Training resources and course materials for MC team development"
               icon={<BookOpen className="h-full w-full" />}
-              status="developing"
-              onClick={null}
+              status="active"
+              onClick={() => router.push('/bible')}
             />
 
             <ProductCard

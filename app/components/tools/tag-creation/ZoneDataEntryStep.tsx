@@ -125,6 +125,7 @@ export function ZoneDataEntryStep({
   const [currentSyncingMid, setCurrentSyncingMid] = useState<string | null>(null)
   const [syncErrors, setSyncErrors] = useState<Record<string, string>>({})
   const [syncSuccess, setSyncSuccess] = useState(false)
+  const [lastSyncedMid, setLastSyncedMid] = useState('') // Track the last synced MID for displaying success message
 
   const ZONE_TYPES = teamType === 'app' ? ZONE_TYPES_APP : ZONE_TYPES_WEB
 
@@ -451,6 +452,7 @@ export function ZoneDataEntryStep({
       }
 
       setSyncSuccess(true)
+      setLastSyncedMid(mid || '') // Store the MID that was just synced
       onComplete(finalData)
 
       // Notify parent about MID sync
@@ -459,10 +461,10 @@ export function ZoneDataEntryStep({
       }
 
       // NO PAGE REFRESH - allow user to sync another MID
-      // Clear selected MID for next sync
+      // Clear selected MID for next sync (but keep lastSyncedMid for success message)
       setTimeout(() => {
         setSelectedMid('')
-      }, 500)
+      }, 1000)
     } catch (err: any) {
       console.error('Error syncing to sheets:', err)
       const errorMsg = err.message
@@ -998,13 +1000,13 @@ export function ZoneDataEntryStep({
           </div>
         )}
 
-        {syncSuccess && selectedMid && (
+        {syncSuccess && lastSyncedMid && (
           <div className="border border-gray-200 bg-gray-50 p-4">
             <div className="flex items-start gap-2">
               <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <h4 className="text-sm font-semibold text-gray-900 mb-2">
-                  Successfully Synced MID: {selectedMid}
+                  Successfully Synced MID: {lastSyncedMid}
                 </h4>
                 <p className="text-sm text-gray-600 mb-2">
                   Data has been written to: <span className="font-medium">{sheetName}</span>
@@ -1028,31 +1030,64 @@ export function ZoneDataEntryStep({
           </div>
         )}
 
-        <div className="flex justify-end pt-4">
-          <Button
-            onClick={validateAndSync}
-            size="lg"
-            className={`w-full ${syncSuccess ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-900 hover:bg-gray-800'} text-white`}
-            disabled={isSyncing || zoneData.length === 0}
-          >
-            {isSyncing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Syncing {selectedMid ? `MID ${selectedMid}` : 'to Google Sheets'}...
-              </>
-            ) : syncSuccess ? (
-              <>
-                <CheckCircle2 className="mr-2 h-4 w-4" />
-                Sync Complete - Select Another MID
-              </>
-            ) : (
-              <>
-                Sync {selectedMid ? `MID ${selectedMid}` : 'to Google Sheets'}
-                <Upload className="ml-2 h-4 w-4" />
-              </>
+        {/* Sync Button - hidden after successful sync */}
+        {!syncSuccess && (
+          <div className="flex justify-end pt-4">
+            <Button
+              onClick={validateAndSync}
+              size="lg"
+              className="w-full bg-gray-900 hover:bg-gray-800 text-white"
+              disabled={isSyncing || zoneData.length === 0}
+            >
+              {isSyncing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Syncing {selectedMid ? `MID ${selectedMid}` : 'to Google Sheets'}...
+                </>
+              ) : (
+                <>
+                  Sync {selectedMid ? `MID ${selectedMid}` : 'to Google Sheets'}
+                  <Upload className="ml-2 h-4 w-4" />
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+
+        {/* Action Buttons - shows after successful sync */}
+        {syncSuccess && (
+          <div className="flex gap-3 pt-4 border-t border-gray-200">
+            {/* Only show "Sync Another Media" if there are multiple MIDs available */}
+            {availableMids.length > 1 && (
+              <Button
+                onClick={() => {
+                  setSyncSuccess(false)
+                  setLastSyncedMid('')
+                }}
+                variant="outline"
+                size="lg"
+                className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Sync Another Media
+              </Button>
             )}
-          </Button>
-        </div>
+            <Button
+              onClick={onReset}
+              size="lg"
+              className={availableMids.length > 1 ? 'flex-1' : 'w-full'}
+              style={{ backgroundColor: availableMids.length > 1 ? '#1565C0' : '#10B981' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = availableMids.length > 1 ? '#0D47A1' : '#059669'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = availableMids.length > 1 ? '#1565C0' : '#10B981'
+              }}
+            >
+              {availableMids.length > 1 ? 'Start Over / New Tag Creation' : 'Create New Tags'}
+            </Button>
+          </div>
+        )}
 
         {/* All Synced Message */}
         {availableMids.length > 0 && syncedMids.size === availableMids.length && (

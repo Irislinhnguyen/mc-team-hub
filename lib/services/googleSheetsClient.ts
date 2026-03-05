@@ -5,6 +5,8 @@
  */
 
 import { google } from 'googleapis'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 
 class GoogleSheetsService {
   private static instance: google.auth.GoogleAuth | null = null
@@ -27,23 +29,41 @@ class GoogleSheetsService {
     }
 
     if (!this.instance) {
-      const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
-      const credentialsBase64 = process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64
-
-      if (!credentialsJson && !credentialsBase64) {
-        throw new Error('Either GOOGLE_APPLICATION_CREDENTIALS_JSON or GOOGLE_APPLICATION_CREDENTIALS_BASE64 must be set')
-      }
-
       try {
-        // Parse credentials from either JSON or base64
+        const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+        const credentialsBase64 = process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64
+        const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
+
+        // Try to get credentials from various sources
         let credentials
+        let source = ''
+
+        // Priority 1: Base64 encoded (recommended for Vercel)
         if (credentialsBase64) {
-          // Decode from base64 (preferred for Vercel to avoid newline issues)
           const decoded = Buffer.from(credentialsBase64, 'base64').toString('utf-8')
           credentials = JSON.parse(decoded)
-        } else {
-          // Parse from JSON string (fallback)
-          credentials = JSON.parse(credentialsJson!)
+          source = 'GOOGLE_APPLICATION_CREDENTIALS_BASE64'
+        }
+        // Priority 2: Inline JSON
+        else if (credentialsJson) {
+          credentials = JSON.parse(credentialsJson)
+          source = 'GOOGLE_APPLICATION_CREDENTIALS_JSON'
+        }
+        // Priority 3: File path (for local development)
+        else if (credentialsPath) {
+          const filePath = credentialsPath.startsWith('./') || credentialsPath.startsWith('../')
+            ? join(process.cwd(), credentialsPath)
+            : credentialsPath
+          const fileContent = readFileSync(filePath, 'utf-8')
+          credentials = JSON.parse(fileContent)
+          source = `GOOGLE_APPLICATION_CREDENTIALS (file: ${credentialsPath})`
+        }
+        else {
+          throw new Error('Either GOOGLE_APPLICATION_CREDENTIALS_JSON, GOOGLE_APPLICATION_CREDENTIALS_BASE64, or GOOGLE_APPLICATION_CREDENTIALS must be set')
+        }
+
+        if (!credentials) {
+          throw new Error('Either GOOGLE_APPLICATION_CREDENTIALS_JSON, GOOGLE_APPLICATION_CREDENTIALS_BASE64, or GOOGLE_APPLICATION_CREDENTIALS must be set')
         }
 
         // 🔥 FIX: Handle multiple private key encoding scenarios (copied from BigQuery)

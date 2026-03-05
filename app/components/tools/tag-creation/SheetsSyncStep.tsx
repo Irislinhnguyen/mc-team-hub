@@ -11,10 +11,10 @@ import { HelpIcon } from './HelpIcon'
 interface SheetsSyncStepProps {
   zones: ExtractedZone[]
   onComplete: () => void
-  onBack: () => void
+  onReset: () => void
 }
 
-export function SheetsSyncStep({ zones, onComplete, onBack }: SheetsSyncStepProps) {
+export function SheetsSyncStep({ zones, onComplete, onReset }: SheetsSyncStepProps) {
   const [spreadsheetId, setSpreadsheetId] = useState('1gfCTHCfpTqhb6pzpEhkYx3RxvMhOlhB4pB2iUlSWBNs')
   const [sheetName, setSheetName] = useState('App_Tag Requests')
   const [isSyncing, setIsSyncing] = useState(false)
@@ -52,11 +52,6 @@ export function SheetsSyncStep({ zones, onComplete, onBack }: SheetsSyncStepProp
         success: true,
         sheetUrl: data.sheetUrl,
       })
-
-      // Call onComplete after a short delay
-      setTimeout(() => {
-        onComplete()
-      }, 2000)
     } catch (err: any) {
       console.error('Error syncing to sheets:', err)
       setSyncResult({
@@ -165,31 +160,41 @@ The data will be written to your sheet automatically.`}
         )}
 
         {/* Sync Button */}
-        <div className="flex justify-end pt-4">
-          <Button
-            onClick={handleSync}
-            disabled={isSyncing || syncResult?.success}
-            size="lg"
-            className="w-full bg-[#1565C0] hover:bg-[#0D47A1] text-white disabled:bg-gray-200 disabled:text-gray-400"
-          >
-            {isSyncing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Syncing to Google Sheets...
-              </>
-            ) : syncResult?.success ? (
-              <>
-                <CheckCircle2 className="mr-2 h-4 w-4" />
-                Completed!
-              </>
-            ) : (
-              <>
-                <Upload className="mr-2 h-4 w-4" />
-                Sync to Google Sheets
-              </>
-            )}
-          </Button>
-        </div>
+        {!syncResult?.success && (
+          <div className="flex justify-end pt-4">
+            <Button
+              onClick={handleSync}
+              disabled={isSyncing}
+              size="lg"
+              className="w-full bg-[#1565C0] hover:bg-[#0D47A1] text-white disabled:bg-gray-200 disabled:text-gray-400"
+            >
+              {isSyncing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Syncing to Google Sheets...
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Sync to Google Sheets
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+
+        {/* Action Button - shows after successful sync */}
+        {syncResult?.success && (
+          <div className="pt-4 border-t border-gray-200">
+            <Button
+              onClick={onReset}
+              size="lg"
+              className="w-full bg-[#10B981] hover:bg-[#059669] text-white"
+            >
+              Create New Tags
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

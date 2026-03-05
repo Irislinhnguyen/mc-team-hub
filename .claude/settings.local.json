@@ -1,8 +1,8 @@
 {
   "env": {
-    "ANTHROPIC_AUTH_TOKEN": "407066f44f5f4e279c4e2460d8f26868.K3Vrq6f3PTs0BtPc",
-    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
-    "API_TIMEOUT_MS": "3000000"
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.7"
   },
   "permissions": {
     "allow": [
@@ -26,7 +26,24 @@
       "mcp__supabase__list_migrations",
       "Bash(dir:*)",
       "Bash(cat:*)",
-      "Bash(tail:*)"
+      "Bash(tail:*)",
+      "Bash(curl:*)",
+      "Bash(npx dotenv-cli -e .env.local node scripts/test-sales-sync.mjs:*)",
+      "Bash(node:*)",
+      "Bash(findstr:*)",
+      "Bash(npx tsx:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "mcp__web-search-prime__webSearchPrime",
+      "Bash(npm run test:e2e:*)",
+      "Bash(npm install:*)",
+      "Bash(if not exist \"tests\\\\auth\" mkdir \"tests\\\\auth\")",
+      "Bash(which python3 && python3 -c \"import openpyxl; print\\('openpyxl available'\\)\" 2>/dev/null || echo \"openpyxl not installed\")",
+      "Bash(pip3 install openpyxl --quiet && echo \"Installed successfully\")",
+      "Bash(unzip -p \"/Users/nguyenthuylinh/Downloads/zone_template_20260305.xlsx\" xl/sharedStrings.xml 2>/dev/null)",
+      "Bash(unzip -p \"/Users/nguyenthuylinh/Downloads/zone_sheet_20260305.xlsx\" xl/worksheets/sheet1.xml 2>/dev/null | grep -o '<v>[^<]*</v>' | head -100)",
+      "Bash(python3 << 'EOF'\nfrom openpyxl import load_workbook\n\n# Load reference file\nwb_ref = load_workbook\\(\"/Users/nguyenthuylinh/Downloads/zone_sheet_20260305 \\(2\\).xlsx\", data_only=True\\)\nws_ref = wb_ref.active\n\nheaders = [cell.value for cell in ws_ref[1]]\n\nprint\\(\"Reference file - Which columns have values vs empty:\"\\)\nprint\\(\"=\" * 100\\)\n\n# Check first data row \\(row 2\\)\nprint\\(\"\\\\nRow 2 analysis:\"\\)\nfor col_idx, header in enumerate\\(headers, 1\\):\n    val = ws_ref.cell\\(row=2, column=col_idx\\).value\n    status = \"✓ FILLED\" if val and val != \"\" else \"✗ EMPTY\"\n    print\\(f\"  Col {col_idx:2} \\({header:40}\\): {status:10} | Value: {repr\\(val\\)}\"\\)\n\n# Also check a few more rows to see pattern\nprint\\(\"\\\\n\" + \"=\" * 100\\)\nprint\\(\"Checking multiple rows for patterns:\"\\)\nfor row_idx in range\\(2, min\\(6, ws_ref.max_row + 1\\)\\):\n    print\\(f\"\\\\n--- Row {row_idx} ---\"\\)\n    filled_cols = []\n    empty_cols = []\n    for col_idx, header in enumerate\\(headers, 1\\):\n        val = ws_ref.cell\\(row=row_idx, column=col_idx\\).value\n        if val and val != \"\":\n            filled_cols.append\\(f\"Col{col_idx}\\({header}\\)\"\\)\n        else:\n            empty_cols.append\\(f\"Col{col_idx}\"\\)\n    \n    if filled_cols:\n        print\\(f\"  FILLED \\({len\\(filled_cols\\)}\\): {', '.join\\(filled_cols[:5]\\)}{'...' if len\\(filled_cols\\) > 5 else ''}\"\\)\n    if empty_cols:\n        print\\(f\"  EMPTY \\({len\\(empty_cols\\)}\\): {', '.join\\(empty_cols[:10]\\)}{'...' if len\\(empty_cols\\) > 10 else ''}\"\\)\nEOF)",
+      "Bash(python3 << 'EOF'\nfrom openpyxl import load_workbook\n\n# Load the actual template the user wants to use\nwb = load_workbook\\(\"/Users/nguyenthuylinh/Downloads/zone_template_20260305.xlsx\", data_only=True\\)\nws = wb.active\n\nprint\\(\"ACTUAL TEMPLATE structure \\(zone_template_20260305.xlsx\\):\"\\)\nprint\\(\"=\" * 80\\)\n\nheaders = [cell.value for cell in ws[1]]\nfor i, h in enumerate\\(headers, 1\\):\n    print\\(f\"Col {i:2}: {h}\"\\)\n\nprint\\(\"\\\\n\" + \"=\" * 80\\)\nprint\\(\"Does it have Media Id as column 1?\"\\)\nprint\\(f\"  Column 1: {headers[0]}\"\\)\nprint\\(f\"  Has Media Id: {'Media Id' in headers}\"\\)\nEOF)"
     ],
     "deny": [],
     "ask": [

@@ -1,4 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
+import { existsSync } from 'fs';
+import { join } from 'path';
+
+// Check if auth state file exists
+const authStatePath = join(__dirname, 'tests', 'auth', 'auth.json');
+const useAuthState = existsSync(authStatePath);
 
 export default defineConfig({
   testDir: './tests',
@@ -15,7 +21,11 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        // Load auth state if it exists (run setup script first)
+        ...(useAuthState && { storageState: authStatePath }),
+      },
     },
   ],
 

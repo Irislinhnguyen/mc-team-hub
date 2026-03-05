@@ -38,7 +38,7 @@ Return JSON with this exact structure:
       "zone_id": "1598735",
       "zone_name": "banner_0.46_com.chgames.nds64emulator_app",
       "size": "300x250",
-      "inventory_type": "Mobile optimized web",
+      "inventory_type": "Mobile Optimized Web",
       "type": "Standard banner",
       "category": "Arts & Entertainment",
       "approval_status": "Approved",

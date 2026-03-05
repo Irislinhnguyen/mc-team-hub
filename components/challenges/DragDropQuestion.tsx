@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ChallengeQuestion } from '@/lib/types/challenge';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -117,9 +117,9 @@ export function DragDropQuestion({
   }, [items, onChange]);
 
   // Update parent when items change
-  useState(() => {
+  useEffect(() => {
     syncWithParent();
-  });
+  }, [syncWithParent]);
 
   // Check if answer is correct (for showing results)
   const isCorrect = useCallback(

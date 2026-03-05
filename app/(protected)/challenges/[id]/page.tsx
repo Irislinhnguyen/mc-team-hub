@@ -12,6 +12,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ArrowLeft, Clock, AlertCircle, Save, CheckCircle2 } from 'lucide-react';
 import { DragDropQuestion } from '@/components/challenges/DragDropQuestion';
 

@@ -69,3 +69,4 @@ models/
 *.sln
 *.sw?
 .mcp-config/gcp-oauth.keys.json
+.vercel

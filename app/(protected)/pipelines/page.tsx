@@ -777,11 +777,18 @@ function PipelinesPageContent() {
                 activeGroup={activeGroup}
                 filterYear={filterYear}
                 filterQuarter={filterQuarter}
-                onPipelineClick={(pipelineId) => {
-                  const pipeline = pipelines.find(p => p.id === pipelineId)
-                  if (pipeline) {
-                    setSelectedPipeline(pipeline)
-                    setDrawerOpen(true)
+                onPipelineClick={async (pipelineId) => {
+                  try {
+                    const response = await fetch(`/api/pipelines/${pipelineId}`)
+                    if (response.ok) {
+                      const { data } = await response.json()
+                      setSelectedPipeline(data)
+                      setDrawerOpen(true)
+                    } else {
+                      console.error('Failed to fetch pipeline:', response.status)
+                    }
+                  } catch (error) {
+                    console.error('Failed to fetch pipeline:', error)
                   }
                 }}
               />

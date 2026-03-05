@@ -217,8 +217,13 @@ export interface Pipeline {
    * Array of zone IDs (ZID) affected by this pipeline
    * Used to calculate actual revenue from BigQuery for variance calculation
    * Example: ["123", "456", "789"]
+   * Note: For CS pipelines, use affected_zones array. For Sales pipelines, use zid string.
    */
   affected_zones: string[] | null
+  /** Single ZID for Sales pipelines (CS uses affected_zones array instead) */
+  zid: string | null
+  /** C+ upgrade flag for Sales pipelines */
+  c_plus_upgrade: string | null
 
   // ===== REVENUE METRICS =====
 
