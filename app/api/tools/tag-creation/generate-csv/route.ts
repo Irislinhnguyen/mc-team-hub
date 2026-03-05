@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { zoneUrl, prompt, payoutRate } = await request.json()
+    const { zoneUrl, prompt, payoutRate, mediaId } = await request.json()
 
     if (!zoneUrl || zoneUrl.trim().length === 0) {
       return NextResponse.json({ error: 'Zone URL is required' }, { status: 400 })
@@ -46,8 +46,9 @@ export async function POST(request: NextRequest) {
     console.log(`[Generate CSV API] Zone URL: ${zoneUrl}`)
     console.log(`[Generate CSV API] Prompt: ${prompt}`)
     console.log(`[Generate CSV API] Payout Rate: ${payoutRate}`)
+    console.log(`[Generate CSV API] Media ID: ${mediaId || 'not provided'}`)
 
-    const { buffer, zones } = await generateZoneCSV(zoneUrl, prompt, payoutRate)
+    const { buffer, zones } = await generateZoneCSV(zoneUrl, prompt, payoutRate, mediaId || '')
 
     // Return JSON response with zones (for client-side storage) and buffer as base64 (for optional download)
     return NextResponse.json({

@@ -34,7 +34,7 @@ import { HelpIcon } from './HelpIcon'
 
 /**
  * Convert ExtractedZone to ZoneCsvRow (for Web team)
- * Uses same 35-column format as App team
+ * Uses same 36-column format as App team
  */
 function extractedZoneToCsvRow(
   zone: ExtractedZone,
@@ -47,6 +47,7 @@ function extractedZoneToCsvRow(
     nameOfZone: zone.zone_name,
     zoneUrl: `https://${mediaName}`,
     allowedDomainList: mediaName,
+    pointSiteDomainList: '',
     inventoryType: 'Web',
     typeOfZone: zone.type || 'Banner',
     width: zone.size?.split('x')[0] || '300',
@@ -337,6 +338,7 @@ export function WebPromptInputStep({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          mediaId: manualMid,
           mediaName,
           products: selectedProducts,
           aiPrompt: aiPrompt.trim() || undefined,
@@ -411,8 +413,8 @@ export function WebPromptInputStep({
       return
     }
 
-    // Download the CSV
-    downloadZoneCsv(allZones, `zones_web_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}.csv`)
+    // Download the XLSX
+    downloadZoneCsv(allZones, `zones_web_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}.xlsx`)
   }
 
   // Count total zones
@@ -828,7 +830,7 @@ export function WebPromptInputStep({
           </div>
         )}
 
-        {/* Generate Final CSV Button */}
+        {/* Generate Final XLSX Button */}
         {midWithZones.length > 0 && (
           <Button
             onClick={handleGenerateFinalCsv}
@@ -836,7 +838,7 @@ export function WebPromptInputStep({
             className="w-full bg-green-600 hover:bg-green-700 text-white"
           >
             <FileDown className="mr-2 h-4 w-4" />
-            Generate & Download CSV (All MIDs)
+            Generate & Download XLSX (All MIDs)
           </Button>
         )}
       </div>

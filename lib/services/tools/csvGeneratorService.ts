@@ -1,11 +1,52 @@
 /**
- * AI-powered CSV Zone Generator Service
+ * AI-powered XLSX Zone Generator Service for App Team (CS)
  * Uses OpenAI GPT-4o to generate zone configurations from natural language prompts
+ * Generates XLSX files with all 36 columns matching the internal ad system template
  */
 
 import OpenAI from 'openai'
 import * as XLSX from 'xlsx'
 import type { GeneratedZone } from '@/lib/types/tools'
+
+// All 36 column headers matching the internal ad system template
+const HEADERS = [
+  'Media Id',
+  'Name of zone',
+  'Zone URL',
+  'Allowed domain list',
+  'Point site domain list',
+  'Inventory Type',
+  'Type of zone',
+  'width',
+  'height',
+  'Use multiple sizes',
+  'Multi sizes',
+  'Enable Bidder Delivery',
+  'Create Reports from Bid Price',
+  'Method of Bidprice',
+  'CPM(iOS)(JPY)',
+  'CPM(Android)(JPY)',
+  'CPM(Other)(JPY)',
+  'Floor Price(JPY)',
+  'Deduct margin from RTB value at bidder delivery',
+  'Zone position',
+  'Allow Semi Adult Contents',
+  'Allow semi-adult categories',
+  'Use RTB',
+  'Allow External Delivery',
+  'App ID',
+  'Allow VtoV',
+  'Category',
+  'Category Detail',
+  'Default Payout rate for zone',
+  'Adjust Iframe size',
+  'Selector of Iframe Adjuster',
+  'RTB optimisation type',
+  'Vendor comment',
+  'Format',
+  'Device',
+  'Delivery Method',
+] as const
 
 // Initialize OpenAI client lazily (server-side only)
 function getOpenAIClient() {
@@ -15,15 +56,17 @@ function getOpenAIClient() {
 }
 
 /**
- * Create zone template with all 34 columns and default values
+ * Create zone template with all 36 columns and default values
  * AI will only fill in: Name of zone, width, height
- * Other 31 columns use default values
+ * Other 33 columns use default values
  */
 function createZoneTemplate(zoneUrl: string, payoutRate: number): Record<string, any> {
   return {
+    'Media Id': '', // Filled later from Step 0 data
     'Name of zone': '', // AI fills this
     'Zone URL': zoneUrl,
     'Allowed domain list': '',
+    'Point site domain list': '',
     'Inventory Type': 'Mobile Optimized Web',
     'Type of zone': 'スタンダードバナー',
     width: 300, // AI can override
@@ -33,10 +76,10 @@ function createZoneTemplate(zoneUrl: string, payoutRate: number): Record<string,
     'Enable Bidder Delivery': '',
     'Create Reports from Bid Price': '',
     'Method of Bidprice': '',
-    'CPM(iOS)(USD)': null,
-    'CPM(Android)(USD)': null,
-    'CPM(Other)(USD)': null,
-    'Floor Price(USD)': null,
+    'CPM(iOS)(JPY)': '',
+    'CPM(Android)(JPY)': '',
+    'CPM(Other)(JPY)': '',
+    'Floor Price(JPY)': '',
     'Deduct margin from RTB value at bidder delivery': '',
     'Zone position': 'Under the article/column',
     'Allow Semi Adult Contents': '',
@@ -126,16 +169,18 @@ function extractAppIdFromUrl(url: string): string {
 }
 
 /**
- * Generate zone CSV from natural language prompt
+ * Generate zone XLSX from natural language prompt
  * @param zoneUrl App URL to extract App ID from
  * @param userPrompt User's description of zones to create (e.g., "3 zone reward FR 0.76, 3 zone interstitial FR 0.85")
  * @param payoutRate Payout rate for all zones (0-1, e.g., 0.85)
+ * @param mediaId Media ID from Step 0 (optional, will be filled in template)
  * @returns Buffer containing Excel file data
  */
 export async function generateZoneCSV(
   zoneUrl: string,
   userPrompt: string,
-  payoutRate: number
+  payoutRate: number,
+  mediaId: string = ''
 ): Promise<{
   buffer: Buffer
   zones: GeneratedZone[]
@@ -174,9 +219,10 @@ export async function generateZoneCSV(
 
     console.log(`[CSV Generator] AI generated ${aiZones.length} zone names`)
 
-    // Merge AI output into template (ensures all 34 columns exist)
+    // Merge AI output into template (ensures all 36 columns exist)
     const zones: GeneratedZone[] = aiZones.map((aiZone) => {
       const template = createZoneTemplate(zoneUrl, payoutRate)
+      template['Media Id'] = mediaId // Set Media ID
       return {
         ...template,
         'Name of zone': aiZone.name,
@@ -185,22 +231,51 @@ export async function generateZoneCSV(
       }
     })
 
-    console.log(`[CSV Generator] Created ${zones.length} complete zones with 34 columns`)
+    console.log(`[CSV Generator] Created ${zones.length} complete zones with 36 columns`)
 
-    // Convert JSON to Excel buffer
-    const worksheet = XLSX.utils.json_to_sheet(zones)
+    // Convert JSON to Excel buffer with proper header order
+    const worksheet = XLSX.utils.json_to_sheet(zones, { header: HEADERS })
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Zones')
 
-    // Set column widths for better readability
+    // Set column widths for better readability (36 columns total)
     const columnWidths = [
+      { wch: 15 }, // Media Id
       { wch: 35 }, // Name of zone
       { wch: 50 }, // Zone URL
       { wch: 20 }, // Allowed domain list
+      { wch: 25 }, // Point site domain list
       { wch: 25 }, // Inventory Type
       { wch: 20 }, // Type of zone
       { wch: 10 }, // width
       { wch: 10 }, // height
+      { wch: 20 }, // Use multiple sizes
+      { wch: 20 }, // Multi sizes
+      { wch: 20 }, // Enable Bidder Delivery
+      { wch: 25 }, // Create Reports from Bid Price
+      { wch: 20 }, // Method of Bidprice
+      { wch: 15 }, // CPM(iOS)(JPY)
+      { wch: 15 }, // CPM(Android)(JPY)
+      { wch: 15 }, // CPM(Other)(JPY)
+      { wch: 15 }, // Floor Price(JPY)
+      { wch: 30 }, // Deduct margin from RTB value at bidder delivery
+      { wch: 25 }, // Zone position
+      { wch: 25 }, // Allow Semi Adult Contents
+      { wch: 25 }, // Allow semi-adult categories
+      { wch: 15 }, // Use RTB
+      { wch: 20 }, // Allow External Delivery
+      { wch: 30 }, // App ID
+      { wch: 15 }, // Allow VtoV
+      { wch: 30 }, // Category
+      { wch: 20 }, // Category Detail
+      { wch: 25 }, // Default Payout rate for zone
+      { wch: 20 }, // Adjust Iframe size
+      { wch: 25 }, // Selector of Iframe Adjuster
+      { wch: 25 }, // RTB optimisation type
+      { wch: 20 }, // Vendor comment
+      { wch: 15 }, // Format
+      { wch: 15 }, // Device
+      { wch: 20 }, // Delivery Method
     ]
     worksheet['!cols'] = columnWidths
 

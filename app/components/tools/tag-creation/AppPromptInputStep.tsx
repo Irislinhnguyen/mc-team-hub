@@ -124,7 +124,7 @@ export function AppPromptInputStep({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ zoneUrl, prompt, payoutRate: payoutRateNum }),
+        body: JSON.stringify({ zoneUrl, prompt, payoutRate: payoutRateNum, mediaId: manualMid }),
       })
 
       if (!response.ok) {
@@ -214,8 +214,8 @@ export function AppPromptInputStep({
       return
     }
 
-    // Download the CSV
-    downloadZoneCsv(allZones, `zones_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}.csv`)
+    // Download the XLSX file
+    downloadZoneCsv(allZones, `zones_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}.xlsx`)
   }
 
   // Get display name for MID
@@ -408,7 +408,7 @@ export function AppPromptInputStep({
           </div>
         )}
 
-        {/* Generate Final CSV Button */}
+        {/* Generate Final XLSX Button */}
         {midWithZones.length > 0 && (
           <Button
             onClick={handleGenerateFinalCsv}
@@ -416,7 +416,7 @@ export function AppPromptInputStep({
             className="w-full bg-green-600 hover:bg-green-700 text-white"
           >
             <FileDown className="mr-2 h-4 w-4" />
-            Generate & Download CSV (All MIDs)
+            Generate & Download XLSX (All MIDs)
           </Button>
         )}
       </div>

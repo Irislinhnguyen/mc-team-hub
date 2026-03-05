@@ -1,17 +1,19 @@
 /**
- * CSV Generator for Tag Creation Tool
- * Generates CSV with ALL 35 columns matching template_zone_template exactly
+ * CSV/Excel Generator for Tag Creation Tool
+ * Generates XLSX files with ALL 36 columns matching the internal ad system template
  * Only fills columns that have data, leaves others empty
  */
 
 import type { GeneratedZone } from '@/lib/types/tools'
+import * as XLSX from 'xlsx'
 
-// CSV Headers - MUST match template_zone_template exactly (35 columns)
+// CSV Headers - MUST match template_zone_template exactly (36 columns)
 const CSV_HEADERS = [
   'Media Id',
   'Name of zone',
   'Zone URL',
   'Allowed domain list',
+  'Point site domain list',
   'Inventory Type',
   'Type of zone',
   'width',
@@ -46,13 +48,14 @@ const CSV_HEADERS = [
 ] as const
 
 /**
- * Zone data for CSV output (35 columns matching template)
+ * Zone data for CSV output (36 columns matching template)
  */
 export interface ZoneCsvRow {
   mediaId: string // Media Id (= MID from Step 0)
   nameOfZone: string // Name of zone (AI generated)
   zoneUrl: string // Zone URL
   allowedDomainList: string // Allowed domain list (empty by default)
+  pointSiteDomainList: string // Point site domain list (empty by default)
   inventoryType: string // Inventory Type
   typeOfZone: string // Type of zone
   width: string // width (default: '300' or from AI)
@@ -91,6 +94,7 @@ export interface ZoneCsvRow {
  */
 export const DEFAULT_ZONE_VALUES: Partial<ZoneCsvRow> = {
   allowedDomainList: '',
+  pointSiteDomainList: '',
   inventoryType: 'Mobile Optimized Web',
   typeOfZone: 'スタンダードバナー',
   width: '300',
@@ -123,97 +127,128 @@ export const DEFAULT_ZONE_VALUES: Partial<ZoneCsvRow> = {
 }
 
 /**
- * Convert ZoneCsvRow to CSV row string
- * Handles escaping of commas, quotes, and newlines
+ * Convert ZoneCsvRow to object for XLSX generation
+ * @param row - Zone CSV row data
+ * @returns Object with proper column names matching the 36-column template
  */
-function rowToCsv(row: ZoneCsvRow): string {
-  const values: string[] = [
-    row.mediaId,
-    row.nameOfZone,
-    row.zoneUrl,
-    row.allowedDomainList,
-    row.inventoryType,
-    row.typeOfZone,
-    row.width,
-    row.height,
-    row.useMultipleSizes,
-    row.multiSizes,
-    row.enableBidderDelivery,
-    row.createReportsFromBidPrice,
-    row.methodOfBidprice,
-    row.cpmIosJpy,
-    row.cpmAndroidJpy,
-    row.cpmOtherJpy,
-    row.floorPriceJpy,
-    row.deductMarginFromRtb,
-    row.zonePosition,
-    row.allowSemiAdultContents,
-    row.allowSemiAdultCategories,
-    row.useRtb,
-    row.allowExternalDelivery,
-    row.appId,
-    row.allowVtoV,
-    row.category,
-    row.categoryDetail,
-    row.defaultPayoutRate,
-    row.adjustIframeSize,
-    row.selectorOfIframeAdjuster,
-    row.rtbOptimisationType,
-    row.vendorComment,
-    row.format,
-    row.device,
-    row.deliveryMethod,
-  ]
-
-  // Escape values that contain commas, quotes, or newlines
-  return values
-    .map((value) => {
-      if (value === null || value === undefined) {
-        return ''
-      }
-      const stringValue = String(value)
-      // If value contains comma, quote, or newline, wrap in quotes and escape quotes
-      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
-        return `"${stringValue.replace(/"/g, '""')}"`
-      }
-      return stringValue
-    })
-    .join(',')
-}
-
-/**
- * Generate CSV content from ZoneCsvRow array
- * @param zones - Array of zone data rows
- * @returns CSV string with header row
- */
-export function generateZoneCsv(zones: ZoneCsvRow[]): string {
-  const bom = '\uFEFF' // UTF-8 BOM for Excel compatibility
-
-  if (zones.length === 0) {
-    return bom + CSV_HEADERS.join(',')
+function zoneCsvRowToObject(row: ZoneCsvRow): Record<string, any> {
+  return {
+    'Media Id': row.mediaId,
+    'Name of zone': row.nameOfZone,
+    'Zone URL': row.zoneUrl,
+    'Allowed domain list': row.allowedDomainList,
+    'Point site domain list': row.pointSiteDomainList,
+    'Inventory Type': row.inventoryType,
+    'Type of zone': row.typeOfZone,
+    width: row.width,
+    height: row.height,
+    'Use multiple sizes': row.useMultipleSizes,
+    'Multi sizes': row.multiSizes,
+    'Enable Bidder Delivery': row.enableBidderDelivery,
+    'Create Reports from Bid Price': row.createReportsFromBidPrice,
+    'Method of Bidprice': row.methodOfBidprice,
+    'CPM(iOS)(JPY)': row.cpmIosJpy,
+    'CPM(Android)(JPY)': row.cpmAndroidJpy,
+    'CPM(Other)(JPY)': row.cpmOtherJpy,
+    'Floor Price(JPY)': row.floorPriceJpy,
+    'Deduct margin from RTB value at bidder delivery': row.deductMarginFromRtb,
+    'Zone position': row.zonePosition,
+    'Allow Semi Adult Contents': row.allowSemiAdultContents,
+    'Allow semi-adult categories': row.allowSemiAdultCategories,
+    'Use RTB': row.useRtb,
+    'Allow External Delivery': row.allowExternalDelivery,
+    'App ID': row.appId,
+    'Allow VtoV': row.allowVtoV,
+    Category: row.category,
+    'Category Detail': row.categoryDetail,
+    'Default Payout rate for zone': row.defaultPayoutRate,
+    'Adjust Iframe size': row.adjustIframeSize,
+    'Selector of Iframe Adjuster': row.selectorOfIframeAdjuster,
+    'RTB optimisation type': row.rtbOptimisationType,
+    'Vendor comment': row.vendorComment,
+    Format: row.format,
+    Device: row.device,
+    'Delivery Method': row.deliveryMethod,
   }
-
-  const header = CSV_HEADERS.join(',')
-  const rows = zones.map(rowToCsv).join('\n')
-
-  // Add UTF-8 BOM at the beginning for Excel compatibility
-  return bom + `${header}\n${rows}`
 }
 
 /**
- * Download CSV file
+ * Generate XLSX buffer from ZoneCsvRow array
  * @param zones - Array of zone data rows
- * @param filename - Download filename (default: zones_TIMESTAMP.csv)
+ * @returns Buffer containing XLSX file data
+ */
+export function generateZoneCsv(zones: ZoneCsvRow[]): Buffer {
+  // Convert ZoneCsvRow[] to objects for XLSX
+  const zoneObjects = zones.map(zoneCsvRowToObject)
+
+  // Create worksheet
+  const worksheet = XLSX.utils.json_to_sheet(zoneObjects, { header: CSV_HEADERS })
+
+  // Create workbook and append worksheet
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Zones')
+
+  // Set column widths for better readability (36 columns total)
+  const columnWidths = [
+    { wch: 15 }, // Media Id
+    { wch: 35 }, // Name of zone
+    { wch: 50 }, // Zone URL
+    { wch: 20 }, // Allowed domain list
+    { wch: 25 }, // Point site domain list
+    { wch: 25 }, // Inventory Type
+    { wch: 20 }, // Type of zone
+    { wch: 10 }, // width
+    { wch: 10 }, // height
+    { wch: 20 }, // Use multiple sizes
+    { wch: 20 }, // Multi sizes
+    { wch: 20 }, // Enable Bidder Delivery
+    { wch: 25 }, // Create Reports from Bid Price
+    { wch: 20 }, // Method of Bidprice
+    { wch: 15 }, // CPM(iOS)(JPY)
+    { wch: 15 }, // CPM(Android)(JPY)
+    { wch: 15 }, // CPM(Other)(JPY)
+    { wch: 15 }, // Floor Price(JPY)
+    { wch: 30 }, // Deduct margin from RTB value at bidder delivery
+    { wch: 25 }, // Zone position
+    { wch: 25 }, // Allow Semi Adult Contents
+    { wch: 25 }, // Allow semi-adult categories
+    { wch: 15 }, // Use RTB
+    { wch: 20 }, // Allow External Delivery
+    { wch: 30 }, // App ID
+    { wch: 15 }, // Allow VtoV
+    { wch: 30 }, // Category
+    { wch: 20 }, // Category Detail
+    { wch: 25 }, // Default Payout rate for zone
+    { wch: 20 }, // Adjust Iframe size
+    { wch: 25 }, // Selector of Iframe Adjuster
+    { wch: 25 }, // RTB optimisation type
+    { wch: 20 }, // Vendor comment
+    { wch: 15 }, // Format
+    { wch: 15 }, // Device
+    { wch: 20 }, // Delivery Method
+  ]
+  worksheet['!cols'] = columnWidths
+
+  // Generate buffer
+  return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
+}
+
+/**
+ * Download XLSX file
+ * @param zones - Array of zone data rows
+ * @param filename - Download filename (default: zones_TIMESTAMP.xlsx)
  */
 export function downloadZoneCsv(zones: ZoneCsvRow[], filename?: string): void {
-  const csvContent = generateZoneCsv(zones)
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const buffer = generateZoneCsv(zones)
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.setAttribute('href', url)
   link.setAttribute(
     'download',
-    filename || `zones_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}.csv`
+    filename || `zones_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}.xlsx`
   )
   link.style.display = 'none'
   document.body.appendChild(link)
@@ -238,6 +273,7 @@ export function generatedZoneToCsvRow(
     nameOfZone: zone['Name of zone'] || '',
     zoneUrl: zoneUrl,
     allowedDomainList: zone['Allowed domain list'] || '',
+    pointSiteDomainList: zone['Point site domain list'] || '',
     inventoryType: zone['Inventory Type'] || DEFAULT_ZONE_VALUES.inventoryType!,
     typeOfZone: zone['Type of zone'] || DEFAULT_ZONE_VALUES.typeOfZone!,
     width: String(zone.width || DEFAULT_ZONE_VALUES.width),
@@ -281,6 +317,7 @@ export function createDefaultZoneRow(overrides: Partial<ZoneCsvRow> = {}): ZoneC
     nameOfZone: '',
     zoneUrl: '',
     allowedDomainList: '',
+    pointSiteDomainList: '',
     inventoryType: DEFAULT_ZONE_VALUES.inventoryType!,
     typeOfZone: DEFAULT_ZONE_VALUES.typeOfZone!,
     width: DEFAULT_ZONE_VALUES.width!,

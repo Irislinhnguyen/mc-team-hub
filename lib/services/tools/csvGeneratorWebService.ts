@@ -1,10 +1,50 @@
 /**
- * CSV Zone Generator Service for Team Web
- * Generates zone CSV files for web placements
+ * XLSX Zone Generator Service for Team Web
+ * Generates zone XLSX files for web placements with all 36 columns
  */
 
 import OpenAI from 'openai'
 import * as XLSX from 'xlsx'
+
+// All 36 column headers matching the internal ad system template
+const HEADERS = [
+  'Media Id',
+  'Name of zone',
+  'Zone URL',
+  'Allowed domain list',
+  'Point site domain list',
+  'Inventory Type',
+  'Type of zone',
+  'width',
+  'height',
+  'Use multiple sizes',
+  'Multi sizes',
+  'Enable Bidder Delivery',
+  'Create Reports from Bid Price',
+  'Method of Bidprice',
+  'CPM(iOS)(JPY)',
+  'CPM(Android)(JPY)',
+  'CPM(Other)(JPY)',
+  'Floor Price(JPY)',
+  'Deduct margin from RTB value at bidder delivery',
+  'Zone position',
+  'Allow Semi Adult Contents',
+  'Allow semi-adult categories',
+  'Use RTB',
+  'Allow External Delivery',
+  'App ID',
+  'Allow VtoV',
+  'Category',
+  'Category Detail',
+  'Default Payout rate for zone',
+  'Adjust Iframe size',
+  'Selector of Iframe Adjuster',
+  'RTB optimisation type',
+  'Vendor comment',
+  'Format',
+  'Device',
+  'Delivery Method',
+] as const
 
 // Initialize OpenAI client lazily (server-side only)
 function getOpenAIClient() {
@@ -14,6 +54,7 @@ function getOpenAIClient() {
 }
 
 interface WebZoneInput {
+  mediaId?: string // Media ID from Step 0
   mediaName: string
   products: Array<{
     product: string
@@ -25,9 +66,11 @@ interface WebZoneInput {
 }
 
 interface WebZoneOutput {
+  'Media Id'?: string
   'Name of zone': string
   'Zone URL': string
   'Allowed domain list'?: string
+  'Point site domain list'?: string
   'Inventory Type': string
   'Type of zone': string
   width: number | string
@@ -37,10 +80,10 @@ interface WebZoneOutput {
   'Enable Bidder Delivery'?: string
   'Create Reports from Bid Price'?: string
   'Method of Bidprice'?: string
-  'CPM(iOS)(USD)'?: number
-  'CPM(Android)(USD)'?: number
-  'CPM(Other)(USD)'?: number
-  'Floor Price(USD)'?: number
+  'CPM(iOS)(JPY)'?: string
+  'CPM(Android)(JPY)'?: string
+  'CPM(Other)(JPY)'?: string
+  'Floor Price(JPY)'?: string
   'Deduct margin from RTB value at bidder delivery'?: string
   'Zone position'?: string
   'Allow Semi Adult Contents'?: string
@@ -88,10 +131,12 @@ function generateZonesWithFormula(input: WebZoneInput, payoutRate: number): WebZ
             const numberSuffix = sizeQty > 1 ? `_${i}` : ''
             const zoneName = `${mediaNameSanitized}_${productLower}_${size}${numberSuffix}${notesSuffix}`
             zones.push({
+            'Media Id': input.mediaId || '',
             'Name of zone': zoneName,
             'Zone URL': input.mediaName,
             'Allowed domain list': '',
-            'Inventory Type': 'Mobile optimized web',
+            'Point site domain list': '',
+            'Inventory Type': 'Mobile Optimized Web',
             'Type of zone': 'スタンダードバナー',
             width: width || 300,
             height: height || 250,
@@ -100,10 +145,10 @@ function generateZonesWithFormula(input: WebZoneInput, payoutRate: number): WebZ
             'Enable Bidder Delivery': '',
             'Create Reports from Bid Price': '',
             'Method of Bidprice': '',
-            'CPM(iOS)(USD)': undefined,
-            'CPM(Android)(USD)': undefined,
-            'CPM(Other)(USD)': undefined,
-            'Floor Price(USD)': undefined,
+            'CPM(iOS)(JPY)': '',
+            'CPM(Android)(JPY)': '',
+            'CPM(Other)(JPY)': '',
+            'Floor Price(JPY)': '',
             'Deduct margin from RTB value at bidder delivery': '',
             'Zone position': 'Under the article/column',
             'Allow Semi Adult Contents': '',
@@ -136,10 +181,12 @@ function generateZonesWithFormula(input: WebZoneInput, payoutRate: number): WebZ
           const numberSuffix = quantity > 1 ? `_${i}` : ''
           const zoneName = `${mediaNameSanitized}_${productLower}${numberSuffix}${notesSuffix}`
           zones.push({
+            'Media Id': input.mediaId || '',
             'Name of zone': zoneName,
             'Zone URL': input.mediaName,
             'Allowed domain list': '',
-            'Inventory Type': 'Mobile optimized web',
+            'Point site domain list': '',
+            'Inventory Type': 'Mobile Optimized Web',
             'Type of zone': 'スタンダードバナー',
             width: 300,
             height: 250,
@@ -148,10 +195,10 @@ function generateZonesWithFormula(input: WebZoneInput, payoutRate: number): WebZ
             'Enable Bidder Delivery': '',
             'Create Reports from Bid Price': '',
             'Method of Bidprice': '',
-            'CPM(iOS)(USD)': undefined,
-            'CPM(Android)(USD)': undefined,
-            'CPM(Other)(USD)': undefined,
-            'Floor Price(USD)': undefined,
+            'CPM(iOS)(JPY)': '',
+            'CPM(Android)(JPY)': '',
+            'CPM(Other)(JPY)': '',
+            'Floor Price(JPY)': '',
             'Deduct margin from RTB value at bidder delivery': '',
             'Zone position': 'Under the article/column',
             'Allow Semi Adult Contents': '',
@@ -181,10 +228,12 @@ function generateZonesWithFormula(input: WebZoneInput, payoutRate: number): WebZ
         const numberSuffix = quantity > 1 ? `_${i}` : ''
         const zoneName = `${mediaNameSanitized}_${productLower}${numberSuffix}${notesSuffix}`
         zones.push({
+          'Media Id': input.mediaId || '',
           'Name of zone': zoneName,
           'Zone URL': input.mediaName,
           'Allowed domain list': '',
-          'Inventory Type': 'Mobile optimized web',
+          'Point site domain list': '',
+          'Inventory Type': 'Mobile Optimized Web',
           'Type of zone': product.toLowerCase().includes('interstitial') ? 'インタースティシャル' : 'スタンダードバナー',
           width: 300,
           height: 250,
@@ -193,10 +242,10 @@ function generateZonesWithFormula(input: WebZoneInput, payoutRate: number): WebZ
           'Enable Bidder Delivery': '',
           'Create Reports from Bid Price': '',
           'Method of Bidprice': '',
-          'CPM(iOS)(USD)': undefined,
-          'CPM(Android)(USD)': undefined,
-          'CPM(Other)(USD)': undefined,
-          'Floor Price(USD)': undefined,
+          'CPM(iOS)(JPY)': '',
+          'CPM(Android)(JPY)': '',
+          'CPM(Other)(JPY)': '',
+          'Floor Price(JPY)': '',
           'Deduct margin from RTB value at bidder delivery': '',
           'Zone position': 'Under the article/column',
           'Allow Semi Adult Contents': '',
@@ -224,14 +273,16 @@ function generateZonesWithFormula(input: WebZoneInput, payoutRate: number): WebZ
 }
 
 /**
- * Create zone template with all 34 columns and default values (Team Web)
+ * Create zone template with all 36 columns and default values (Team Web)
  */
-function createWebZoneTemplate(mediaName: string, payoutRate: number): WebZoneOutput {
+function createWebZoneTemplate(mediaName: string, payoutRate: number, mediaId?: string): WebZoneOutput {
   return {
+    'Media Id': mediaId || '',
     'Name of zone': '', // AI fills this
     'Zone URL': mediaName,
     'Allowed domain list': '',
-    'Inventory Type': 'Mobile optimized web',
+    'Point site domain list': '',
+    'Inventory Type': 'Mobile Optimized Web',
     'Type of zone': 'スタンダードバナー',
     width: 300, // AI can override
     height: 250, // AI can override
@@ -240,10 +291,10 @@ function createWebZoneTemplate(mediaName: string, payoutRate: number): WebZoneOu
     'Enable Bidder Delivery': '',
     'Create Reports from Bid Price': '',
     'Method of Bidprice': '',
-    'CPM(iOS)(USD)': undefined,
-    'CPM(Android)(USD)': undefined,
-    'CPM(Other)(USD)': undefined,
-    'Floor Price(USD)': undefined,
+    'CPM(iOS)(JPY)': '',
+    'CPM(Android)(JPY)': '',
+    'CPM(Other)(JPY)': '',
+    'Floor Price(JPY)': '',
     'Deduct margin from RTB value at bidder delivery': '',
     'Zone position': 'Under the article/column',
     'Allow Semi Adult Contents': '',
@@ -368,9 +419,9 @@ DO NOT include other fields - they will be filled from template automatically.`
 
   console.log(`[CSV Generator Web AI] Generated ${aiZones.length} zone names`)
 
-  // Merge AI output into template (ensures all 34 columns exist)
+  // Merge AI output into template (ensures all 36 columns exist)
   const zones: WebZoneOutput[] = aiZones.map((aiZone) => {
-    const template = createWebZoneTemplate(input.mediaName, payoutRate)
+    const template = createWebZoneTemplate(input.mediaName, payoutRate, input.mediaId)
     return {
       ...template,
       'Name of zone': aiZone.name,
@@ -379,7 +430,7 @@ DO NOT include other fields - they will be filled from template automatically.`
     }
   })
 
-  console.log(`[CSV Generator Web AI] Created ${zones.length} complete zones with 34 columns`)
+  console.log(`[CSV Generator Web AI] Created ${zones.length} complete zones with 36 columns`)
 
   return zones
 }
@@ -420,16 +471,18 @@ export async function generateWebZoneCSV(
 
     console.log(`[CSV Generator Web] Generated ${zones.length} zones`)
 
-    // Convert JSON to Excel buffer
-    const worksheet = XLSX.utils.json_to_sheet(zones)
+    // Convert JSON to Excel buffer with proper header order
+    const worksheet = XLSX.utils.json_to_sheet(zones, { header: HEADERS })
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Zones')
 
-    // Set column widths for better readability (34 columns total)
+    // Set column widths for better readability (36 columns total)
     const columnWidths = [
+      { wch: 15 }, // Media Id
       { wch: 35 }, // Name of zone
       { wch: 50 }, // Zone URL
       { wch: 20 }, // Allowed domain list
+      { wch: 25 }, // Point site domain list
       { wch: 25 }, // Inventory Type
       { wch: 20 }, // Type of zone
       { wch: 10 }, // width
@@ -439,10 +492,10 @@ export async function generateWebZoneCSV(
       { wch: 20 }, // Enable Bidder Delivery
       { wch: 25 }, // Create Reports from Bid Price
       { wch: 20 }, // Method of Bidprice
-      { wch: 15 }, // CPM(iOS)(USD)
-      { wch: 15 }, // CPM(Android)(USD)
-      { wch: 15 }, // CPM(Other)(USD)
-      { wch: 15 }, // Floor Price(USD)
+      { wch: 15 }, // CPM(iOS)(JPY)
+      { wch: 15 }, // CPM(Android)(JPY)
+      { wch: 15 }, // CPM(Other)(JPY)
+      { wch: 15 }, // Floor Price(JPY)
       { wch: 30 }, // Deduct margin from RTB value at bidder delivery
       { wch: 25 }, // Zone position
       { wch: 25 }, // Allow Semi Adult Contents

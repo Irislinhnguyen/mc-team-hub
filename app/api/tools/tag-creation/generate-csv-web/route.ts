@@ -1,6 +1,6 @@
 /**
  * API Endpoint: POST /api/tools/tag-creation/generate-csv-web
- * Generates zone CSV file for Team Web
+ * Generates zone XLSX file for Team Web
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { mediaName, products, aiPrompt, payoutRate } = await request.json()
+    const { mediaId, mediaName, products, aiPrompt, payoutRate } = await request.json()
 
     if (!mediaName || mediaName.trim().length === 0) {
       return NextResponse.json({ error: 'Media name is required' }, { status: 400 })
@@ -35,12 +35,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`[Generate CSV Web API] User ${user.id} generating CSV for ${mediaName}`)
+    console.log(`[Generate CSV Web API] User ${user.id} generating XLSX for ${mediaName}`)
     console.log(`[Generate CSV Web API] Products: ${products.length}`)
     console.log(`[Generate CSV Web API] Has AI Prompt: ${!!aiPrompt}`)
+    console.log(`[Generate CSV Web API] Media ID: ${mediaId || 'not provided'}`)
 
     const { buffer, zoneCount } = await generateWebZoneCSV(
-      { mediaName, products, aiPrompt },
+      { mediaId, mediaName, products, aiPrompt },
       payoutRate
     )
 
