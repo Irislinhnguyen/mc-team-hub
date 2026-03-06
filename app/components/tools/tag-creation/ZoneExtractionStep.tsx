@@ -21,7 +21,7 @@ export function ZoneExtractionStep({ onComplete, onBack }: ZoneExtractionStepPro
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const MAX_FILES = 10
+  const MAX_FILES = 20
 
   // Helper function to process files from any source
   const processFiles = useCallback((newFiles: File[]) => {
