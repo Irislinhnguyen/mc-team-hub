@@ -25,6 +25,9 @@ export function TagCreationWorkflow() {
   // Step 3: Multi-MID sync tracking
   const [syncedMids, setSyncedMids] = useState<Set<string>>(new Set())
 
+  // Reset counter to force component re-mount on reset
+  const [resetCounter, setResetCounter] = useState(0)
+
   // Store App ID, Appstore URL, and Payout Rate from Step 1
   const [appIdFromStep1, setAppIdFromStep1] = useState<string>('')
   const [appstoreUrlFromStep1, setAppstoreUrlFromStep1] = useState<string>('')
@@ -74,6 +77,8 @@ export function TagCreationWorkflow() {
     setAppIdFromStep1('')
     setAppstoreUrlFromStep1('')
     setPayoutRateFromStep1('')
+    // Increment reset counter to force all child components to re-mount
+    setResetCounter(prev => prev + 1)
   }, [])
 
   // Handle team type change with confirmation if data exists
@@ -202,14 +207,14 @@ export function TagCreationWorkflow() {
 
       {/* Step 0: Media Preparation (Optional) */}
       <MediaPreparationStep
-        key="media-preparation"
+        key={`media-preparation-${resetCounter}`}
         onComplete={handleStep0Complete}
       />
 
       {/* Step 1: Generate Zones (Optional) */}
       {teamType === 'app' && (
         <AppPromptInputStep
-          key="app-step"
+          key={`app-step-${resetCounter}`}
           step0Data={step0Data}
           midWithZones={midWithZones}
           onAddMidZones={handleAddMidZones}
@@ -219,7 +224,7 @@ export function TagCreationWorkflow() {
       )}
       {teamType === 'web' && (
         <WebPromptInputStep
-          key="web-step"
+          key={`web-step-${resetCounter}`}
           step0Data={step0Data}
           midWithZones={midWithZones}
           onAddMidZones={handleAddMidZones}
@@ -231,6 +236,7 @@ export function TagCreationWorkflow() {
 
       {/* Step 2: Extract Zones (Required) */}
       <ZoneExtractionStep
+        key={`zone-extraction-${resetCounter}`}
         teamType={teamType}
         preGeneratedZones={teamType === 'web' ? extractedZones : undefined}
         onComplete={handleExtractionComplete}
@@ -239,6 +245,7 @@ export function TagCreationWorkflow() {
 
       {/* Step 3: Sync to Sheets (Required) */}
       <ZoneDataEntryStep
+        key={`zone-data-entry-${resetCounter}`}
         teamType={teamType}
         zones={extractedZones}
         initialAppstoreUrl={appstoreUrlFromStep1}
