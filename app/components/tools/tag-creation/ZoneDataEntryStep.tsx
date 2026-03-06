@@ -1057,8 +1057,8 @@ export function ZoneDataEntryStep({
         {/* Action Buttons - shows after successful sync */}
         {syncSuccess && (
           <div className="flex gap-3 pt-4 border-t border-gray-200">
-            {/* Only show "Sync Another Media" if there are multiple MIDs available */}
-            {availableMids.length > 1 && (
+            {/* Only show "Sync Another Media" if there are remaining MIDs to sync */}
+            {syncedMids.size < availableMids.length && (
               <Button
                 onClick={() => {
                   setSyncSuccess(false)
@@ -1075,33 +1075,16 @@ export function ZoneDataEntryStep({
             <Button
               onClick={onReset}
               size="lg"
-              className={availableMids.length > 1 ? 'flex-1' : 'w-full'}
-              style={{ backgroundColor: availableMids.length > 1 ? '#1565C0' : '#10B981' }}
+              className={syncedMids.size < availableMids.length ? 'flex-1' : 'w-full'}
+              style={{ backgroundColor: syncedMids.size < availableMids.length ? '#1565C0' : '#10B981' }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = availableMids.length > 1 ? '#0D47A1' : '#059669'
+                e.currentTarget.style.backgroundColor = syncedMids.size < availableMids.length ? '#0D47A1' : '#059669'
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = availableMids.length > 1 ? '#1565C0' : '#10B981'
+                e.currentTarget.style.backgroundColor = syncedMids.size < availableMids.length ? '#1565C0' : '#10B981'
               }}
             >
-              {availableMids.length > 1 ? 'Start Over / New Tag Creation' : 'Create New Tags'}
-            </Button>
-          </div>
-        )}
-
-        {/* All Synced Message */}
-        {availableMids.length > 0 && syncedMids.size === availableMids.length && (
-          <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-center">
-            <CheckCircle2 className="h-5 w-5 text-green-600 mx-auto mb-2" />
-            <p className="text-sm font-medium text-green-900">
-              All MIDs synced successfully!
-            </p>
-            <Button
-              onClick={onReset}
-              variant="outline"
-              className="mt-3 border-green-600 text-green-700 hover:bg-green-100"
-            >
-              Create New Workflow
+              {syncedMids.size < availableMids.length ? 'Start Over / New Tag Creation' : 'Create New Tags'}
             </Button>
           </div>
         )}
