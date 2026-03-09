@@ -11,10 +11,10 @@ import { ChevronDown, Search } from 'lucide-react'
 import { useState } from 'react'
 
 interface FilterPanelProps {
-  filterYear: number
-  setFilterYear: (year: number) => void
-  filterQuarter: number
-  setFilterQuarter: (quarter: number) => void
+  filterYear: number | null
+  setFilterYear: (year: number | null) => void
+  filterQuarter: number | null
+  setFilterQuarter: (quarter: number | null) => void
   teams: Array<{ team_id: string; team_name: string }>
   filterTeams: string[]
   setFilterTeams: (teams: string[]) => void
@@ -106,7 +106,7 @@ export function FilterPanel({
                     variant="outline"
                     className="w-full justify-between border-[#1565C0] text-[#1565C0] bg-blue-50"
                   >
-                    <span>{filterYear}</span>
+                    <span>{filterYear ?? 'Loading...'}</span>
                     <ChevronDown className="h-4 w-4 ml-2 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -140,7 +140,7 @@ export function FilterPanel({
                     variant="outline"
                     className="w-full justify-between border-[#1565C0] text-[#1565C0] bg-blue-50"
                   >
-                    <span>Q{filterQuarter}</span>
+                    <span>{filterQuarter ? `Q${filterQuarter}` : 'Loading...'}</span>
                     <ChevronDown className="h-4 w-4 ml-2 opacity-50" />
                   </Button>
                 </PopoverTrigger>

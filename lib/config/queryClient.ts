@@ -90,6 +90,10 @@ export const queryKeys = {
       ['pipelines', { group, cursor, limit }] as const,
     lists: () => ['pipelines'] as const,
     activities: (pipelineId: string) => ['pipelines', pipelineId, 'activities'] as const,
+    salesCycleBreakdown: (group: string, filters: string) =>
+      ['pipelines', 'sales-cycle-breakdown', group, filters] as const,
+    stageProgress: (group: string, filters: string) =>
+      ['pipelines', 'stage-progress', group, filters] as const,
   },
 }
 
@@ -125,5 +129,18 @@ export const cacheConfig = {
   pipelines: {
     staleTime: 30 * 1000,            // 30 seconds (reduced from 2 minutes for fresher data)
     gcTime: 5 * 60 * 1000,           // 5 minutes
+  },
+
+  // Stale time presets
+  stale: {
+    short: 1 * 60 * 1000,            // 1 minute
+    medium: 5 * 60 * 1000,           // 5 minutes
+    long: 15 * 60 * 1000,            // 15 minutes
+  },
+
+  // GC time presets
+  gc: {
+    medium: 10 * 60 * 1000,          // 10 minutes
+    long: 30 * 60 * 1000,            // 30 minutes
   },
 }

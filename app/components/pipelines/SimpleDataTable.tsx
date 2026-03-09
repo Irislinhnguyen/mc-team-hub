@@ -18,6 +18,7 @@ interface SimpleDataTableProps {
   data: any[]
   onRowClick?: (row: any) => void
   maxHeight?: string
+  description?: React.ReactNode
 }
 
 export function SimpleDataTable({
@@ -25,7 +26,8 @@ export function SimpleDataTable({
   columns,
   data,
   onRowClick,
-  maxHeight = '400px'
+  maxHeight = '400px',
+  description
 }: SimpleDataTableProps) {
 
   const formatCellValue = (value: any, formatter?: (value: any) => string | React.ReactNode) => {
@@ -76,6 +78,11 @@ export function SimpleDataTable({
         >
           {title}
         </h3>
+        {description && (
+          <div className="mb-3 text-xs text-gray-600">
+            {description}
+          </div>
+        )}
         <div
           className="overflow-y-auto"
           style={{ maxHeight }}

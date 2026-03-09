@@ -15,6 +15,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { usePipeline } from '@/app/contexts/PipelineContext'
 import { usePipelines } from '@/lib/hooks/queries/usePipelines'
 import { usePipelineMetadata } from '@/lib/hooks/queries/usePipelineMetadata'
+import { useSalesCycleBreakdown } from '@/lib/hooks/queries/useSalesCycleBreakdown'
+import { usePipelineStageProgress } from '@/lib/hooks/queries/usePipelineStageProgress'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import {
@@ -40,13 +42,15 @@ import {
   SConfirmationTableSkeleton,
   MissingPidMidTableSkeleton,
   PipelineImpactTableSkeleton,
-  KanbanBoardSkeleton
+  KanbanBoardSkeleton,
+  SalesCycleBreakdownCardSkeleton,
 } from '@/app/components/pipelines/skeletons'
 import { PipelineDetailDrawer } from '@/app/components/pipelines/PipelineDetailDrawer'
 import { SalesCycleCard } from '@/app/components/pipelines/SalesCycleCard'
 import { NewPipelinesCard } from '@/app/components/pipelines/NewPipelinesCard'
 import { SimpleDataTable } from '@/app/components/pipelines/SimpleDataTable'
 import { RevenueForecastTable } from '@/app/components/pipelines/RevenueForecastTable'
+import { SalesCycleBreakdownCard } from '@/app/components/pipelines/SalesCycleBreakdownCard'
 import { SConfirmationTable } from '@/app/components/pipelines/SConfirmationTable'
 import { MissingPidMidTable } from '@/app/components/pipelines/MissingPidMidTable'
 import { PipelineImpactTable } from '@/app/components/pipelines/PipelineImpactTable'
@@ -55,8 +59,7 @@ import { FilterPanel } from '@/app/components/pipelines/FilterPanel'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { colors as statusColors } from '@/lib/colors'
-import { formatDateShort } from '@/lib/utils/dateHelpers'
-import { daysBetween } from '@/lib/utils/dateHelpers'
+import { formatDateShort, daysBetween, daysFromTo } from '@/lib/utils/dateHelpers'
 import { getQuarterFromDate, isDateInQuarter } from '@/lib/utils/quarterHelpers'
 
 function PipelinesPageSkeleton() {
@@ -92,6 +95,11 @@ function PipelinesPageSkeleton() {
           <RevenueForecastTableSkeleton />
         </div>
 
+        {/* Sales Cycle Breakdown Skeleton */}
+        <div className="mb-8">
+          <SalesCycleBreakdownCardSkeleton />
+        </div>
+
         {/* Kanban Board Skeleton */}
         <div className="mb-8">
           <h2 className="text-lg font-semibold text-[#1565C0] mb-4">Pipeline Board</h2>
@@ -125,15 +133,6 @@ function PipelinesPageContent() {
 
   // State
   const [activeGroup, setActiveGroup] = useState<PipelineGroup>('sales')
-
-  // Data fetching via React Query - Load ALL pipelines
-  const { pipelines, loading: pipelinesLoading, error: queryError, refetch } = usePipelines(activeGroup, { loadAll: true })
-
-  // Mutations via Context
-  const { updatePipeline, error: mutationError, clearError } = usePipeline()
-
-  // Consolidated error
-  const error = queryError || mutationError
   const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [filterTeam, setFilterTeam] = useState('')
@@ -141,17 +140,62 @@ function PipelinesPageContent() {
   const [filterProducts, setFilterProducts] = useState<string[]>([])
   const [filterSlotTypes, setFilterSlotTypes] = useState<string[]>([]) // Slot type filter: 'new' | 'existing'
   const [filterStatuses, setFilterStatuses] = useState<string[]>([]) // Status filter
-
-  // Team filter states
   const [filterTeams, setFilterTeams] = useState<string[]>([]) // Multi-select team filter
 
-  // Time filter states - Quarter and Year
-  // Get most recent quarterly sheet for default filter instead of current quarter
-  const [filterYear, setFilterYear] = useState<number>(2025)  // Fallback defaults
-  const [filterQuarter, setFilterQuarter] = useState<number>(4)  // Fallback defaults
+  // Calculate current fiscal year (FY starts April 1, so March 2026 is still FY 2026)
+  const getCurrentFiscalYear = () => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth() + 1 // 0-indexed
+    // Fiscal year starts April 1 (month 4)
+    return month >= 4 ? year : year - 1
+  }
+  const getCurrentFiscalQuarter = () => {
+    const now = new Date()
+    const month = now.getMonth() + 1 // 0-indexed
+    if (month >= 1 && month <= 3) return 4
+    if (month >= 4 && month <= 6) return 1
+    if (month >= 7 && month <= 9) return 2
+    return 3
+  }
 
-  // Refresh state
+  const [filterYear, setFilterYear] = useState<number | null>(null)
+  const [filterQuarter, setFilterQuarter] = useState<number | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+
+  // Data fetching via React Query - Load ALL pipelines
+  const { pipelines, loading: pipelinesLoading, error: queryError, refetch } = usePipelines(activeGroup, { loadAll: true })
+
+  // Fetch sales cycle breakdown data with current filters
+  const {
+    data: salesCycleData,
+    loading: salesCycleLoading,
+    refetch: refetchSalesCycle,
+  } = useSalesCycleBreakdown(activeGroup, {
+    fiscalYear: filterYear,
+    fiscalQuarter: filterQuarter,
+    teams: filterTeams,
+    pocs: filterPICs,
+    products: filterProducts,
+    statuses: filterStatuses,
+  })
+
+  // Fetch pipeline stage progress data (includes POC-specific averages)
+  const { data: stageProgressData, loading: stageProgressLoading } = usePipelineStageProgress({
+    group: activeGroup,
+    fiscalYear: filterYear,
+    fiscalQuarter: filterQuarter,
+    teams: filterTeams,
+    pocs: filterPICs,
+    products: filterProducts,
+    statuses: filterStatuses,
+  })
+
+  // Mutations via Context
+  const { updatePipeline, error: mutationError, clearError } = usePipeline()
+
+  // Consolidated error
+  const error = queryError || mutationError
 
   // Fetch most recent quarterly sheet for default filter
   useEffect(() => {
@@ -256,19 +300,14 @@ function PipelinesPageContent() {
       const validPocs = new Set<string>()
       filterTeams.forEach(teamId => {
         const picsForTeam = teamToPicMap[teamId] || []
-        console.log(`[Team Filter] Team ${teamId} has ${picsForTeam.length} POCs:`, picsForTeam)
         picsForTeam.forEach(pic => validPocs.add(pic))
       })
 
-      console.log('[Team Filter] Valid POCs from selected teams:', Array.from(validPocs))
-
       // Filter pipelines by POC
-      const beforeCount = filtered.length
       filtered = filtered.filter(p => {
         if (!p.poc) return false  // Skip pipelines without POC
         return validPocs.has(p.poc)  // O(1) lookup
       })
-      console.log(`[Team Filter] Pipelines: ${beforeCount} → ${filtered.length}`)
     }
 
     // Slot Type filter
@@ -341,7 +380,7 @@ function PipelinesPageContent() {
       return isOverdue && notClosed
     }).map(p => ({
       ...p,
-      days_overdue: daysBetween(p.starting_date!, new Date())
+      days_overdue: daysFromTo(new Date(p.starting_date!), today)
     })).sort((a, b) => b.days_overdue - a.days_overdue)
   }, [filteredPipelines])
 
@@ -363,6 +402,67 @@ function PipelinesPageContent() {
       days_until: daysBetween(new Date(), p.action_date!)
     })).sort((a, b) => a.days_until - b.days_until)
   }, [filteredPipelines])
+
+  // Map pipeline_id to progress data
+  const progressDataMap = useMemo(() => {
+    if (!stageProgressData?.pipelines) return new Map()
+    return new Map(
+      stageProgressData.pipelines.map(p => [p.pipeline_id, p])
+    )
+  }, [stageProgressData])
+
+  // Compute warning pipelines (behind schedule based on POC-specific averages)
+  // Warning if: Days needed to reach S- > Days remaining until starting_date
+  // Excludes: Already overdue pipelines (they go to Overdue Pipelines table instead)
+  const warningPipelines = useMemo(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    return filteredPipelines.filter(p => {
+      const progress = progressDataMap.get(p.id)
+
+      // Only skip if avg_days_to_S is explicitly null (not if it's 0)
+      if (progress?.avg_days_to_S === null || progress?.avg_days_to_S === undefined) return false
+
+      const startDate = p.starting_date ? new Date(p.starting_date) : null
+      if (!startDate) return false
+
+      // Only warn for pipelines not yet at S- or beyond
+      const notClosed = !['【S】', '【S-】', '【Z】'].includes(p.status)
+      if (!notClosed) return false
+
+      // Days needed to reach S- = avg_days_to_S - 7 (S- to S is fixed 7 days)
+      const daysNeededToReachSDash = progress.avg_days_to_S - 7
+
+      // Days remaining from today to starting_date (S- date)
+      // Using daysFromTo: positive if startDate is in future, negative if in past
+      const daysRemaining = daysFromTo(today, startDate)
+
+      // EXCLUDE: Already overdue pipelines (they belong in Overdue Pipelines table)
+      if (daysRemaining < 0) return false
+
+      // Warn if: days needed > days remaining
+      // Only warn if we have meaningful data (days_needed should be positive)
+      const isBehindSchedule = daysNeededToReachSDash > 0 && daysNeededToReachSDash > daysRemaining
+
+      return isBehindSchedule
+    }).map(p => {
+      const progress = progressDataMap.get(p.id)!
+      const startDate = new Date(p.starting_date!)
+
+      // Days needed to reach S-
+      const daysNeededToReachSDash = progress.avg_days_to_S - 7
+      // Days remaining until starting_date (using daysFromTo for correct calculation)
+      const daysRemaining = daysFromTo(new Date(), startDate)
+
+      return {
+        ...p,
+        expected_S_date: progress.expected_S_date,
+        days_needed_to_S_minus: daysNeededToReachSDash,        // Days needed to reach S-
+        days_remaining_until_start: daysRemaining,             // Days until Starting Date
+      }
+    }).sort((a, b) => a.days_remaining_until_start - b.days_remaining_until_start)
+  }, [filteredPipelines, progressDataMap])
 
   // Count pipelines per group
   const salesCount = pipelines.filter((p) => p.group === 'sales').length
@@ -512,6 +612,11 @@ function PipelinesPageContent() {
               <RevenueForecastTableSkeleton />
             </div>
 
+            {/* Sales Cycle Breakdown Skeleton */}
+            <div className="mb-8">
+              <SalesCycleBreakdownCardSkeleton />
+            </div>
+
             {/* Kanban Board Skeleton */}
             <div className="mb-8">
             <h2 className="text-lg font-semibold text-[#1565C0] mb-4">Pipeline Board</h2>
@@ -598,9 +703,6 @@ function PipelinesPageContent() {
                 setFilterTeams([])
                 setFilterSlotTypes([])
                 setFilterStatuses([])
-                // Reset to current quarter and year
-                setFilterYear(currentYear)
-                setFilterQuarter(currentQuarter)
               }}
             />
           </div>
@@ -651,6 +753,15 @@ function PipelinesPageContent() {
             <RevenueForecastTable pipelines={filteredPipelines} />
           </div>
 
+          {/* Sales Cycle Breakdown Section */}
+          <div className="mb-8">
+            <SalesCycleBreakdownCard
+              group={activeGroup}
+              transitions={salesCycleData}
+              loading={salesCycleLoading}
+            />
+          </div>
+
           {/* Pipeline Board Section */}
           <div className="mb-8">
             <h2 className="text-lg font-semibold text-[#1565C0] mb-4">Pipeline Board</h2>
@@ -665,6 +776,76 @@ function PipelinesPageContent() {
           {/* Action Items Section */}
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-[#1565C0] mb-4">Action Items</h2>
+
+            {/* Warning Pipelines - Behind Schedule (POC-specific) */}
+            <div className="mb-6">
+              <SimpleDataTable
+                title={`Warning Pipelines (${warningPipelines.length})`}
+                description={
+                  <div className="text-xs text-gray-600">
+                    <strong>Why is this here?</strong> <span className="italic">Needs X days to S-</span> is higher than <span className="italic">Days until Starting Date</span>.
+                    <div className="mt-1">
+                      <span className="text-gray-700">Example:</span> <strong>40 days</strong> needed but only <strong className="text-red-600">2 days</strong> left → behind schedule.
+                    </div>
+                  </div>
+                }
+                columns={[
+                  {
+                    key: 'publisher',
+                    label: 'Pipeline',
+                    format: (value) => <span className="font-medium">{value || 'Unnamed'}</span>
+                  },
+                  {
+                    key: 'poc',
+                    label: 'POC',
+                    format: (value) => value || '-'
+                  },
+                  {
+                    key: 'status',
+                    label: 'Status',
+                    format: (value) => (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">
+                        {value}
+                      </Badge>
+                    )
+                  },
+                  {
+                    key: 'starting_date',
+                    label: 'Starting Date',
+                    format: (value) => value ? formatDateShort(value) : '-'
+                  },
+                  {
+                    key: 'days_needed_to_S_minus',
+                    label: 'Needs X days to S-',
+                    align: 'right',
+                    format: (value) => (
+                      <span className="text-gray-600">{value || 0} days</span>
+                    )
+                  },
+                  {
+                    key: 'days_remaining_until_start',
+                    label: 'Days until Starting Date',
+                    align: 'right',
+                    format: (value) => {
+                      const days = value || 0
+                      const absDays = Math.abs(days)
+                      const dayWord = absDays === 1 ? 'day' : 'days'
+                      if (days < 0) {
+                        return <span className="font-bold text-red-600">{days} {dayWord}</span>
+                      } else if (days === 0) {
+                        return <span className="text-gray-600">0 days</span>
+                      } else {
+                        return <span className="text-green-600">{days} {dayWord}</span>
+                      }
+                    }
+                  }
+                ]}
+                data={warningPipelines}
+                onRowClick={(row) => handlePipelineClick(row)}
+                maxHeight="400px"
+              />
+            </div>
+
             <div className="grid gap-6 md:grid-cols-2 mb-6">
               <SimpleDataTable
                 title={`Overdue Pipelines (${overduePipelines.length})`}

@@ -19,6 +19,26 @@ export function daysBetween(date1: string | Date, date2: string | Date): number 
 }
 
 /**
+ * Calculate days from date1 to date2 (can be negative if date2 is before date1)
+ * @param fromDate - Starting date (string or Date)
+ * @param toDate - Target date (string or Date)
+ * @returns Number of days from fromDate to toDate (positive if toDate is after fromDate, negative otherwise)
+ */
+export function daysFromTo(fromDate: string | Date, toDate: string | Date): number {
+  const from = typeof fromDate === 'string' ? new Date(fromDate) : new Date(fromDate.getTime())
+  const to = typeof toDate === 'string' ? new Date(toDate) : new Date(toDate.getTime())
+
+  // Reset time to midnight for consistent day calculation
+  from.setHours(0, 0, 0, 0)
+  to.setHours(0, 0, 0, 0)
+
+  const diffTime = to.getTime() - from.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+  return diffDays
+}
+
+/**
  * Get the start date of the current fiscal quarter
  * Fiscal year: Q1 (Apr-Jun), Q2 (Jul-Sep), Q3 (Oct-Dec), Q4 (Jan-Mar)
  * @param date - Reference date (defaults to today)
