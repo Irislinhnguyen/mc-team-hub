@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser, requireAdminOrManager, isAdmin, requireLeaderOrAbove, canAssignRole } from '@query-stream-ai/auth/server'
-import { createAdminClient } from '@query-stream-ai/db/server'
+import { createAdminClient } from '@query-stream-ai/db'
 import { authService } from '@query-stream-ai/auth/service'
 
 // GET single user

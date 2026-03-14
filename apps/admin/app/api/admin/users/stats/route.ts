@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getServerUser, requireLeaderOrAbove } from '@query-stream-ai/auth/server'
-import { createAdminClient } from '@query-stream-ai/db/server'
+import { createAdminClient } from '@query-stream-ai/db'
 
 /**
  * GET /api/admin/users/stats

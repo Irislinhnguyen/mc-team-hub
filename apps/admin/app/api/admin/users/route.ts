@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser, requireAdminOrManager, isAdmin, requireLeaderOrAbove } from '@query-stream-ai/auth/server'
-import { createAdminClient } from '@query-stream-ai/db/server'
+import { createAdminClient } from '@query-stream-ai/db'
 
 // GET all users
 export async function GET(request: NextRequest) {
