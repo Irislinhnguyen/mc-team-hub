@@ -1,0 +1,292 @@
+'use client'
+
+import { useState, useEffect, useRef } from 'react'
+import { FilterPanel } from '../../../components/analytics/FilterPanel'
+import FilterPanelSkeleton from '../../../components/analytics/skeletons/FilterPanelSkeleton'
+import { MetricCard } from '../../../components/analytics/MetricCard'
+import { DataTable } from '../../../components/analytics/DataTable'
+import { PageHeader } from '../../../components/analytics/PageHeader'
+import { CrossFilterChips } from '../../../components/analytics/CrossFilterChips'
+import { useCrossFilter } from '../../../contexts/CrossFilterContext'
+import { colors } from '../../../../lib/colors'
+import { formatMetricValue } from '../../../../lib/utils/formatters'
+
+interface FilterConfig {
+  name: string
+  label: string
+  type: 'daterange' | 'select'
+  options?: Array<{ label: string; value: string }>
+}
+
+interface MetadataOptions {
+  pics: Array<{ label: string; value: string }>
+  products: Array<{ label: string; value: string }>
+  pids: Array<{ label: string; value: string }>
+  mids: Array<{ label: string; value: string }>
+  pubnames: Array<{ label: string; value: string }>
+  medianames: Array<{ label: string; value: string }>
+  zids: Array<{ label: string; value: string }>
+  zonenames: Array<{ label: string; value: string }>
+  teams: Array<{ label: string; value: string }>
+}
+
+interface DailyOpsData {
+  metrics: {
+    yesterday_revenue: number
+    yesterday_profit: number
+    ecpm: number
+    yesterday_requests: number
+    yesterday_serve: number
+    active_clients: number
+  }
+  topMovers: any[]
+  topMoversDetails: any[]
+}
+
+export default function DailyOpsPage() {
+  const [loading, setLoading] = useState(false)
+  const [currentFilters, setCurrentFilters] = useState<Record<string, any>>({})
+  const [metadata, setMetadata] = useState<MetadataOptions | null>(null)
+  const [metadataLoading, setMetadataLoading] = useState(true)
+  const [metadataError, setMetadataError] = useState<string | null>(null)
+  const [data, setData] = useState<DailyOpsData | null>(null)
+  const { crossFilters } = useCrossFilter()
+  const prevCrossFilterFieldsRef = useRef<string[]>([])
+
+  // Load metadata and initial data in parallel
+  useEffect(() => {
+    const defaultFilters = {}
+
+    const fetchMetadata = async () => {
+      try {
+        const response = await fetch('/api/analytics/metadata')
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: Failed to fetch metadata`)
+        }
+        const result = await response.json()
+        if (result.status === 'ok') {
+          setMetadata(result.data)
+          setMetadataError(null)
+        } else {
+          throw new Error(result.message || 'Unknown error fetching metadata')
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load filters'
+        console.error('Error fetching metadata:', errorMessage)
+        setMetadataError(errorMessage)
+        setMetadata(null)
+      } finally {
+        setMetadataLoading(false)
+      }
+    }
+
+    setCurrentFilters(defaultFilters)
+    fetchMetadata()
+  }, [])
+
+  // Apply cross-filters to current filters whenever they change
+  useEffect(() => {
+    setCurrentFilters(prev => {
+      // Remove old cross-filter keys
+      const cleaned = { ...prev }
+      prevCrossFilterFieldsRef.current.forEach(field => {
+        delete cleaned[field]
+      })
+
+      // Apply new cross-filters
+      const newCrossFilterValues = crossFilters.reduce((acc, filter) => {
+        acc[filter.field] = filter.value
+        return acc
+      }, {} as Record<string, any>)
+
+      // Update ref with current fields
+      prevCrossFilterFieldsRef.current = crossFilters.map(f => f.field)
+
+      // Merge cleaned filters with new cross-filters
+      return { ...cleaned, ...newCrossFilterValues }
+    })
+  }, [crossFilters])
+
+  // Fetch data when filters change or on initial load
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true)
+      try {
+        const response = await fetch('/api/analytics/daily-ops', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(currentFilters),
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+
+        const result = await response.json()
+        if (result.status === 'ok') {
+          setData(result.data)
+        } else {
+          console.error('Error:', result.message)
+        }
+      } catch (error) {
+        console.error('Error fetching daily ops data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [currentFilters])
+
+  const showMetadataError = metadataError && !metadataLoading
+
+  const filterConfig: FilterConfig[] = [
+    {
+      name: 'team',
+      label: 'team',
+      type: 'select',
+      options: metadata?.teams || [],
+    },
+    {
+      name: 'pic',
+      label: 'pic',
+      type: 'select',
+      options: metadata?.pics || [],
+    },
+    {
+      name: 'rev_flag',
+      label: 'rev_flag',
+      type: 'select',
+      options: [
+        { label: '✅ Stable', value: '✅ Stable' },
+        { label: '🟢 Spike', value: '🟢 Spike' },
+        { label: '🟠 Moderate Drop', value: '🟠 Moderate Drop' },
+        { label: '🔴 Severe Drop', value: '🔴 Severe Drop' },
+        { label: '❌ Missing', value: '❌ Missing' },
+      ],
+    },
+  ]
+
+  // No longer needed - using centralized formatters
+
+  return (
+    <div
+      className="space-y-0"
+      style={{
+        backgroundColor: '#FAFAFA',
+        minHeight: '100vh',
+        minWidth: 0,
+        width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+        overflow: 'hidden'
+      }}
+    >
+      <PageHeader title="Daily Ops Report (CS)" />
+      <CrossFilterChips />
+
+      {/* Filter Panel */}
+      {showMetadataError ? (
+        <div className="p-6">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+            <h3 className="font-semibold text-red-900 mb-2">Failed to Load Filters</h3>
+            <p className="text-red-700 text-sm mb-4">{metadataError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-medium"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      ) : metadataLoading ? (
+        <FilterPanelSkeleton />
+      ) : (
+        <FilterPanel
+          filters={filterConfig}
+          onFilterChange={setCurrentFilters}
+          isLoading={loading}
+        />
+      )}
+
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 pt-6 space-y-6 pb-8">
+        {/* Metrics Cards */}
+        {data && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
+            <MetricCard
+              label="Yesterday Revenue"
+              value={data.metrics.yesterday_revenue || 0}
+            />
+            <MetricCard
+              label="Yesterday Profit"
+              value={data.metrics.yesterday_profit || 0}
+            />
+            <MetricCard
+              label="ecpm"
+              value={data.metrics.ecpm || 0}
+            />
+            <MetricCard
+              label="Yesterday request"
+              value={data.metrics.yesterday_requests || 0}
+            />
+            <MetricCard
+              label="Yesterday serve"
+              value={data.metrics.yesterday_serve || 0}
+            />
+            <MetricCard
+              label="Yesterday active client"
+              value={data.metrics.active_clients || 0}
+            />
+          </div>
+        )}
+
+        {/* Top Movers Table */}
+        {data && data.topMovers && (
+          <DataTable
+            title="Top movers"
+            columns={[
+              { key: 'pic', label: 'pic' },
+              { key: 'zonename', label: 'zonename' },
+              { key: 'req_flag', label: 'req_flag' },
+              { key: 'paid_flag', label: 'paid_flag' },
+              { key: 'cpm_flag', label: 'cpm_flag' },
+              { key: 'rev_flag', label: 'rev_flag' },
+            ]}
+            data={data.topMovers}
+            enableCrossFilter={true}
+            crossFilterColumns={['pic', 'zonename']}
+          />
+        )}
+
+        {/* Top Movers - Details Table */}
+        {data && data.topMoversDetails && (
+          <DataTable
+            title="Top movers - Details"
+            columns={[
+              { key: 'zid', label: 'zid' },
+              { key: 'zonename', label: 'zonename' },
+              { key: 'req_7d_avg', label: 'req_7d_avg' },
+              { key: 'req_yesterday', label: 'req_yesterday' },
+              { key: 'paid_7d_avg', label: 'paid_7d_avg' },
+              { key: 'paid_yesterday', label: 'paid_yesterday' },
+              { key: 'cpm_7d_avg', label: 'cpm_7d_avg' },
+              { key: 'cpm_yesterday', label: 'cpm_yesterday' },
+              { key: 'rev_7d_avg', label: 'rev_7d_avg' },
+              { key: 'rev_yesterday', label: 'rev_yesterday' },
+            ]}
+            data={data.topMoversDetails}
+            enableCrossFilter={true}
+            crossFilterColumns={['zid', 'zonename']}
+          />
+        )}
+
+        {loading && !data && (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-gray-500">Loading data...</div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

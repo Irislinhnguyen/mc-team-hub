@@ -1,0 +1,83 @@
+'use client'
+
+import { FilterPanel } from './FilterPanel'
+import { MetadataErrorUI } from './MetadataErrorUI'
+import FilterPanelSkeleton from './skeletons/FilterPanelSkeleton'
+import { useAnalyticsMetadata } from '../../../lib/hooks/useAnalyticsMetadata'
+import { buildFilterConfig } from '../../../lib/config/filterConfigs'
+import type { FilterField } from '../../../lib/types/performanceTracker'
+
+/**
+ * MetadataFilterPanel - Integrated filter panel with automatic metadata handling
+ *
+ * Combines metadata fetching, error handling, and loading states into a single
+ * component that wraps FilterPanel with all necessary logic.
+ *
+ * @example
+ * <MetadataFilterPanel
+ *   filterFields={['daterange', 'team', 'pic', 'product']}
+ *   onFilterChange={setCurrentFilters}
+ *   isLoading={dataLoading}
+ * />
+ */
+
+interface MetadataFilterPanelProps {
+  filterFields: FilterField[]
+  onFilterChange: (filters: Record<string, any>) => void
+  onFilterChipsChange?: (chips: Array<{
+    filterName: string
+    filterLabel: string
+    values: string[]
+    valueLabels: string[]
+  }>) => void
+  isLoading?: boolean
+  includeDateInFilters?: boolean
+  allowMultiSelect?: boolean
+  compact?: boolean
+  defaultDateRange?: { startDate: string; endDate: string }
+}
+
+export function MetadataFilterPanel({
+  filterFields,
+  onFilterChange,
+  onFilterChipsChange,
+  isLoading = false,
+  includeDateInFilters,
+  allowMultiSelect,
+  compact,
+  defaultDateRange
+}: MetadataFilterPanelProps) {
+  const { metadata, loading: metadataLoading, error: metadataError, refetch } = useAnalyticsMetadata()
+
+  // Show error UI if metadata failed to load
+  if (metadataError && !metadataLoading) {
+    return <MetadataErrorUI error={metadataError} onRetry={refetch} />
+  }
+
+  // Show skeleton while metadata is loading with dynamic count based on filterFields
+  if (metadataLoading) {
+    return <FilterPanelSkeleton filterCount={filterFields.length} />
+  }
+
+  // Build filter configuration from metadata
+  const { filters } = buildFilterConfig(metadata, filterFields)
+
+  // Auto-detect: if no daterange in filterFields, don't include dates
+  const shouldIncludeDates = includeDateInFilters ?? filterFields.includes('daterange')
+
+  return (
+    <FilterPanel
+      filters={filters}
+      onFilterChange={onFilterChange}
+      onFilterChipsChange={onFilterChipsChange}
+      isLoading={isLoading}
+      includeDateInFilters={shouldIncludeDates}
+      allowMultiSelect={allowMultiSelect}
+      compact={compact}
+      defaultDateRange={defaultDateRange}
+    />
+  )
+}
+
+// Add displayName for reliable component detection in AnalyticsPageLayout
+MetadataFilterPanel.displayName = 'MetadataFilterPanel'

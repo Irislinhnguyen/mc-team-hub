@@ -1,0 +1,668 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { FilterPanel } from '../../../components/analytics/FilterPanel'
+import FilterPanelSkeleton from '../../../components/analytics/skeletons/FilterPanelSkeleton'
+import ChartSkeleton from '../../../components/analytics/skeletons/ChartSkeleton'
+import TableSkeleton from '../../../components/analytics/skeletons/TableSkeleton'
+import { DataTable } from '../../../components/analytics/DataTable'
+import { TimeSeriesChart } from '../../../components/analytics/TimeSeriesChart'
+import { PageHeader } from '../../../components/analytics/PageHeader'
+import { CrossFilterChips } from '../../../components/analytics/CrossFilterChips'
+import { DatePresetButtons, DatePreset } from '../../../components/analytics/DatePresetButtons'
+import { useCrossFilter } from '../../../contexts/CrossFilterContext'
+import { colors } from '../../../../lib/colors'
+
+interface FilterConfig {
+  name: string
+  label: string
+  type: 'daterange' | 'select'
+  options?: Array<{ label: string; value: string }>
+}
+
+interface MetadataOptions {
+  pics: Array<{ label: string; value: string }>
+  teams: Array<{ label: string; value: string }>
+  pids: Array<{ label: string; value: string }>
+  pubnames: Array<{ label: string; value: string }>
+}
+
+interface NewSalesData {
+  allNewSales: any[]
+  summaryTimeSeries: any[]
+  summaryRevenue: any[]
+  summaryProfit: any[]
+  salesCsBreakdown: any[]
+  salesCsBreakdownGrouped: any[]
+  salesCsBreakdownTotals: {
+    total_sales_rev: number
+    total_sales_profit: number
+    total_cs_rev: number
+    total_cs_profit: number
+  }
+}
+
+export default function NewSalesPage() {
+  const [activeTab, setActiveTab] = useState('summary')
+  const [loading, setLoading] = useState(false)
+  const [summaryFilters, setSummaryFilters] = useState<Record<string, any>>({})
+  const [detailsFilters, setDetailsFilters] = useState<Record<string, any>>({})
+  const [summaryPreset, setSummaryPreset] = useState<DatePreset>('all-time')
+  const [detailsPreset, setDetailsPreset] = useState<DatePreset>('last-6-months')
+  const [metadata, setMetadata] = useState<MetadataOptions | null>(null)
+  const [metadataLoading, setMetadataLoading] = useState(true)
+  const [metadataError, setMetadataError] = useState<string | null>(null)
+  const [data, setData] = useState<NewSalesData | null>(null)
+  const { crossFilters } = useCrossFilter()
+
+  // Load metadata on mount
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      try {
+        const response = await fetch('/api/analytics/metadata')
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: Failed to fetch metadata`)
+        }
+        const result = await response.json()
+        if (result.status === 'ok') {
+          setMetadata(result.data)
+          setMetadataError(null)
+        } else {
+          throw new Error(result.message || 'Unknown error fetching metadata')
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load filters'
+        console.error('Error fetching metadata:', errorMessage)
+        setMetadataError(errorMessage)
+        setMetadata(null)
+      } finally {
+        setMetadataLoading(false)
+      }
+    }
+
+    // Summary tab: No default date filter (show all time)
+    setSummaryFilters({})
+
+    // Details tab: Default to last 6 months
+    const today = new Date()
+    const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000)
+    setDetailsFilters({
+      startDate: sixMonthsAgo.toISOString().split('T')[0],
+      endDate: today.toISOString().split('T')[0],
+    })
+
+    fetchMetadata()
+  }, [])
+
+  // Apply cross-filters to active tab's filters
+  useEffect(() => {
+    if (crossFilters.length > 0) {
+      const crossFilterValues = crossFilters.reduce((acc, filter) => {
+        acc[filter.field] = filter.value
+        return acc
+      }, {} as Record<string, any>)
+
+      if (activeTab === 'summary') {
+        setSummaryFilters(prev => ({
+          ...prev,
+          ...crossFilterValues
+        }))
+      } else if (activeTab === 'details') {
+        setDetailsFilters(prev => ({
+          ...prev,
+          ...crossFilterValues
+        }))
+      }
+    }
+  }, [crossFilters, activeTab])
+
+  // Handle preset changes and update filters accordingly
+  const handlePresetChange = (preset: DatePreset, isDetailsTab: boolean = false) => {
+    const today = new Date()
+    let startDate: string | undefined
+    let endDate: string | undefined
+
+    switch (preset) {
+      case 'all-time':
+        // No date filter
+        startDate = undefined
+        endDate = undefined
+        break
+      case 'last-30-days':
+        startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        endDate = today.toISOString().split('T')[0]
+        break
+      case 'last-3-months':
+        startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        endDate = today.toISOString().split('T')[0]
+        break
+      case 'last-6-months':
+        startDate = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        endDate = today.toISOString().split('T')[0]
+        break
+      case 'custom':
+        // Don't update filters here - let user select via date picker
+        return
+    }
+
+    if (isDetailsTab) {
+      setDetailsPreset(preset)
+      setDetailsFilters(prev => {
+        const newFilters = { ...prev }
+        if (startDate && endDate) {
+          newFilters.startDate = startDate
+          newFilters.endDate = endDate
+        } else {
+          delete newFilters.startDate
+          delete newFilters.endDate
+        }
+        return newFilters
+      })
+    } else {
+      setSummaryPreset(preset)
+      setSummaryFilters(prev => {
+        const newFilters = { ...prev }
+        if (startDate && endDate) {
+          newFilters.startDate = startDate
+          newFilters.endDate = endDate
+        } else {
+          delete newFilters.startDate
+          delete newFilters.endDate
+        }
+        return newFilters
+      })
+    }
+  }
+
+  // Fetch data when filters change or tab switches
+  useEffect(() => {
+    const fetchData = async () => {
+      const currentFilters = activeTab === 'summary' ? summaryFilters : detailsFilters
+
+      setLoading(true)
+      try {
+        const response = await fetch('/api/analytics/new-sales', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(currentFilters),
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+
+        const result = await response.json()
+        if (result.status === 'ok') {
+          setData(result.data)
+        } else {
+          console.error('Error:', result.message)
+        }
+      } catch (error) {
+        console.error('Error fetching new sales data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [summaryFilters, detailsFilters, activeTab])
+
+  const showMetadataError = metadataError && !metadataLoading
+
+  const filterConfig: FilterConfig[] = [
+    {
+      name: 'daterange',
+      label: 'Select date range',
+      type: 'daterange',
+    },
+    {
+      name: 'team',
+      label: 'team',
+      type: 'select',
+      options: metadata?.teams || [],
+    },
+    {
+      name: 'pic',
+      label: 'pic',
+      type: 'select',
+      options: metadata?.pics || [],
+    },
+  ]
+
+  // Transform summary data for chart
+  const transformTimeSeriesData = () => {
+    if (!data?.summaryTimeSeries) return []
+
+    const monthNames = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ]
+
+    // Group by year/month
+    const grouped = data.summaryTimeSeries.reduce((acc, row) => {
+      const key = `${row.year}-${String(row.month).padStart(2, '0')}`
+      if (!acc[key]) {
+        acc[key] = {
+          date: key,
+          month: `${monthNames[row.month - 1]} ${row.year}`, // Show "Jan 2025" format
+          WEB_GI: 0,
+          WEB_GTI: 0,
+          APP: 0,
+          UNKNOWN: 0,
+        }
+      }
+      acc[key][row.team] = (acc[key][row.team] || 0) + row.total_revenue
+      return acc
+    }, {} as Record<string, any>)
+
+    return Object.values(grouped).sort((a: any, b: any) => a.date.localeCompare(b.date))
+  }
+
+  // Transform pivot table data
+  const transformPivotData = (data: any[], metricKey: string) => {
+    if (!data || data.length === 0) return []
+
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ]
+
+    // Group by team and create columns with year-month format to handle multi-year data
+    const teams = ['WEB_GI', 'WEB_GTI', 'APP', 'UNKNOWN']
+    return teams.map(team => {
+      const teamData = data.filter(row => row.team === team)
+      const row: any = { team }
+
+      teamData.forEach(d => {
+        // Use "Year-Month" format to avoid conflicts (e.g., "2024-January", "2025-January")
+        const monthKey = `${d.year}/${monthNames[d.month - 1]}`
+        row[monthKey] = (row[monthKey] || 0) + d[metricKey]
+      })
+
+      return row
+    }).filter(row => Object.keys(row).length > 1) // Only include teams with data
+  }
+
+  const chartData = transformTimeSeriesData()
+  const revenueTableData = transformPivotData(data?.summaryRevenue || [], 'total_revenue')
+  const profitTableData = transformPivotData(data?.summaryProfit || [], 'total_profit')
+
+  // Generate dynamic pivot table columns based on actual data
+  const generatePivotColumns = (pivotData: any[]) => {
+    if (!pivotData || pivotData.length === 0) {
+      return [{ key: 'team', label: 'team' }]
+    }
+
+    // Get all unique month columns across all teams
+    const monthColumns = new Set<string>()
+    pivotData.forEach(row => {
+      Object.keys(row).forEach(key => {
+        if (key !== 'team') {
+          monthColumns.add(key)
+        }
+      })
+    })
+
+    // Sort columns chronologically
+    const sortedColumns = Array.from(monthColumns).sort((a, b) => {
+      // Extract year and month from "YYYY/Month" format
+      const [yearA, monthA] = a.split('/')
+      const [yearB, monthB] = b.split('/')
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+      const monthIndexA = monthNames.indexOf(monthA)
+      const monthIndexB = monthNames.indexOf(monthB)
+
+      if (yearA !== yearB) {
+        return parseInt(yearA) - parseInt(yearB)
+      }
+      return monthIndexA - monthIndexB
+    })
+
+    return [
+      { key: 'team', label: 'team' },
+      ...sortedColumns.map(col => ({
+        key: col,
+        label: col, // "2025/January" format
+        format: (v: number) => v ? v.toFixed(2) : '-'
+      }))
+    ]
+  }
+
+  const revenuePivotColumns = generatePivotColumns(revenueTableData)
+  const profitPivotColumns = generatePivotColumns(profitTableData)
+
+  // Define columns for tables
+  const allNewSalesColumns = [
+    { key: 'pic', label: 'pic' },
+    { key: 'pid', label: 'pid' },
+    { key: 'pubname', label: 'pubname' },
+    { key: 'start_date', label: 'start_date', format: (v: any) => v?.value || v },
+    { key: 'end_date', label: 'end_date', format: (v: any) => v?.value || v },
+    { key: 'rev_this_month', label: 'rev_this_month', format: (v: number) => v?.toFixed(2) || '0.00' },
+    { key: 'profit_this_month', label: 'profit_this_month', format: (v: number) => v?.toFixed(2) || '0.00' },
+    { key: 'rev_last_month', label: 'rev_last_month', format: (v: number) => v?.toFixed(2) || '0.00' },
+    { key: 'profit_last_month', label: 'profit_last_month', format: (v: number) => v?.toFixed(2) || '0.00' },
+  ]
+
+  const salesCsBreakdownColumns = [
+    { key: 'pid', label: 'pid' },
+    { key: 'pubname', label: 'pubname' },
+    { key: 'start_date', label: 'start_date', format: (v: any) => v?.value || v },
+    { key: 'end_date', label: 'end_date', format: (v: any) => v?.value || v },
+    { key: 'month', label: 'month' },
+    { key: 'year', label: 'year' },
+    { key: 'sales_rev', label: 'sales_rev', format: (v: number) => v?.toFixed(2) || '0.00' },
+    { key: 'sales_profit', label: 'sales_profit', format: (v: number) => v?.toFixed(2) || '0.00' },
+    { key: 'cs_rev', label: 'cs_rev', format: (v: number) => v?.toFixed(2) || '0.00' },
+    { key: 'cs_profit', label: 'cs_profit', format: (v: number) => v?.toFixed(2) || '0.00' },
+  ]
+
+  return (
+    <div
+      className="space-y-0"
+      style={{
+        backgroundColor: colors.neutralLight,
+        minHeight: '100vh',
+        minWidth: 0,
+        width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+        overflow: 'hidden'
+      }}
+    >
+      <PageHeader title="New Sales" />
+      <CrossFilterChips />
+
+      {/* Error/Loading State */}
+      {showMetadataError ? (
+        <div className="p-6">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+            <h3 className="font-semibold text-red-900 mb-2">Failed to Load Filters</h3>
+            <p className="text-red-700 text-sm mb-4">{metadataError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-medium"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      ) : metadataLoading ? (
+        <FilterPanelSkeleton />
+      ) : (
+        <div className="max-w-full mx-auto px-6 py-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="summary">Summary</TabsTrigger>
+              <TabsTrigger value="details">Details</TabsTrigger>
+            </TabsList>
+
+            {/* Tab 1: Summary */}
+            <TabsContent value="summary" className="space-y-6">
+              <DatePresetButtons
+                selectedPreset={summaryPreset}
+                onPresetChange={(preset) => handlePresetChange(preset, false)}
+              />
+              <FilterPanel
+                filters={filterConfig}
+                onFilterChange={setSummaryFilters}
+                isLoading={loading}
+                showDateRangePicker={summaryPreset === 'custom'}
+              />
+
+              {/* Summary Content - Charts and Pivot Tables */}
+        <div className="space-y-6">
+          <h2 className="text-2xl font-bold" style={{ color: colors.main }}>
+            New Sales Summary
+          </h2>
+
+          {loading ? (
+            <>
+              <ChartSkeleton />
+              <TableSkeleton />
+              <TableSkeleton />
+            </>
+          ) : chartData.length === 0 ? (
+            <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+              <p className="text-gray-500">No summary data available for the selected filters.</p>
+              <p className="text-sm text-gray-400 mt-2">Try adjusting your date range or filters.</p>
+            </div>
+          ) : (
+            <>
+              {/* Time Series Chart */}
+              <TimeSeriesChart
+                title="New sales summary"
+                data={chartData}
+                lines={[
+                  { dataKey: 'WEB_GI', name: 'WEB_GI', color: colors.main },
+                  { dataKey: 'WEB_GTI', name: 'WEB_GTI', color: colors.accent },
+                  { dataKey: 'APP', name: 'APP', color: '#10B981' },
+                  { dataKey: 'UNKNOWN', name: 'UNKNOWN', color: '#6B7280' },
+                ]}
+                enableCrossFilter={false}
+                dateKey="month"
+              />
+
+              {/* Revenue Pivot Table */}
+              <DataTable
+                title={`New sales summary_Revenue (${revenueTableData.length} teams)`}
+                columns={revenuePivotColumns}
+                data={revenueTableData}
+                pageSize={10}
+                enableCrossFilter={false}
+              />
+
+              {/* Profit Pivot Table */}
+              <DataTable
+                title={`New sales summary_Profit (${profitTableData.length} teams)`}
+                columns={profitPivotColumns}
+                data={profitTableData}
+                pageSize={10}
+                enableCrossFilter={false}
+              />
+            </>
+          )}
+              </div>
+            </TabsContent>
+
+            {/* Tab 2: Details */}
+            <TabsContent value="details" className="space-y-6">
+              <DatePresetButtons
+                selectedPreset={detailsPreset}
+                onPresetChange={(preset) => handlePresetChange(preset, true)}
+              />
+              <FilterPanel
+                filters={filterConfig}
+                onFilterChange={setDetailsFilters}
+                isLoading={loading}
+                showDateRangePicker={detailsPreset === 'custom'}
+              />
+
+              {/* Note */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-blue-800 text-sm">
+                  <strong>Note:</strong> If you want to filter the "all new sales over time" table start_date and end_date,
+                  please use the "select date range" button.
+                </p>
+              </div>
+
+              {/* All New Sales Over Time Table */}
+              {loading ? (
+                <TableSkeleton />
+              ) : (
+                <DataTable
+                  title={`All new sales over time (${data?.allNewSales?.length || 0} records)`}
+                  columns={allNewSalesColumns}
+                  data={data?.allNewSales || []}
+                  pageSize={100}
+                  enableCrossFilter={true}
+                  crossFilterColumns={['pic', 'pid', 'pubname']}
+                />
+              )}
+
+              {/* Sales-CS Breakdown (Flat Table) */}
+        <div className="space-y-4">
+          {loading ? (
+            <>
+              <TableSkeleton />
+              <TableSkeleton />
+            </>
+          ) : (
+            <>
+              <DataTable
+                title={`Sales-Cs breakdown (${data?.salesCsBreakdown?.length || 0} records)`}
+                columns={salesCsBreakdownColumns}
+                data={data?.salesCsBreakdown || []}
+                pageSize={100}
+                enableCrossFilter={true}
+                crossFilterColumns={['pid', 'pubname', 'month', 'year']}
+              />
+
+              {/* Grand Total Row */}
+              {data?.salesCsBreakdownTotals && (
+            <div className="bg-white rounded-lg shadow-sm p-4 border-t-4" style={{ borderColor: colors.main }}>
+              <h3 className="font-bold mb-4" style={{ color: colors.main }}>Grand total</h3>
+              <div className="grid grid-cols-4 gap-4">
+                <div>
+                  <p className="text-sm text-gray-600">Total Sales Revenue</p>
+                  <p className="text-2xl font-bold" style={{ color: colors.main }}>
+                    {data.salesCsBreakdownTotals.total_sales_rev.toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Total Sales Profit</p>
+                  <p className="text-2xl font-bold" style={{ color: colors.main }}>
+                    {data.salesCsBreakdownTotals.total_sales_profit.toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Total CS Revenue</p>
+                  <p className="text-2xl font-bold" style={{ color: colors.main }}>
+                    {data.salesCsBreakdownTotals.total_cs_rev.toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Total CS Profit</p>
+                  <p className="text-2xl font-bold" style={{ color: colors.main }}>
+                    {data.salesCsBreakdownTotals.total_cs_profit.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Section 4: Sales-CS Breakdown Grouped (Expanded View) */}
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold" style={{ color: colors.main }}>
+            Sales-Cs breakdown (Expanded View)
+          </h2>
+
+          {loading ? (
+            <TableSkeleton />
+          ) : !data?.salesCsBreakdownGrouped || data.salesCsBreakdownGrouped.length === 0 ? (
+            <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+              <p className="text-gray-500">No data available for the selected filters.</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead style={{ backgroundColor: colors.neutralLight }}>
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">pid</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">pubname</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">start_date</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">end_date</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">month</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">year</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">sales_rev</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">sales_profit</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">cs_rev</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">cs_profit</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {(() => {
+                      // Group data by publisher
+                      const groupedByPid: Record<number, any[]> = {}
+                      data.salesCsBreakdownGrouped.forEach(row => {
+                        if (!groupedByPid[row.pid]) {
+                          groupedByPid[row.pid] = []
+                        }
+                        groupedByPid[row.pid].push(row)
+                      })
+
+                      const rows: JSX.Element[] = []
+                      Object.entries(groupedByPid).forEach(([pid, publisherRows]) => {
+                        publisherRows.forEach((row, idx) => {
+                          const isFirstRow = idx === 0
+                          const isLastRow = idx === publisherRows.length - 1
+
+                          rows.push(
+                            <tr
+                              key={`${pid}-${row.year}-${row.month}`}
+                              className={`hover:bg-gray-50 ${isLastRow ? 'border-b-2 border-gray-300' : ''}`}
+                            >
+                              {isFirstRow ? (
+                                <>
+                                  <td
+                                    className="px-4 py-3 text-sm font-medium text-gray-900 bg-gray-50"
+                                    rowSpan={publisherRows.length}
+                                  >
+                                    {row.pid}
+                                  </td>
+                                  <td
+                                    className="px-4 py-3 text-sm text-gray-900 bg-gray-50"
+                                    rowSpan={publisherRows.length}
+                                  >
+                                    {row.pubname}
+                                  </td>
+                                  <td
+                                    className="px-4 py-3 text-sm text-gray-700 bg-gray-50"
+                                    rowSpan={publisherRows.length}
+                                  >
+                                    {row.start_date?.value || row.start_date}
+                                  </td>
+                                  <td
+                                    className="px-4 py-3 text-sm text-gray-700 bg-gray-50"
+                                    rowSpan={publisherRows.length}
+                                  >
+                                    {row.end_date?.value || row.end_date}
+                                  </td>
+                                </>
+                              ) : null}
+                              <td className="px-4 py-3 text-sm text-gray-700">{row.month}</td>
+                              <td className="px-4 py-3 text-sm text-gray-700">{row.year}</td>
+                              <td className="px-4 py-3 text-sm text-right text-gray-900">{row.sales_rev?.toFixed(2) || '0.00'}</td>
+                              <td className="px-4 py-3 text-sm text-right text-gray-900">{row.sales_profit?.toFixed(2) || '0.00'}</td>
+                              <td className="px-4 py-3 text-sm text-right text-gray-900">{row.cs_rev?.toFixed(2) || '0.00'}</td>
+                              <td className="px-4 py-3 text-sm text-right text-gray-900">{row.cs_profit?.toFixed(2) || '0.00'}</td>
+                            </tr>
+                          )
+                        })
+                      })
+
+                      return rows
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+              <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
+                <p className="text-sm text-gray-600">
+                  Showing {data.salesCsBreakdownGrouped.length} records grouped by publisher
+                </p>
+              </div>
+            </div>
+          )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      )}
+    </div>
+  )
+}

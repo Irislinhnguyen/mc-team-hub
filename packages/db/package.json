@@ -1,0 +1,22 @@
+{
+  "name": "@query-stream-ai/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google-cloud/bigquery": "^8.1.1",
+    "@query-stream-ai/types": "workspace:*",
+    "@supabase/supabase-js": "^2.75.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.16.5",
+    "eslint": "^9.32.0",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@query-stream-ai/types",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "eslint": "^9.32.0",
+    "typescript": "^5.8.3"
+  }
+}

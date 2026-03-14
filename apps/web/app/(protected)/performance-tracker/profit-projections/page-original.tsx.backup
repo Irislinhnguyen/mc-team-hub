@@ -1,0 +1,394 @@
+'use client'
+
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { FilterPanel } from '../../../components/analytics/FilterPanel'
+import { DataTable } from '../../../components/analytics/DataTable'
+import { PageHeader } from '../../../components/analytics/PageHeader'
+import FilterPanelSkeleton from '../../../components/analytics/skeletons/FilterPanelSkeleton'
+import TableSkeleton from '../../../components/analytics/skeletons/TableSkeleton'
+import { CrossFilterChips } from '../../../components/analytics/CrossFilterChips'
+import { ToggleGroup, ToggleGroupItem } from '../../../../src/components/ui/toggle-group'
+import { useCrossFilter } from '../../../contexts/CrossFilterContext'
+import { colors } from '../../../../lib/colors'
+import { formatMetricValue } from '../../../../lib/utils/formatters'
+
+interface FilterConfig {
+  name: string
+  label: string
+  type: 'daterange' | 'select'
+  options?: Array<{ label: string; value: string }>
+}
+
+interface MetadataOptions {
+  pics: Array<{ label: string; value: string }>
+  products: Array<{ label: string; value: string }>
+  pids: Array<{ label: string; value: string }>
+  mids: Array<{ label: string; value: string }>
+  pubnames: Array<{ label: string; value: string }>
+  medianames: Array<{ label: string; value: string }>
+  zids: Array<{ label: string; value: string }>
+  zonenames: Array<{ label: string; value: string }>
+  teams: Array<{ label: string; value: string }>
+}
+
+interface ProjectionsData {
+  pidPredictions: any[]
+  midPredictions: any[]
+  zidPredictions: any[]
+  pidGrandTotal: any
+  midGrandTotal: any
+  zidGrandTotal: any
+}
+
+export default function ProfitProjectionsPage() {
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [loading, setLoading] = useState(true)
+  const [currentFilters, setCurrentFilters] = useState<Record<string, any>>({})
+  const [metadata, setMetadata] = useState<MetadataOptions | null>(null)
+  const [metadataLoading, setMetadataLoading] = useState(true)
+  const [metadataError, setMetadataError] = useState<string | null>(null)
+  const [data, setData] = useState<ProjectionsData | null>(null)
+  const [dataError, setDataError] = useState<string | null>(null)
+  const [metricType, setMetricType] = useState<'profit' | 'revenue'>('profit')
+  const { crossFilters } = useCrossFilter()
+
+  // Apply cross-filters to current filters whenever they change
+  useEffect(() => {
+    if (crossFilters.length > 0) {
+      const crossFilterValues = crossFilters.reduce((acc, filter) => {
+        acc[filter.field] = filter.value
+        return acc
+      }, {} as Record<string, any>)
+
+      setCurrentFilters(prev => ({
+        ...prev,
+        ...crossFilterValues
+      }))
+    }
+  }, [crossFilters])
+
+  // Load metadata and initial data in parallel
+  useEffect(() => {
+    const today = new Date()
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    const defaultFilters = {
+      startDate: thirtyDaysAgo.toISOString().split('T')[0],
+      endDate: today.toISOString().split('T')[0],
+    }
+
+    const fetchMetadata = async () => {
+      try {
+        const response = await fetch('/api/analytics/metadata')
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: Failed to fetch metadata`)
+        }
+        const result = await response.json()
+        if (result.status === 'ok') {
+          setMetadata(result.data)
+          setMetadataError(null)
+        } else {
+          throw new Error(result.message || 'Unknown error fetching metadata')
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load filters'
+        console.error('Error fetching metadata:', errorMessage)
+        setMetadataError(errorMessage)
+        setMetadata(null)
+      } finally {
+        setMetadataLoading(false)
+      }
+    }
+
+    setCurrentFilters(defaultFilters)
+    fetchMetadata()
+  }, [])
+
+  // Fetch data when filters change
+  useEffect(() => {
+    if (!currentFilters.startDate || !currentFilters.endDate) return
+
+    const fetchData = async () => {
+      setLoading(true)
+      setDataError(null)
+      try {
+        const response = await fetch('/api/analytics/projections', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(currentFilters),
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: Failed to fetch data`)
+        }
+
+        const result = await response.json()
+        if (result.status === 'ok') {
+          setData(result.data)
+        } else {
+          throw new Error(result.message || 'Unknown error fetching data')
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load data'
+        console.error('Error fetching projections data:', errorMessage)
+        setDataError(errorMessage)
+        setData(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [currentFilters])
+
+  const showMetadataError = metadataError && !metadataLoading
+
+  const filterConfig: FilterConfig[] = [
+    {
+      name: 'daterange',
+      label: 'Select date',
+      type: 'daterange',
+    },
+    {
+      name: 'team',
+      label: 'team',
+      type: 'select',
+      options: metadata?.teams || [],
+    },
+    {
+      name: 'pic',
+      label: 'pic',
+      type: 'select',
+      options: metadata?.pics || [],
+    },
+    {
+      name: 'product',
+      label: 'product',
+      type: 'select',
+      options: metadata?.products || [],
+    },
+    {
+      name: 'pid',
+      label: 'pid',
+      type: 'select',
+      options: metadata?.pids || [],
+    },
+    {
+      name: 'mid',
+      label: 'mid',
+      type: 'select',
+      options: metadata?.mids || [],
+    },
+    {
+      name: 'pubname',
+      label: 'pubname',
+      type: 'select',
+      options: metadata?.pubnames || [],
+    },
+    {
+      name: 'medianame',
+      label: 'medianame',
+      type: 'select',
+      options: metadata?.medianames || [],
+    },
+    {
+      name: 'zid',
+      label: 'zid',
+      type: 'select',
+      options: metadata?.zids || [],
+    },
+    {
+      name: 'zonename',
+      label: 'zonename',
+      type: 'select',
+      options: metadata?.zonenames || [],
+    },
+  ]
+
+  // Column configurations - using centralized formatters
+  // formatNumber and formatWowProfit are now replaced by the centralized formatter
+  const formatWowProfit = (value: any) => {
+    const num = parseFloat(value)
+    if (isNaN(num)) return '0.00'
+    const formatted = formatMetricValue(num, 'revenue') // Use revenue format for profit changes
+    return num >= 0 ? `+${formatted}` : formatted
+  }
+
+  // Dynamic column generator based on metric type
+  const generateColumns = (
+    type: 'pid' | 'mid' | 'zid',
+    metricType: 'profit' | 'revenue'
+  ) => {
+    const suffix = metricType === 'profit' ? 'profit' : 'rev'
+
+    // Base columns for each type
+    const baseColumns: Record<string, any[]> = {
+      pid: [
+        { key: 'pic', label: 'PIC', width: '100px' },
+        { key: 'pid', label: 'PID', width: '80px' },
+        { key: 'pubname', label: 'Publisher Name', width: '200px' },
+      ],
+      mid: [
+        { key: 'pid', label: 'PID', width: '80px' },
+        { key: 'mid', label: 'MID', width: '80px' },
+        { key: 'medianame', label: 'Media Name', width: '200px' },
+      ],
+      zid: [
+        { key: 'mid', label: 'MID', width: '80px' },
+        { key: 'zid', label: 'ZID', width: '80px' },
+        { key: 'zonename', label: 'Zone Name', width: '200px' },
+      ],
+    }
+
+    // Metric columns (same structure for all types)
+    // No need to specify format - centralized formatter will auto-detect based on column key
+    const metricColumns = [
+      { key: `last_month_${suffix}`, label: 'Last Month', width: '120px' },
+      { key: `w1_${suffix}`, label: 'Week 1', width: '120px' },
+      { key: `w2_${suffix}`, label: 'Week 2', width: '120px' },
+      { key: `w3_${suffix}`, label: 'Week 3', width: '120px' },
+      { key: `w4_${suffix}`, label: 'Week 4', width: '120px' },
+      { key: `w5_${suffix}`, label: 'Week 5', width: '120px' },
+      { key: `mom_${suffix}`, label: 'MoM Change', width: '120px', format: formatWowProfit },
+      { key: `wow_${suffix}`, label: 'WoW Change', width: '120px', format: formatWowProfit },
+    ]
+
+    return [...baseColumns[type], ...metricColumns]
+  }
+
+  // Generate columns based on current metric type
+  const pidColumns = useMemo(() => generateColumns('pid', metricType), [metricType])
+  const midColumns = useMemo(() => generateColumns('mid', metricType), [metricType])
+  const zidColumns = useMemo(() => generateColumns('zid', metricType), [metricType])
+
+  // Add grand total row to data
+  const addGrandTotal = (tableData: any[], grandTotal: any, identifierFields: string[]) => {
+    if (!tableData || !grandTotal) return []
+
+    const totalRow = {
+      ...grandTotal,
+      isGrandTotal: true,
+    }
+
+    // Set identifier fields to show "Grand Total"
+    identifierFields.forEach((field, index) => {
+      totalRow[field] = index === 0 ? 'Grand Total' : ''
+    })
+
+    return [...tableData, totalRow]
+  }
+
+  const pidDataWithTotal = data ? addGrandTotal(data.pidPredictions, data.pidGrandTotal, ['pic', 'pid', 'pubname']) : []
+  const midDataWithTotal = data ? addGrandTotal(data.midPredictions, data.midGrandTotal, ['pid', 'mid', 'medianame']) : []
+  const zidDataWithTotal = data ? addGrandTotal(data.zidPredictions, data.zidGrandTotal, ['mid', 'zid', 'zonename']) : []
+
+  return (
+    <div
+      className="space-y-0"
+      style={{
+        backgroundColor: colors.neutralLight,
+        minHeight: '100vh',
+        minWidth: 0,
+        width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+        overflow: 'hidden'
+      }}
+    >
+      {/* Page Header with Export and Cross-Filter Toggle */}
+      <PageHeader title="Profit Projections" contentRef={contentRef} />
+
+      {/* Cross-Filter Chips */}
+      <CrossFilterChips />
+
+      {/* Metric Type Toggle */}
+      <div className="px-6 pt-4">
+        <ToggleGroup
+          type="single"
+          value={metricType}
+          onValueChange={(value) => {
+            if (value) setMetricType(value as 'profit' | 'revenue')
+          }}
+        >
+          <ToggleGroupItem value="revenue">Revenue</ToggleGroupItem>
+          <ToggleGroupItem value="profit">Profit</ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+
+      {/* Filter Panel */}
+      {showMetadataError ? (
+        <div className="p-6">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+            <h3 className="font-semibold text-red-900 mb-2">Failed to Load Filters</h3>
+            <p className="text-red-700 text-sm mb-4">{metadataError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-medium"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      ) : metadataLoading ? (
+        <FilterPanelSkeleton />
+      ) : (
+        <FilterPanel
+          filters={filterConfig}
+          onFilterChange={setCurrentFilters}
+          isLoading={loading}
+        />
+      )}
+
+      {/* Content */}
+      <div ref={contentRef} className="p-6 space-y-6" style={{ maxWidth: '100%', boxSizing: 'border-box' }}>
+        {dataError ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+            <h3 className="font-semibold text-red-900 mb-2">Failed to Load Data</h3>
+            <p className="text-red-700 text-sm">{dataError}</p>
+          </div>
+        ) : loading ? (
+          <>
+            <TableSkeleton />
+            <TableSkeleton />
+            <TableSkeleton />
+          </>
+        ) : data ? (
+          <>
+            {/* PID Projections Table */}
+            <DataTable
+              title={`Publisher (PID) ${metricType === 'profit' ? 'Profit' : 'Revenue'} Projections`}
+              columns={pidColumns}
+              data={pidDataWithTotal}
+              pageSize={100}
+              enableCrossFilter={true}
+              crossFilterColumns={['pic', 'pid', 'pubname']}
+            />
+
+            {/* MID Projections Table */}
+            <DataTable
+              title={`Media (MID) ${metricType === 'profit' ? 'Profit' : 'Revenue'} Projections`}
+              columns={midColumns}
+              data={midDataWithTotal}
+              pageSize={100}
+              enableCrossFilter={true}
+              crossFilterColumns={['pid', 'mid', 'medianame']}
+            />
+
+            {/* ZID Projections Table */}
+            <DataTable
+              title={`Zone (ZID) ${metricType === 'profit' ? 'Profit' : 'Revenue'} Projections`}
+              columns={zidColumns}
+              data={zidDataWithTotal}
+              pageSize={100}
+              enableCrossFilter={true}
+              crossFilterColumns={['mid', 'zid', 'zonename']}
+            />
+          </>
+        ) : (
+          <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
+            <p className="text-gray-500">No data available. Please select filters above.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

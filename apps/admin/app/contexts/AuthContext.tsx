@@ -1,0 +1,216 @@
+'use client'
+
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
+
+export interface User {
+  email: string
+  name?: string
+  role: string
+  accessLevel: string
+  authType?: string
+}
+
+interface AuthContextType {
+  user: User | null
+  isLoading: boolean
+  error: string | null
+  logout: () => Promise<void>
+  refreshUser: () => Promise<void>
+  refreshSession: () => Promise<boolean>
+  csrfToken: string | null
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [csrfToken, setCsrfToken] = useState<string | null>(null)
+
+  // Ref to track user without triggering re-renders (for auto-refresh)
+  const userRef = useRef<User | null>(null)
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    userRef.current = user
+  }, [user])
+
+  const fetchUser = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      const response = await fetch('/api/auth/me')
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setUser(null)
+          return
+        }
+        throw new Error('Failed to fetch user')
+      }
+
+      const data = await response.json()
+      setUser(data.user)
+    } catch (err) {
+      console.error('[AuthContext] Error fetching user:', err)
+      setError(err instanceof Error ? err.message : 'Unknown error')
+      setUser(null)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+      setUser(null)
+      window.location.href = '/auth'
+    } catch (err) {
+      console.error('[AuthContext] Error during logout:', err)
+    }
+  }
+
+  const refreshUser = async () => {
+    await fetchUser()
+  }
+
+  /**
+   * Refresh session with latest data from database
+   * This calls /api/auth/refresh which fetches fresh user data from DB
+   * and re-issues the JWT token with updated role/permissions
+   * Returns true if successful, false otherwise
+   */
+  const refreshSession = async (): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/auth/refresh')
+
+      if (!response.ok) {
+        console.error('[AuthContext] Failed to refresh session:', response.status)
+        return false
+      }
+
+      const data = await response.json()
+
+      if (data.status === 'ok' && data.user) {
+        setUser(data.user)
+        console.log('[AuthContext] Session refreshed successfully', data.user)
+        return true
+      }
+
+      return false
+    } catch (err) {
+      console.error('[AuthContext] Error refreshing session:', err)
+      return false
+    }
+  }
+
+  const fetchCsrfToken = async () => {
+    try {
+      const response = await fetch('/api/auth/csrf')
+      if (response.ok) {
+        const data = await response.json()
+        setCsrfToken(data.csrfToken)
+      }
+    } catch (err) {
+      console.error('[AuthContext] Error fetching CSRF token:', err)
+    }
+  }
+
+  // Auto-refresh session configuration
+  const AUTO_REFRESH_INTERVAL = 5 * 60 * 1000 // 5 minutes
+  const isRefreshing = useRef(false)
+
+  // Silent refresh - updates user data without showing loading state
+  const silentRefresh = async (): Promise<boolean> => {
+    if (isRefreshing.current) return false
+
+    try {
+      isRefreshing.current = true
+      const response = await fetch('/api/auth/refresh')
+
+      if (!response.ok) {
+        return false
+      }
+
+      const data = await response.json()
+
+      if (data.status === 'ok' && data.user) {
+        // Check if role changed - use ref to avoid stale closure
+        const currentUser = userRef.current
+        const roleChanged = currentUser && data.user.role !== currentUser.role
+        setUser(data.user)
+        // Update ref immediately
+        userRef.current = data.user
+
+        if (roleChanged) {
+          console.log('[AuthContext] Role changed from', currentUser?.role, 'to', data.user.role)
+          // Trigger a page reload to ensure all components pick up new permissions
+          window.location.reload()
+        }
+
+        return true
+      }
+
+      return false
+    } catch (err) {
+      console.error('[AuthContext] Error in silent refresh:', err)
+      return false
+    } finally {
+      isRefreshing.current = false
+    }
+  }
+
+  // Initial fetch
+  useEffect(() => {
+    fetchUser()
+    fetchCsrfToken()
+  }, [])
+
+  // Periodic auto-refresh every 5 minutes - no user dependency to prevent infinite loop
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      // Only refresh if user exists (check ref to avoid closure issues)
+      if (userRef.current) {
+        console.log('[AuthContext] Auto-refreshing session...')
+        silentRefresh()
+      }
+    }, AUTO_REFRESH_INTERVAL)
+
+    return () => clearInterval(intervalId)
+  }, []) // Empty deps - only run once on mount
+
+  // Refresh when window regains focus (user switches back to tab)
+  useEffect(() => {
+    const handleFocus = () => {
+      // Only refresh if user exists
+      if (userRef.current) {
+        console.log('[AuthContext] Window regained focus, refreshing session...')
+        silentRefresh()
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, []) // Empty deps - only run once on mount
+
+  return (
+    <AuthContext.Provider value={{ user, isLoading, error, logout, refreshUser, refreshSession, csrfToken }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
+}
+
+export function useUser() {
+  const { user } = useAuth()
+  return user
+}
