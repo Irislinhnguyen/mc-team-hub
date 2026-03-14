@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { authService } from '../../../lib/services/auth'
-import { withRateLimit, RateLimitPresets } from '../../../lib/middleware/rateLimit'
+import { authService } from '../../../../lib/services/auth'
+import { withRateLimit, RateLimitPresets } from '../../../../lib/middleware/rateLimit'
 
 export const dynamic = 'force-dynamic'
 
