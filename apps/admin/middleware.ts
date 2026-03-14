@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
 
   if (!user) {
     const webUrl = process.env.NEXT_PUBLIC_WEB_URL || 'https://geniee-web.vercel.app'
-    return NextResponse.redirect(new URL(`${webUrl}/login?redirect=admin`, request.url))
+    return NextResponse.redirect(new URL(`${webUrl}/auth?redirect=admin`, request.url))
   }
 
   // Check if user has leader+ role
