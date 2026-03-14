@@ -96,6 +96,8 @@ export async function POST(request: NextRequest) {
       salesCsBreakdown,
       salesCsBreakdownTotals,
       salesCsBreakdownGrouped,
+      salesCsSiteCounts,
+      salesCsSiteDetails,
     ] = await Promise.all([
       BigQueryService.executeQuery(queries.allNewSales),
       BigQueryService.executeQuery(queries.summaryTimeSeries),
@@ -104,6 +106,8 @@ export async function POST(request: NextRequest) {
       BigQueryService.executeQuery(queries.salesCsBreakdown),
       BigQueryService.executeQuery(queries.salesCsBreakdownTotals),
       BigQueryService.executeQuery(queries.salesCsBreakdownGrouped),
+      BigQueryService.executeQuery(queries.salesCsSiteCounts),
+      BigQueryService.executeQuery(queries.salesCsSiteDetails),
     ])
 
     console.log('[New Sales API] Query execution complete')
@@ -143,6 +147,8 @@ export async function POST(request: NextRequest) {
           total_cs_rev: 0,
           total_cs_profit: 0,
         },
+        salesCsSiteCountsByPic: salesCsSiteCounts,
+        salesCsSiteDetails,
       },
     })
   } catch (error) {

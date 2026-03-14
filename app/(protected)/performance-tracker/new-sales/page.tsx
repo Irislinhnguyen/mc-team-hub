@@ -47,6 +47,12 @@ interface NewSalesData {
     total_cs_rev: number
     total_cs_profit: number
   }
+  salesCsSiteCountsByPic: {
+    team: string
+    pic: string
+    sales_sites: number
+    cs_sites: number
+  }[]
 }
 
 export default function NewSalesPage() {
@@ -99,6 +105,10 @@ export default function NewSalesPage() {
     rawData?.salesCsBreakdownGrouped,
     crossFilters
   )
+  const { filteredData: filteredSalesCsSiteCountsByPic } = useClientSideFilterMulti(
+    rawData?.salesCsSiteCountsByPic,
+    crossFilters
+  )
 
   // Combine filtered data
   const data = useMemo(() => {
@@ -111,8 +121,9 @@ export default function NewSalesPage() {
       salesCsBreakdown: filteredSalesCsBreakdown,
       salesCsBreakdownGrouped: filteredSalesCsBreakdownGrouped,
       salesCsBreakdownTotals: rawData.salesCsBreakdownTotals,
+      salesCsSiteCountsByPic: filteredSalesCsSiteCountsByPic,
     }
-  }, [filteredAllNewSales, filteredSummaryTimeSeries, filteredSummaryRevenue, filteredSummaryProfit, filteredSalesCsBreakdown, filteredSalesCsBreakdownGrouped, rawData])
+  }, [filteredAllNewSales, filteredSummaryTimeSeries, filteredSummaryRevenue, filteredSummaryProfit, filteredSalesCsBreakdown, filteredSalesCsBreakdownGrouped, filteredSalesCsSiteCountsByPic, rawData])
 
   // Clear all filters when switching tabs
   useEffect(() => {
@@ -250,6 +261,61 @@ export default function NewSalesPage() {
   const revenueTableData = transformPivotData(data?.summaryRevenue || [], 'total_revenue')
   const profitTableData = transformPivotData(data?.summaryProfit || [], 'total_profit')
 
+  // Transform site count data by team (groups by team, sums across all months and PICs)
+  const transformSiteCountByTeam = (data: any[]) => {
+    if (!data || data.length === 0) return []
+
+    const teamMap = new Map<string, { total_sales_sites: number; total_cs_sites: number }>()
+
+    data.forEach(row => {
+      if (!teamMap.has(row.team)) {
+        teamMap.set(row.team, { total_sales_sites: 0, total_cs_sites: 0 })
+      }
+      const teamData = teamMap.get(row.team)!
+      teamData.total_sales_sites += row.sales_sites || 0
+      teamData.total_cs_sites += row.cs_sites || 0
+    })
+
+    return Array.from(teamMap.entries()).map(([team, counts]) => ({
+      team,
+      total_sales_sites: counts.total_sales_sites,
+      total_cs_sites: counts.total_cs_sites,
+      total_sites: counts.total_sales_sites + counts.total_cs_sites,
+    }))
+  }
+
+  // Transform site count data by PIC (groups by team and PIC, sums across all months)
+  const transformSiteCountByPic = (data: any[]) => {
+    if (!data || data.length === 0) return []
+
+    const picMap = new Map<string, { team: string; total_sales_sites: number; total_cs_sites: number }>()
+
+    data.forEach(row => {
+      const key = `${row.team}_${row.pic}`
+      if (!picMap.has(key)) {
+        picMap.set(key, { team: row.team, total_sales_sites: 0, total_cs_sites: 0 })
+      }
+      const picData = picMap.get(key)!
+      picData.total_sales_sites += row.sales_sites || 0
+      picData.total_cs_sites += row.cs_sites || 0
+    })
+
+    return Array.from(picMap.entries()).map(([key, counts]) => {
+      const [team, pic] = key.split('_')
+      return {
+        team,
+        pic,
+        total_sales_sites: counts.total_sales_sites,
+        total_cs_sites: counts.total_cs_sites,
+        total_sites: counts.total_sales_sites + counts.total_cs_sites,
+      }
+    })
+  }
+
+  // Compute site count data for all three views
+  const siteCountByTeamData = transformSiteCountByTeam(data?.salesCsSiteCountsByPic || [])
+  const siteCountByPicData = transformSiteCountByPic(data?.salesCsSiteCountsByPic || [])
+
   // Add Grand Total row to Sales-CS Breakdown Grouped data
   const salesCsBreakdownGroupedWithTotal = (() => {
     if (!data?.salesCsBreakdownGrouped || !data?.salesCsBreakdownTotals) {
@@ -343,6 +409,31 @@ export default function NewSalesPage() {
 
   // Columns for Sales-CS Breakdown Grouped (same as flat table)
   const salesCsBreakdownGroupedColumns = salesCsBreakdownColumns
+
+  // Columns for Sales-to-CS Site Count Table - By Team
+  const siteCountByTeamColumns = [
+    { key: 'team', label: 'Team' },
+    { key: 'total_sales_sites', label: 'Sales Sites', format: (v: number) => v?.toLocaleString() || '-' },
+    { key: 'total_cs_sites', label: 'CS Sites', format: (v: number) => v?.toLocaleString() || '-' },
+    { key: 'total_sites', label: 'Total Sites', format: (v: number) => v?.toLocaleString() || '-' },
+  ]
+
+  // Columns for Sales-to-CS Site Count Table - By PIC
+  const siteCountByPicColumns = [
+    { key: 'team', label: 'Team' },
+    { key: 'pic', label: 'PIC' },
+    { key: 'total_sales_sites', label: 'Sales Sites', format: (v: number) => v?.toLocaleString() || '-' },
+    { key: 'total_cs_sites', label: 'CS Sites', format: (v: number) => v?.toLocaleString() || '-' },
+    { key: 'total_sites', label: 'Total Sites', format: (v: number) => v?.toLocaleString() || '-' },
+  ]
+
+  // Columns for Sales-to-CS Site Count Table - Details (raw data)
+  const siteCountDetailsColumns = [
+    { key: 'team', label: 'Team' },
+    { key: 'pic', label: 'PIC' },
+    { key: 'sales_sites', label: 'Sales Sites', format: (v: number) => v?.toLocaleString() || '-' },
+    { key: 'cs_sites', label: 'CS Sites', format: (v: number) => v?.toLocaleString() || '-' },
+  ]
 
   // Dynamic filter fields based on active tab
   const currentFilterFields: FilterField[] = activeTab === 'summary' ? ['team', 'pic'] as FilterField[] : ['daterange', 'team', 'pic', 'month', 'year'] as FilterField[]
@@ -451,6 +542,34 @@ export default function NewSalesPage() {
                       enableCrossFilter={false}
                     />
                   </div>
+
+                  {/* Sales to CS Site Count - By Team */}
+                  <DataTable
+                    title="Sales to CS Site Count - By Team"
+                    columns={siteCountByTeamColumns}
+                    data={siteCountByTeamData}
+                    pageSize={10}
+                    enableCrossFilter={false}
+                  />
+
+                  {/* Sales to CS Site Count - By PIC */}
+                  <DataTable
+                    title="Sales to CS Site Count - By PIC"
+                    columns={siteCountByPicColumns}
+                    data={siteCountByPicData}
+                    pageSize={100}
+                    enableCrossFilter={true}
+                    crossFilterColumns={['pic']}
+                  />
+
+                  {/* Sales to CS Site Count - Details (raw data) */}
+                  <DataTable
+                    title="Sales to CS Site Count - Details"
+                    columns={siteCountDetailsColumns}
+                    data={data?.salesCsSiteCountsByPic || []}
+                    pageSize={100}
+                    enableCrossFilter={false}
+                  />
                 </>
               ) : null}
             </div>

@@ -1900,6 +1900,11 @@ export async function getNewSalesQueries(filters: Record<string, any>) {
 
   const breakdownWhereClause = breakdownConditions.length > 0 ? `WHERE ${breakdownConditions.join(' AND ')}` : ''
 
+  // For breakdown queries that join with new_sales_master, prefix pic with nsm.
+  const breakdownWhereClauseWithJoin = breakdownWhereClause
+    .replace(/\bpic IN \(/g, 'nsm.pic IN (')
+    .replace(/\bpic = '/g, "nsm.pic = '")
+
   return {
     // Query 1: All new sales over time
     allNewSales: `
@@ -1958,21 +1963,24 @@ export async function getNewSalesQueries(filters: Record<string, any>) {
     `,
 
     // Query 4: Sales-CS breakdown (detailed breakdown by publisher and month)
+    // Get pic from new_sales_master
     salesCsBreakdown: `
       SELECT
-        pid,
-        pubname,
-        start_date,
-        end_date,
-        month,
-        year,
-        ROUND(CAST(sales_rev AS FLOAT64), 2) as sales_rev,
-        ROUND(CAST(sales_profit AS FLOAT64), 2) as sales_profit,
-        ROUND(CAST(cs_rev AS FLOAT64), 2) as cs_rev,
-        ROUND(CAST(cs_profit AS FLOAT64), 2) as cs_profit
-      FROM ${newSalesByPidTable}
-      ${breakdownWhereClause}
-      ORDER BY year DESC, month DESC, pid
+        COALESCE(nsm.pic, bp.pic) as pic,
+        bp.pid,
+        bp.pubname,
+        bp.start_date,
+        bp.end_date,
+        bp.month,
+        bp.year,
+        ROUND(CAST(bp.sales_rev AS FLOAT64), 2) as sales_rev,
+        ROUND(CAST(bp.sales_profit AS FLOAT64), 2) as sales_profit,
+        ROUND(CAST(bp.cs_rev AS FLOAT64), 2) as cs_rev,
+        ROUND(CAST(bp.cs_profit AS FLOAT64), 2) as cs_profit
+      FROM ${newSalesByPidTable} bp
+      INNER JOIN ${newSalesMasterTable} nsm ON bp.pid = nsm.pid
+      ${breakdownWhereClauseWithJoin}
+      ORDER BY bp.year DESC, bp.month DESC, bp.pid
       LIMIT 1000
     `,
 
@@ -1988,22 +1996,80 @@ export async function getNewSalesQueries(filters: Record<string, any>) {
     `,
 
     // Query 6: Sales-CS breakdown grouped by publisher (expanded view)
+    // Get pic from new_sales_master
     salesCsBreakdownGrouped: `
       SELECT
-        pid,
-        pubname,
-        start_date,
-        end_date,
-        month,
-        year,
-        ROUND(CAST(sales_rev AS FLOAT64), 2) as sales_rev,
-        ROUND(CAST(sales_profit AS FLOAT64), 2) as sales_profit,
-        ROUND(CAST(cs_rev AS FLOAT64), 2) as cs_rev,
-        ROUND(CAST(cs_profit AS FLOAT64), 2) as cs_profit
-      FROM ${newSalesByPidTable}
-      ${breakdownWhereClause}
-      ORDER BY pid, year DESC, month DESC
+        COALESCE(nsm.pic, bp.pic) as pic,
+        bp.pid,
+        bp.pubname,
+        bp.start_date,
+        bp.end_date,
+        bp.month,
+        bp.year,
+        ROUND(CAST(bp.sales_rev AS FLOAT64), 2) as sales_rev,
+        ROUND(CAST(bp.sales_profit AS FLOAT64), 2) as sales_profit,
+        ROUND(CAST(bp.cs_rev AS FLOAT64), 2) as cs_rev,
+        ROUND(CAST(bp.cs_profit AS FLOAT64), 2) as cs_profit
+      FROM ${newSalesByPidTable} bp
+      INNER JOIN ${newSalesMasterTable} nsm ON bp.pid = nsm.pid
+      ${breakdownWhereClauseWithJoin}
+      ORDER BY bp.pid, bp.year DESC, bp.month DESC
       LIMIT 1000
+    `,
+
+    // Query 7: Sales-to-CS Site Count Table
+    // Counts sites in Sales vs CS phase by team and PIC
+    // Each site is counted ONCE based on contract duration:
+    // - Sales: contract duration <= 90 days (entirely in Sales phase)
+    // - CS: contract duration > 90 days (site transitions to CS after day 90)
+    // - Counts contracts that OVERLAP with the selected date range
+    salesCsSiteCounts: `
+      WITH contract_duration AS (
+        -- Calculate contract duration for each site
+        -- Only include contracts that overlap with the selected date range
+        SELECT DISTINCT
+          pid,
+          pic,
+          DATE_DIFF(end_date, start_date, DAY) as contract_duration_days
+        FROM ${newSalesMasterTable}
+        ${whereClause}
+      )
+      SELECT
+        EXTRACT(YEAR FROM DATE('${filters.startDate}')) as year,
+        EXTRACT(MONTH FROM DATE('${filters.startDate}')) as month,
+        COALESCE(fs.team, 'UNKNOWN') as team,
+        cd.pic,
+        -- Count each site ONCE: Sales if contract <= 90 days, CS if > 90 days
+        COUNT(DISTINCT CASE
+          WHEN cd.contract_duration_days <= 90 THEN cd.pid
+          ELSE NULL
+        END) as sales_sites,
+        COUNT(DISTINCT CASE
+          WHEN cd.contract_duration_days > 90 THEN cd.pid
+          ELSE NULL
+        END) as cs_sites
+      FROM contract_duration cd
+      LEFT JOIN ${finalSalesMonthlyTable} fs
+        ON cd.pic = fs.pic
+        AND fs.year = EXTRACT(YEAR FROM DATE('${filters.startDate}'))
+        AND fs.month = EXTRACT(MONTH FROM DATE('${filters.startDate}'))
+      GROUP BY fs.team, cd.pic
+      ORDER BY fs.team, cd.pic
+    `,
+
+    // Query 8: Sales-to-CS Site Count Details (Raw PIDs for verification)
+    // Returns raw PIDs with their start_date and end_date for details table
+    // Filtered by date range to only return contracts that overlap with selected period
+    salesCsSiteDetails: `
+      SELECT DISTINCT
+        nsm.pid,
+        nsm.pubname,
+        nsm.pic,
+        nsm.start_date,
+        nsm.end_date
+      FROM ${newSalesMasterTable} nsm
+      ${whereClause}
+      ORDER BY nsm.start_date DESC, nsm.pid
     `
   }
 }

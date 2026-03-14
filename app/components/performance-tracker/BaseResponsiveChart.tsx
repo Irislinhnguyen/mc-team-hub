@@ -59,8 +59,7 @@ export interface BaseResponsiveChartProps {
  * BaseResponsiveChart - Foundation component for all charts
  *
  * Provides:
- * - Responsive height based on breakpoint (280px mobile, 360px desktop)
- * - Responsive margins (tighter on mobile)
+ * - Responsive height based on breakpoint (standard 320px for all screens)
  * - Responsive font sizes (10px mobile, 12px desktop)
  * - Chart configuration via context (useResponsiveChart)
  * - Consistent Card wrapper with title
@@ -95,18 +94,12 @@ export function BaseResponsiveChart({
     let chartHeight: number
     if (minHeight) {
       chartHeight = minHeight
-    } else if (isMobile) {
-      chartHeight = chartSizes.heights.mobile // 280px
-    } else if (isTablet) {
-      chartHeight = chartSizes.heights.tablet // 320px
     } else {
-      chartHeight = chartSizes.heights.desktop // 360px
+      chartHeight = chartSizes.heights.standard
     }
 
     // Determine chart margins
-    const chartMargins = isMobile
-      ? chartSizes.margins.mobile
-      : chartSizes.margins.default
+    const chartMargins = chartSizes.margins.default
 
     // Determine font sizes
     const fontSize = {
@@ -161,9 +154,7 @@ export function getDynamicChartHeight(
   breakpoint: Breakpoint,
   itemHeight: number = 32
 ): number {
-  const baseHeight = breakpoint === 'xs' || breakpoint === 'sm'
-    ? chartSizes.heights.mobile
-    : chartSizes.heights.desktop
+  const baseHeight = chartSizes.heights.standard
 
   const calculatedHeight = dataLength * itemHeight + 60 // +60 for axes/padding
 
