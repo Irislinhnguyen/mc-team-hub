@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -14,6 +14,16 @@ export default function AuthPage() {
   const [error, setError] = useState<string | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+
+  // Set return_url cookie from query params when component mounts
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const returnUrl = urlParams.get('returnUrl')
+    if (returnUrl) {
+      // Set the return_url cookie that the login API expects
+      document.cookie = `return_url=${encodeURIComponent(returnUrl)}; path=/; max-age=300; SameSite=Lax`
+    }
+  }, [])
 
   const handleGoogleLogin = async () => {
     try {
