@@ -15,7 +15,9 @@ import { ROLE_ASSIGNMENT_RULES, type UserRole } from '@query-stream-ai/types/rba
 export async function getServerUser(): Promise<TokenPayload | null> {
   try {
     const cookieStore = await cookies()
-    const authToken = cookieStore.get('__Host-auth_token')?.value
+    // Try both old and new cookie names for backwards compatibility
+    const authToken = cookieStore.get('auth_token')?.value ||
+                     cookieStore.get('__Host-auth_token')?.value
 
     if (!authToken) {
       return null
@@ -65,7 +67,8 @@ export function getUserFromRequest(request: Request): TokenPayload | null {
       {} as Record<string, string>
     )
 
-    const authToken = cookies['__Host-auth_token']
+    // Try both old and new cookie names for backwards compatibility
+    const authToken = cookies['auth_token'] || cookies['__Host-auth_token']
     if (!authToken) {
       return null
     }

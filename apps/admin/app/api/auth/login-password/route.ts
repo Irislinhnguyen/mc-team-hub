@@ -38,11 +38,11 @@ async function handler(request: NextRequest) {
     // Create redirect to admin dashboard
     const response = NextResponse.redirect(new URL('/admin', request.url))
 
-    // Set auth token cookie
-    response.cookies.set('__Host-auth_token', token, {
+    // Set auth token cookie (use simple name for compatibility)
+    response.cookies.set('auth_token', token, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       path: '/',
       maxAge: 8 * 60 * 60, // 8 hours
     })
