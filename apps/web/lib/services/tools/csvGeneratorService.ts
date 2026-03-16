@@ -1,14 +1,14 @@
 /**
  * AI-powered XLSX Zone Generator Service for App Team (CS)
  * Uses OpenAI GPT-4o to generate zone configurations from natural language prompts
- * Generates XLSX files with all 36 columns matching the internal ad system template
+ * Generates XLSX files with all 38 columns matching the internal ad system template
  */
 
 import OpenAI from 'openai'
 import * as XLSX from 'xlsx'
 import type { GeneratedZone } from '@query-stream-ai/types/tools'
 
-// All 36 column headers matching the internal ad system template
+// All 38 column headers matching the internal ad system template
 const HEADERS = [
   'Media Id',
   'Name of zone',
@@ -45,7 +45,9 @@ const HEADERS = [
   'Vendor comment',
   'Format',
   'Device',
+  'OS',
   'Delivery Method',
+  'Genre',
 ] as const
 
 // Initialize OpenAI client lazily (server-side only)
@@ -56,9 +58,9 @@ function getOpenAIClient() {
 }
 
 /**
- * Create zone template with all 36 columns and default values
+ * Create zone template with all 38 columns and default values
  * AI will only fill in: Name of zone, width, height
- * Other 33 columns use default values
+ * Other 35 columns use default values
  */
 function createZoneTemplate(zoneUrl: string, payoutRate: number): Record<string, any> {
   return {
@@ -97,7 +99,9 @@ function createZoneTemplate(zoneUrl: string, payoutRate: number): Record<string,
     'Vendor comment': '',
     Format: '',
     Device: '',
+    OS: '',
     'Delivery Method': '',
+    Genre: '',
   }
 }
 
@@ -219,7 +223,7 @@ export async function generateZoneCSV(
 
     console.log(`[CSV Generator] AI generated ${aiZones.length} zone names`)
 
-    // Merge AI output into template (ensures all 36 columns exist)
+    // Merge AI output into template (ensures all 38 columns exist)
     const zones: GeneratedZone[] = aiZones.map((aiZone) => {
       const template = createZoneTemplate(zoneUrl, payoutRate)
       template['Media Id'] = mediaId // Set Media ID
@@ -231,14 +235,14 @@ export async function generateZoneCSV(
       }
     })
 
-    console.log(`[CSV Generator] Created ${zones.length} complete zones with 36 columns`)
+    console.log(`[CSV Generator] Created ${zones.length} complete zones with 38 columns`)
 
     // Convert JSON to Excel buffer with proper header order
     const worksheet = XLSX.utils.json_to_sheet(zones, { header: HEADERS })
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Zones')
 
-    // Set column widths for better readability (36 columns total)
+    // Set column widths for better readability (38 columns total)
     const columnWidths = [
       { wch: 15 }, // Media Id
       { wch: 35 }, // Name of zone
@@ -275,7 +279,9 @@ export async function generateZoneCSV(
       { wch: 20 }, // Vendor comment
       { wch: 15 }, // Format
       { wch: 15 }, // Device
+      { wch: 15 }, // OS
       { wch: 20 }, // Delivery Method
+      { wch: 20 }, // Genre
     ]
     worksheet['!cols'] = columnWidths
 
