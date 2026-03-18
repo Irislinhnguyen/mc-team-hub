@@ -323,3 +323,7 @@ export type RolePermissionUpdate = Database["public"]["Tables"]["role_permission
 export type UserPermission = Database["public"]["Tables"]["user_permissions"]["Row"]
 export type UserPermissionInsert = Database["public"]["Tables"]["user_permissions"]["Insert"]
 export type UserPermissionUpdate = Database["public"]["Tables"]["user_permissions"]["Update"]
+
+// Notification System Types
+export type NotificationType = 'urgent' | 'info' | 'success'
+export type NotificationCategory = 'challenge' | 'bible' | 'system' | 'team'
