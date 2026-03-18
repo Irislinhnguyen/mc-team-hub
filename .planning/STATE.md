@@ -3,6 +3,22 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 3 (Manager Approval Workflow)
+current_plan: 03-05b
+status: completed
+last_updated: "2026-03-18T15:13:59.000Z"
+progress:
+  total_phases: 6
+  completed_phases: 2
+  total_plans: 17
+  completed_plans: 16
+  percent: 94
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 3 (Manager Approval Workflow)
 current_plan: 03-05a
 status: completed
 last_updated: "2026-03-18T15:09:18.000Z"
@@ -153,7 +169,7 @@ Internal training and knowledge testing platform with two interconnected feature
 |-------|--------|----------|
 | 1. Foundation + Admin Unification | Complete | [X] 100% (6 reqs) |
 | 2. Notification System | Complete | [X] 100% (13 reqs) |
-| 3. Manager Approval Workflow | In Progress | [ ] 75% (6/8 plans) |
+| 3. Manager Approval Workflow | In Progress | [ ] 87.5% (7/8 plans) |
 | 4. Admin Dashboard + Monitoring | Not started | [ ] 0% (17 reqs) |
 | 5. MC Bible Completion | Not started | [ ] 0% (25 reqs) |
 | 6. Advanced Features | Not started | [ ] 0% (16 reqs) |
@@ -177,7 +193,8 @@ Internal training and knowledge testing platform with two interconnected feature
 | 03-03 (Manager Review API Endpoints) | 8min | 3 | 3 |
 | 03-04 (Leader Submit UI) | 2min | 3 | 3 |
 | 03-05a (Manager Approve UI) | 1min | 3 | 3 |
-| **Total Phase 3** | **~24min** | **17** | **16** |
+| 03-05b (Manager Approval Queue UI) | 3min | 4 | 6 |
+| **Total Phase 3** | **~27min** | **21** | **22** |
 | Phase 03 P03-04 | 139 | 3 tasks | 3 files |
 
 ## Accumulated Context
@@ -257,12 +274,13 @@ None identified yet.
 - 2026-03-18: Phase 3 Plan 03-03 completed — Manager approve and edit grades API endpoints with audit trail and Leader notifications
 - 2026-03-18: Phase 3 Plan 03-04 completed — Leader submit UI components with individual and bulk submit capabilities
 - 2026-03-18: Phase 3 Plan 03-05a completed — Manager approval UI components (ApprovalQueueTable, ApproveButton)
+- 2026-03-18: Phase 3 Plan 03-05b completed — Manager approval queue UI (ApprovalDetailView, approvals page, AdminSidebar link, API endpoints)
 
 **Next actions:**
-1. Continue Phase 3 Plan 03-05b — Publish Workflow
-2. Integration and testing (Plan 03-06)
-3. Create approval queue page at /admin/approvals using ApprovalQueueTable
-4. Create approval detail view with ApproveButton integration
+1. Continue Phase 3 Plan 03-06 — Integration and Testing
+2. End-to-end approval workflow testing
+3. Verify approval queue at /admin/approvals works with real data
+4. Verify Leader notifications on approval
 
 **Context for next session:**
 - Phase 3 context: `.planning/phases/03-manager-approval-workflow/03-CONTEXT.md`
@@ -272,4 +290,6 @@ None identified yet.
 - Plan 03-02 completed: Leader submit-for-review API at /api/challenges/submissions/[id]/submit-for-review
 - Plan 03-03 completed: Manager approve API at /api/challenges/submissions/[id]/approve and edit grades API at /api/challenges/submissions/[id]/grades
 - Plan 03-04 completed: Leader submit UI components (SubmitForReviewButton, grading page at /admin/challenges/[id]/grading)
+- Plan 03-05a completed: Manager approval UI components (ApprovalQueueTable, ApproveButton)
+- Plan 03-05b completed: Manager approval queue UI (ApprovalDetailView, approvals page at /admin/approvals, AdminSidebar Approvals link, API endpoints for submission details and answers)
 - Approval workflow: Leader submits grades → Manager reviews/edits → Manager approves → Manager/Admin publishes

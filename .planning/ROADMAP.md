@@ -165,9 +165,9 @@
   - 3 tasks: Create ApprovalQueueTable component, create ApproveButton component, update barrel export
   - Components are building blocks for the approvals page
 
-- [ ] 03-05b-PLAN.md — Approval Queue Page + Detail View (Wave 5) ⏳
+- [X] 03-05b-PLAN.md — Approval Queue Page + Detail View (Wave 5) ✅
   - APPR-11: ApprovalDetailView, approvals page, AdminSidebar navigation
-  - 5 tasks: Create ApprovalDetailView component, update barrel export, create approvals queue page, add Approvals link to AdminSidebar, human verification checkpoint
+  - 4 tasks: Create ApprovalDetailView component, update barrel export, create approvals queue page, add Approvals link to AdminSidebar (plus auto-fix: 2 missing API endpoints)
   - Page integrates ApprovalQueueTable and ApprovalDetailView, provides filter controls and next/prev navigation
 
 - [ ] 03-06-PLAN.md — Publish Validation + Notifications (Wave 6) ⏳
