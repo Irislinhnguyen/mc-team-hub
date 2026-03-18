@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart3, Trophy, MessageSquare, Users, Home, Settings } from 'lucide-react'
+import { BarChart3, Trophy, MessageSquare, Users, Home, Settings, BookOpen } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 interface AdminSidebarProps {
@@ -14,6 +14,11 @@ export default function AdminSidebar({ userRole }: AdminSidebarProps) {
 
   const navItems = [
     {
+      name: 'Overview',
+      href: '/admin/overview',
+      icon: <Home size={18} />,
+    },
+    {
       name: 'AI Usage',
       href: '/admin/ai-usage',
       icon: <BarChart3 size={18} />,
@@ -24,14 +29,24 @@ export default function AdminSidebar({ userRole }: AdminSidebarProps) {
       icon: <Trophy size={18} />,
     },
     {
+      name: 'Bible',
+      href: '/admin/bible',
+      icon: <BookOpen size={18} />,
+    },
+    {
+      name: 'Users',
+      href: '/admin/users',
+      icon: <Users size={18} />,
+    },
+    {
       name: 'Feedback',
       href: '/admin/feedback',
       icon: <MessageSquare size={18} />,
     },
     {
-      name: 'User Roles',
-      href: '/admin/users',
-      icon: <Users size={18} />,
+      name: 'Team Settings',
+      href: '/admin/team-settings',
+      icon: <Settings size={18} />,
     },
   ]
 
