@@ -1,7 +1,7 @@
 # Roadmap: MC Bible & Knowledge Championship
 
 **Created:** 2026-03-18
-**Updated:** 2026-03-18 (Phase 2 plans created)
+**Updated:** 2026-03-18 (Phase 3 planned)
 **Granularity:** Coarse (aggressive compression)
 **Phases:** 6
 **Coverage:** 91 requirements
@@ -9,7 +9,7 @@
 ## Phases
 
 - [X] **Phase 1: Foundation + Admin Unification** - Consolidate duplicate admin apps, unified admin structure ✅
-- [x] **Phase 2: Notification System** - In-app and email notifications for grading workflow (completed 2026-03-18)
+- [X] **Phase 2: Notification System** - In-app and email notifications for grading workflow (completed 2026-03-18)
 - [ ] **Phase 3: Manager Approval Workflow** - Leader grades → Manager approves → Publish enabled
 - [ ] **Phase 4: Admin Dashboard + Monitoring** - Overview dashboard, training completion, AI cost monitoring
 - [ ] **Phase 5: MC Bible Completion** - Slides support, quiz integration, search, certificates
@@ -78,34 +78,34 @@
 3. Users receive notifications when scores are published
 4. Users can manage notification preferences (email vs in-app)
 
-**Plans:** 6/6 plans complete
+**Plans:** 6/6 plans complete ✅
 
-- [ ] 02-01-PLAN.md — Database + Core Service (Wave 1)
+- [X] 02-01-PLAN.md — Database + Core Service (Wave 1) ✅
   - NOTIF-01, NOTIF-08: Database tables (notifications, notification_preferences, notification_delivery_errors), TypeScript types, notification service
   - 3 tasks: Create migration, update database types, create notification service
   - Role-based default preferences (admin/manager all on, leader mixed, member minimal)
 
-- [ ] 02-02-PLAN.md — Email Service (Wave 1)
+- [X] 02-02-PLAN.md — Email Service (Wave 1) ✅
   - NOTIF-05, NOTIF-06, NOTIF-07: Nodemailer service with SMTP, HTML email templates, env configuration
   - 3 tasks: Create email templates, create email service with retry logic, update .env.example
   - SMTP env vars: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, SMTP_FROM_NAME
 
-- [ ] 02-03-PLAN.md — API Endpoints (Wave 2)
+- [X] 02-03-PLAN.md — API Endpoints (Wave 2) ✅
   - NOTIF-02, NOTIF-03, NOTIF-04: RESTful API for notification operations
   - 6 tasks: GET /api/notifications, DELETE /api/notifications/:id, PATCH /api/notifications/:id/read, POST /api/notifications/mark-all-read, GET /api/notifications/unread-count, GET/PUT /api/notifications/preferences
   - All endpoints require authentication via getServerUser()
 
-- [ ] 02-04-PLAN.md — UI Components (Wave 2)
+- [X] 02-04-PLAN.md — UI Components (Wave 2) ✅
   - NOTIF-01, NOTIF-02: Notification bell with badge, dropdown panel
   - 4 tasks: Create NotificationBell, create NotificationDropdown, create barrel export, update Header
   - Bell placed between logo and UserDropdown, 30s polling for unread count
 
-- [ ] 02-05-PLAN.md — Preferences UI (Wave 3)
+- [X] 02-05-PLAN.md — Preferences UI (Wave 3) ✅
   - NOTIF-08, NOTIF-09: Settings page for notification preferences
   - 1 task: Create /settings/notifications page with category toggles
   - 4 categories (Challenges, Bible, System, Team) with email/in-app switches
 
-- [ ] 02-06-PLAN.md — Workflow Integration (Wave 3)
+- [X] 02-06-PLAN.md — Workflow Integration (Wave 3) ✅
   - NOTIF-10, NOTIF-11, NOTIF-12, NOTIF-13: Trigger notifications on grading events
   - 2 tasks: Create workflow notification service, integrate into grading API
   - Functions: notifyLeadersGradingStarted, notifyManagersGradesSubmitted, notifyLeadersGradeApproved, notifyUsersScoresPublished
@@ -114,7 +114,7 @@
 
 ### Phase 3: Manager Approval Workflow
 
-**Goal:** Implement the complete grading workflow with approval stages.
+**Goal:** Implement the complete grading workflow with Leader → Manager approval stages.
 
 **Depends on:** Phase 1 (admin structure), Phase 2 (notifications)
 
@@ -133,7 +133,37 @@
 3. Leaderboard publishing is blocked until Manager approval
 4. Full audit trail of who did what when
 
-**Plans:** TBD
+**Plans:** 6 plans in 5 waves
+
+- [ ] 03-01-PLAN.md — Database + Types (Wave 1) ⏳
+  - APPR-01, APPR-02, APPR-13: Extend submission status enum with pending_review and approved, create approvals audit table
+  - 3 tasks: Create migration with new statuses and approvals table, regenerate TypeScript types, apply migration to Supabase (human checkpoint)
+  - RLS policies for approvals: everyone can read, Leader/Manager/Admin can create, no deletes
+
+- [ ] 03-02-PLAN.md — Leader Submit API + Pending Approvals API (Wave 2) ⏳
+  - APPR-04, APPR-07, APPR-14: POST endpoint for Leader to submit grades, GET endpoint for Manager to list pending approvals, GET endpoint for approval history
+  - 3 tasks: Create submit-for-review API, create pending approvals list API, create approval history API
+  - Notification integration: notifyManagersGradesSubmitted on submit
+
+- [ ] 03-03-PLAN.md — Manager Approve/Edit API (Wave 2) ⏳
+  - APPR-05, APPR-06, APPR-14: POST endpoint for Manager to approve submission, PATCH endpoint for Manager to edit grades
+  - 2 tasks: Create approve API with Leader notification, create edit grades API with tracking
+  - Grade edits track Manager via grading_modified_by and grading_modified_at
+
+- [ ] 03-04-PLAN.md — Leader Submit UI (Wave 3) ⏳
+  - APPR-08: SubmitForReviewButton component, bulk submit in grading interface
+  - 3 tasks: Create SubmitForReviewButton component, create barrel export, integrate into grading page
+  - Button shows Submitted state after submission, status badges display current state
+
+- [ ] 03-05-PLAN.md — Manager Approval UI (Wave 4) ⏳
+  - APPR-09, APPR-10, APPR-11: Approval queue page with list and detail views
+  - 5 tasks: Create ApprovalQueueTable, ApproveButton, ApprovalDetailView, approvals page, human verification checkpoint
+  - List view shows pending submissions with filters, detail view enables grade editing and approve action
+
+- [ ] 03-06-PLAN.md — Publish Validation + Notifications (Wave 5) ⏳
+  - APPR-12, APPR-13, APPR-14: Modify publish API to enforce Manager approval before publishing
+  - 2 tasks: Add approval validation to publish API, verify end-to-end workflow (human checkpoint)
+  - Publish requires Manager/Admin role and approved status, triggers user notifications
 
 ---
 
@@ -239,7 +269,7 @@
 |-------|----------------|--------|-----------|
 | 1. Foundation + Admin Unification | 3/3 | Complete | 2026-03-18 |
 | 2. Notification System | 6/6 | Complete   | 2026-03-18 |
-| 3. Manager Approval Workflow | 0/14 | Not started | - |
+| 3. Manager Approval Workflow | 0/6 | Planned | 2026-03-18 |
 | 4. Admin Dashboard + Monitoring | 0/17 | Not started | - |
 | 5. MC Bible Completion | 0/25 | Not started | - |
 | 6. Advanced Features | 0/16 | Not started | - |
@@ -286,41 +316,41 @@ Phase 6: Advanced Features (needs data from all previous phases)
 ### Notification System (Phase 2)
 | Requirement | Plan | Status |
 |-------------|------|--------|
-| NOTIF-01 | 02-01, 02-04 | Pending |
-| NOTIF-02 | 02-03 | Pending |
-| NOTIF-03 | 02-03 | Pending |
-| NOTIF-04 | 02-03 | Pending |
-| NOTIF-05 | 02-02 | Pending |
-| NOTIF-06 | 02-02 | Pending |
-| NOTIF-07 | 02-02 | Pending |
-| NOTIF-08 | 02-01, 02-05 | Pending |
-| NOTIF-09 | 02-05 | Pending |
-| NOTIF-10 | 02-06 | Pending |
-| NOTIF-11 | 02-06 | Pending |
-| NOTIF-12 | 02-06 | Pending |
-| NOTIF-13 | 02-06 | Pending |
+| NOTIF-01 | 02-01, 02-04 | Complete ✅ |
+| NOTIF-02 | 02-03 | Complete ✅ |
+| NOTIF-03 | 02-03 | Complete ✅ |
+| NOTIF-04 | 02-03 | Complete ✅ |
+| NOTIF-05 | 02-02 | Complete ✅ |
+| NOTIF-06 | 02-02 | Complete ✅ |
+| NOTIF-07 | 02-02 | Complete ✅ |
+| NOTIF-08 | 02-01, 02-05 | Complete ✅ |
+| NOTIF-09 | 02-05 | Complete ✅ |
+| NOTIF-10 | 02-06 | Complete ✅ |
+| NOTIF-11 | 02-06 | Complete ✅ |
+| NOTIF-12 | 02-06 | Complete ✅ |
+| NOTIF-13 | 02-06 | Complete ✅ |
 
 ### Manager Approval Workflow (Phase 3)
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| APPR-01 | Phase 3 | Pending |
-| APPR-02 | Phase 3 | Pending |
-| APPR-03 | Phase 3 | Pending |
-| APPR-04 | Phase 3 | Pending |
-| APPR-05 | Phase 3 | Pending |
-| APPR-06 | Phase 3 | Pending |
-| APPR-07 | Phase 3 | Pending |
-| APPR-08 | Phase 3 | Pending |
-| APPR-09 | Phase 3 | Pending |
-| APPR-10 | Phase 3 | Pending |
-| APPR-11 | Phase 3 | Pending |
-| APPR-12 | Phase 3 | Pending |
-| APPR-13 | Phase 3 | Pending |
-| APPR-14 | Phase 3 | Pending |
+| Requirement | Plan | Status |
+|-------------|------|--------|
+| APPR-01 | 03-01 | Pending |
+| APPR-02 | 03-01 | Pending |
+| APPR-03 | N/A | Out of scope (no rejection workflow) |
+| APPR-04 | 03-02 | Pending |
+| APPR-05 | 03-03 | Pending |
+| APPR-06 | 03-03 | Out of scope (no rejection workflow) |
+| APPR-07 | 03-02 | Pending |
+| APPR-08 | 03-04 | Pending |
+| APPR-09 | 03-05 | Pending |
+| APPR-10 | 03-05 | Pending |
+| APPR-11 | 03-05 | Pending |
+| APPR-12 | 03-06 | Pending |
+| APPR-13 | 03-01 | Pending |
+| APPR-14 | 03-02, 03-03, 03-06 | Pending |
 
 ### Admin Dashboard (Phase 4)
-| Requirement | Phase | Status |
-|-------------|-------|--------|
+| Requirement | Plan | Status |
+|-------------|------|--------|
 | DASH-01 | Phase 4 | Pending |
 | DASH-02 | Phase 4 | Pending |
 | DASH-03 | Phase 4 | Pending |
@@ -340,8 +370,8 @@ Phase 6: Advanced Features (needs data from all previous phases)
 | DASH-17 | Phase 4 | Pending |
 
 ### MC Bible Completion (Phase 5)
-| Requirement | Phase | Status |
-|-------------|-------|--------|
+| Requirement | Plan | Status |
+|-------------|------|--------|
 | BIBL-01 | Phase 5 | Pending |
 | BIBL-02 | Phase 5 | Pending |
 | BIBL-03 | Phase 5 | Pending |
@@ -369,8 +399,8 @@ Phase 6: Advanced Features (needs data from all previous phases)
 | INTG-04 | Phase 5 | Pending |
 
 ### Advanced Features (Phase 6)
-| Requirement | Phase | Status |
-|-------------|-------|--------|
+| Requirement | Plan | Status |
+|-------------|------|--------|
 | CHAL-01 | Phase 6 | Pending |
 | CHAL-02 | Phase 6 | Pending |
 | CHAL-03 | Phase 6 | Pending |
@@ -395,4 +425,4 @@ Phase 6: Advanced Features (needs data from all previous phases)
 ---
 
 *Roadmap created: 2026-03-18*
-*Last updated: 2026-03-18 (Phase 2 plans created)*
+*Last updated: 2026-03-18 (Phase 3 plans created)*
