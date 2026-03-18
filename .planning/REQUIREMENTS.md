@@ -135,8 +135,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADM-01 | Phase 1 | Pending |
 | ADM-02 | Phase 1 | Pending |
 | ADM-03 | Phase 1 | Pending |
-| BIBL-01 | Phase 1 | Pending |
-| BIBL-02 | Phase 1 | Pending |
+| BIBL-01 | Phase 2 | Pending |
+| BIBL-02 | Phase 2 | Pending |
 | BIBL-03 | Phase 2 | Pending |
 | BIBL-04 | Phase 2 | Pending |
 | BIBL-05 | Phase 2 | Pending |
@@ -145,29 +145,29 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BIBL-08 | Phase 2 | Pending |
 | BIBL-09 | Phase 2 | Pending |
 | BIBL-10 | Phase 2 | Pending |
-| BIBL-11 | Phase 3 | Pending |
-| BIBL-12 | Phase 3 | Pending |
+| BIBL-11 | Phase 4 | Pending |
+| BIBL-12 | Phase 4 | Pending |
 | BIBL-13 | Phase 2 | Pending |
-| BIBL-14 | Phase 3 | Pending |
+| BIBL-14 | Phase 4 | Pending |
 | BIBL-15 | Phase 4 | Pending |
 | BIBL-16 | Phase 4 | Pending |
 | BIBL-17 | Phase 4 | Pending |
-| CHAL-01 | Phase 5 | Pending |
-| CHAL-02 | Phase 5 | Pending |
-| CHAL-03 | Phase 5 | Pending |
-| CHAL-04 | Phase 5 | Pending |
-| CHAL-05 | Phase 5 | Pending |
-| CHAL-06 | Phase 6 | Pending |
-| CHAL-07 | Phase 6 | Pending |
-| CHAL-08 | Phase 6 | Pending |
-| CHAL-09 | Phase 6 | Pending |
-| CHAL-10 | Phase 6 | Pending |
-| CHAL-11 | Phase 7 | Pending |
-| CHAL-12 | Phase 7 | Pending |
-| CHAL-13 | Phase 7 | Pending |
-| CHAL-14 | Phase 7 | Pending |
-| CHAL-15 | Phase 7 | Pending |
-| CHAL-16 | Phase 7 | Pending |
+| CHAL-01 | Phase 3 | Pending |
+| CHAL-02 | Phase 3 | Pending |
+| CHAL-03 | Phase 3 | Pending |
+| CHAL-04 | Phase 3 | Pending |
+| CHAL-05 | Phase 3 | Pending |
+| CHAL-06 | Phase 3 | Pending |
+| CHAL-07 | Phase 3 | Pending |
+| CHAL-08 | Phase 3 | Pending |
+| CHAL-09 | Phase 3 | Pending |
+| CHAL-10 | Phase 3 | Pending |
+| CHAL-11 | Phase 4 | Pending |
+| CHAL-12 | Phase 4 | Pending |
+| CHAL-13 | Phase 4 | Pending |
+| CHAL-14 | Phase 4 | Pending |
+| CHAL-15 | Phase 4 | Pending |
+| CHAL-16 | Phase 4 | Pending |
 | INTG-01 | Phase 4 | Pending |
 | INTG-02 | Phase 4 | Pending |
 | INTG-03 | Phase 4 | Pending |
@@ -175,8 +175,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 **Coverage:**
 - v1 requirements: 35 total
 - Mapped to phases: 35
-- Unmapped: 0 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-18*
-*Last updated: 2026-03-18 after initial definition*
+*Last updated: 2026-03-18 after roadmap creation*
