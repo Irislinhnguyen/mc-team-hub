@@ -9,11 +9,28 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState } from 'react';
 import { UserDropdown } from '../shared/UserDropdown';
+import { NotificationBell, NotificationDropdown } from '@/components/notifications';
+import { useQuery } from '@tanstack/react-query';
 
 export function Header() {
   const { user, isLoading, logout, refreshSession } = useAuth();
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+
+  // Fetch unread count for notification bell
+  const { data: unreadCountData } = useQuery({
+    queryKey: ['notifications-unread-count'],
+    queryFn: async () => {
+      const res = await fetch('/api/notifications/unread-count')
+      if (!res.ok) throw new Error('Failed to fetch unread count')
+      const data = await res.json()
+      return data.count as number
+    },
+    staleTime: 30000, // 30 seconds
+    refetchInterval: 30000 // Poll every 30 seconds
+  })
+  const unreadCount = unreadCountData || 0
 
   const handleLogout = async () => {
     await logout();
@@ -64,7 +81,19 @@ export function Header() {
               <Skeleton className="h-9 w-24" />
             </div>
           ) : user ? (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              {/* Notification Bell */}
+              <div className="relative">
+                <NotificationBell
+                  unreadCount={unreadCount}
+                  onClick={() => setNotificationOpen(!notificationOpen)}
+                />
+                <NotificationDropdown
+                  open={notificationOpen}
+                  onOpenChange={setNotificationOpen}
+                />
+              </div>
+
               {/* User Dropdown - Shared Component */}
               <UserDropdown user={user} onLogout={logout} onRefreshSession={handleRefreshSession} align="end" />
             </div>
