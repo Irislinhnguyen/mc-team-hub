@@ -6,6 +6,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser, isLeaderOrAbove, isAdminOrManager } from '@query-stream-ai/auth/server'
 import { createAdminClient } from '@query-stream-ai/db/admin'
+import {
+  notifyManagersGradesSubmitted
+} from '@/lib/services/workflowNotificationService'
 
 // =====================================================
 // GET - Get grading queue (ungraded essay answers)
@@ -268,6 +271,26 @@ export async function POST(
 
     for (const submissionId of submissionIds) {
       await recalculateSubmissionScore(supabase, submissionId)
+    }
+
+    // Trigger notification to Managers that grades are ready for approval
+    // Get challenge info for notification
+    const { data: challenge } = await supabase
+      .from('challenges')
+      .select('id, name')
+      .eq('id', challengeId)
+      .single()
+
+    if (challenge) {
+      // Async notification (non-blocking)
+      notifyManagersGradesSubmitted(
+        challenge.id,
+        challenge.name,
+        user.name || 'A Leader',
+        grades.length
+      ).catch((error) => {
+        console.error('[Grading API] Failed to send notification:', error)
+      })
     }
 
     return NextResponse.json({
