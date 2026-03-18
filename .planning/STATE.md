@@ -1,7 +1,7 @@
 # STATE.md: MC Bible & Knowledge Championship
 
 **Last updated:** 2026-03-18
-**Current phase:** Phase 1 (Admin Unification)
+**Current phase:** Phase 1 (Foundation + Admin Unification)
 
 ## Project Reference
 
@@ -9,17 +9,17 @@
 
 **What we're building:**
 Internal training and knowledge testing platform with two interconnected features:
-1. **MC Bible** — Course/knowledge base with learning paths and articles
-2. **Knowledge Championship** — Monthly challenges with leaderboards
+1. **MC Bible** — Course/knowledge base with learning paths, articles, slides, and quizzes
+2. **Knowledge Championship** — Monthly challenges with leaderboards, auto-grading, and approval workflow
 
-**Tech Stack:** Next.js 14, Supabase, Radix UI, TypeScript, TanStack Query
+**Tech Stack:** Next.js 14, Supabase, Radix UI, TypeScript, TanStack Query, Nodemailer
 
 ## Current Position
 
-**Active Phase:** Phase 1 — Admin Unification
-**Plan:** TBD (not yet planned)
-**Status:** Not started
-**Progress:** 0/3 plans complete
+**Active Phase:** Phase 1 — Foundation + Admin Unification
+**Plan:** TBD (context gathered, ready for planning)
+**Status:** Context captured
+**Progress:** 0/6 requirements complete
 
 ```
 [████████████████████████████████████████████████████] 0% Complete
@@ -29,10 +29,12 @@ Internal training and knowledge testing platform with two interconnected feature
 
 | Phase | Status | Progress |
 |-------|--------|----------|
-| 1. Admin Unification | Not started | [ ] 0% |
-| 2. Bible Core | Not started | [ ] 0% |
-| 3. Challenge Enhancement | Not started | [ ] 0% |
-| 4. Recognition & Analytics | Not started | [ ] 0% |
+| 1. Foundation + Admin Unification | Not started | [ ] 0% (6 reqs) |
+| 2. Notification System | Not started | [ ] 0% (13 reqs) |
+| 3. Manager Approval Workflow | Not started | [ ] 0% (14 reqs) |
+| 4. Admin Dashboard + Monitoring | Not started | [ ] 0% (17 reqs) |
+| 5. MC Bible Completion | Not started | [ ] 0% (25 reqs) |
+| 6. Advanced Features | Not started | [ ] 0% (16 reqs) |
 
 ## Performance Metrics
 
@@ -44,9 +46,13 @@ Internal training and knowledge testing platform with two interconnected feature
 
 | Decision | Rationale | Date |
 |----------|-----------|------|
+| 6-phase roadmap vs 4-phase | New requirements (notifications, approval workflow, dashboard) are critical gaps | 2026-03-18 |
 | Admin unification first | Prevents multiplying technical debt before adding features | 2026-03-18 |
-| Auto-grading before question banks | Need graded questions to make them reusable | 2026-03-18 |
-| Certificate generation in Phase 4 | jsPDF + html2canvas already installed | 2026-03-18 |
+| Single app architecture | Merge apps/admin into apps/web for 1 Vercel project, shared auth, lower cost | 2026-03-18 |
+| Route structure: /admin/* | Unified admin routes under single app, role-protected | 2026-03-18 |
+| Notifications before approval workflow | Can't implement approval workflow without notification triggers | 2026-03-18 |
+| Slides support needed | User workflow includes PowerPoint/Google Slides as content type | 2026-03-18 |
+| Manager approval required | Leader grades must be reviewed by Manager before publishing | 2026-03-18 |
 
 ### Technical Notes
 
@@ -61,6 +67,13 @@ Internal training and knowledge testing platform with two interconnected feature
 - TinyMCE for rich text editing
 - Recharts for analytics visualizations
 - xlsx library for CSV/Excel export
+- Nodemailer for email notifications (not yet implemented)
+
+**Database Tables (Existing):**
+- `challenges`, `challenge_questions`, `challenge_submissions`, `challenge_answers`, `challenge_grades`
+- `bible_paths`, `bible_articles`, `bible_path_articles`, `bible_user_progress`
+- User roles: `admin`, `manager`, `leader`, `member`
+- Team assignments: `user_team_assignments`
 
 ### Known Blockers
 
@@ -69,23 +82,28 @@ None identified yet.
 ### Research Gaps
 
 **Medium priority research for upcoming phases:**
-- jsPDF certificate template patterns (Phase 4)
-- Cloze question parsing edge cases (Phase 3)
-- Question bank database schema design (Phase 3)
+- jsPDF certificate template patterns (Phase 5)
+- Cloze question parsing edge cases (Phase 6)
+- Question bank database schema design (Phase 6)
+- Email service SMTP configuration (Phase 2)
+- Notification delivery reliability patterns (Phase 2)
 
 ## Session Continuity
 
 **Recent work:**
 - 2026-03-18: Project initialized, requirements defined, research completed
-- 2026-03-18: Roadmap created with 4 phases
+- 2026-03-18: Original 4-phase roadmap created
+- 2026-03-18: Scope analysis identified critical gaps (notifications, approval workflow, dashboard)
+- 2026-03-18: Roadmap revised to 6-phase structure
+- 2026-03-18: Requirements expanded to 91 total requirements
+- 2026-03-18: Phase 1 context captured — single app architecture decided
 
 **Next actions:**
-1. Plan Phase 1: Admin Unification
+1. Create detailed PLAN.md for Phase 1
 2. Execute Phase 1 plans
-3. Advance to Phase 2 or 3 (can run in parallel)
 
 **Context for next session:**
-- Coarse granularity (4 phases total)
-- Phase 2 and 3 can be executed in parallel after Phase 1
-- Phase 4 depends on both Phase 2 and 3
-- Mode: YOLO (fast iteration)
+- Phase 1 context: `.planning/phases/01-foundation-admin-unification/01-CONTEXT.md`
+- Key decision: Merge apps/admin into apps/web as single Vercel project
+- Route structure: /admin/* with role-based access
+- Phase dependencies are sequential: 1→2→3→4→5→6
