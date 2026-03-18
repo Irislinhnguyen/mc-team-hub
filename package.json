@@ -4,12 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"pnpm run dev:web\" \"pnpm run dev:admin\"",
-    "dev:web": "cd apps/web && pnpm run dev",
-    "dev:admin": "cd apps/admin && pnpm run dev",
-    "build": "pnpm run build:web && pnpm run build:admin",
-    "build:web": "cd apps/web && pnpm run build",
-    "build:admin": "cd apps/admin && pnpm run build",
+    "dev": "cd apps/web && pnpm run dev",
+    "build": "cd apps/web && pnpm run build",
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed"
