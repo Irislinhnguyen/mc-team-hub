@@ -23,7 +23,7 @@ export type ChallengeStatus = (typeof CHALLENGE_STATUSES)[number];
 export const QUESTION_TYPES = ['essay', 'cloze', 'drag_drop'] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
 
-export const SUBMISSION_STATUSES = ['in_progress', 'submitted', 'graded', 'published'] as const;
+export const SUBMISSION_STATUSES = ['in_progress', 'submitted', 'grading', 'pending_review', 'approved', 'published'] as const;
 export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
 
 export const USER_TEAM_ROLES = ['leader', 'member'] as const;
@@ -194,6 +194,36 @@ export interface UserTeamAssignment {
   user_email?: string;
   team_name?: string;
 }
+
+/**
+ * Approval - Audit trail for approval workflow actions
+ */
+export interface Approval {
+  id: string;
+  submission_id: string;
+  user_id: string;
+  user_role: 'leader' | 'manager' | 'admin';
+  action: 'submitted_for_review' | 'approved';
+  from_status: string;
+  to_status: string;
+  notes: string | null;
+  created_at: string;
+
+  // Computed fields
+  user_name?: string;
+}
+
+/**
+ * Approval Action Types
+ */
+export const APPROVAL_ACTIONS = ['submitted_for_review', 'approved'] as const;
+export type ApprovalAction = (typeof APPROVAL_ACTIONS)[number];
+
+/**
+ * Approval User Roles
+ */
+export const APPROVAL_USER_ROLES = ['leader', 'manager', 'admin'] as const;
+export type ApprovalUserRole = (typeof APPROVAL_USER_ROLES)[number];
 
 // =====================================================
 // API REQUEST/RESPONSE TYPES
@@ -576,6 +606,7 @@ export type {
   ChallengeSubmission,
   ChallengeAnswer,
   UserTeamAssignment,
+  Approval,
 
   // Question options
   QuestionOptions,
@@ -624,4 +655,8 @@ export type {
 
   // Permission types
   ChallengePermissions,
+
+  // Approval types
+  ApprovalAction,
+  ApprovalUserRole,
 };
