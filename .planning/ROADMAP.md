@@ -133,7 +133,7 @@
 3. Leaderboard publishing is blocked until Manager approval
 4. Full audit trail of who did what when
 
-**Plans:** 2/8 plans executed
+**Plans:** 5/8 plans executed
 
 - [ ] 03-00-PLAN.md — Test Infrastructure (Wave 0) ⏳
   - E2E tests and auth fixtures for approval workflow
@@ -279,7 +279,7 @@
 |-------|----------------|--------|-----------|
 | 1. Foundation + Admin Unification | 3/3 | Complete | 2026-03-18 |
 | 2. Notification System | 6/6 | Complete   | 2026-03-18 |
-| 3. Manager Approval Workflow | 2/8 | In Progress|  |
+| 3. Manager Approval Workflow | 5/8 | In Progress|  |
 | 4. Admin Dashboard + Monitoring | 0/17 | Not started | - |
 | 5. MC Bible Completion | 0/25 | Not started | - |
 | 6. Advanced Features | 0/16 | Not started | - |

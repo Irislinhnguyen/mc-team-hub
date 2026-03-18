@@ -75,7 +75,7 @@ Implement the complete grading workflow with Leader → Manager approval stages.
 
 ### User Interface
 
-- [ ] **APPR-08**: Leader UI: "Submit for Approval" button in grading interface
+- [x] **APPR-08**: Leader UI: "Submit for Approval" button in grading interface
 - [ ] **APPR-09**: Manager UI: Approval queue showing pending submissions
 - [ ] **APPR-10**: Manager UI: Review submission with grades displayed
 - [ ] **APPR-11**: Manager UI: Approve/Reject buttons with notes field
