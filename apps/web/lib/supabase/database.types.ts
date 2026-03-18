@@ -273,6 +273,100 @@ export type Database = {
           expires_at?: string | null
         }
       }
+      approvals: {
+        Row: {
+          id: string
+          submission_id: string
+          user_id: string
+          user_role: 'leader' | 'manager' | 'admin'
+          action: 'submitted_for_review' | 'approved'
+          from_status: string
+          to_status: string
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          submission_id: string
+          user_id: string
+          user_role: 'leader' | 'manager' | 'admin'
+          action: 'submitted_for_review' | 'approved'
+          from_status: string
+          to_status: string
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          submission_id?: string
+          user_id?: string
+          user_role?: 'leader' | 'manager' | 'admin'
+          action?: 'submitted_for_review' | 'approved'
+          from_status?: string
+          to_status?: string
+          notes?: string | null
+          created_at?: string
+        }
+      }
+      challenge_submissions: {
+        Row: {
+          id: string
+          challenge_id: string
+          user_id: string
+          attempt_number: number
+          started_at: string
+          submitted_at: string | null
+          time_spent_seconds: number | null
+          auto_score: string | null
+          auto_score_max: number | null
+          final_score: string | null
+          final_score_max: number | null
+          status: 'in_progress' | 'submitted' | 'grading' | 'pending_review' | 'approved' | 'published'
+          user_team_id: string | null
+          graded_by: string | null
+          graded_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          challenge_id: string
+          user_id: string
+          attempt_number: number
+          started_at?: string
+          submitted_at?: string | null
+          time_spent_seconds?: number | null
+          auto_score?: string | null
+          auto_score_max?: number | null
+          final_score?: string | null
+          final_score_max?: number | null
+          status?: 'in_progress' | 'submitted' | 'grading' | 'pending_review' | 'approved' | 'published'
+          user_team_id?: string | null
+          graded_by?: string | null
+          graded_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          challenge_id?: string
+          user_id?: string
+          attempt_number?: number
+          started_at?: string
+          submitted_at?: string | null
+          time_spent_seconds?: number | null
+          auto_score?: string | null
+          auto_score_max?: number | null
+          final_score?: string | null
+          final_score_max?: number | null
+          status?: 'in_progress' | 'submitted' | 'grading' | 'pending_review' | 'approved' | 'published'
+          user_team_id?: string | null
+          graded_by?: string | null
+          graded_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [key: string]: {
@@ -323,3 +417,16 @@ export type RolePermissionUpdate = Database["public"]["Tables"]["role_permission
 export type UserPermission = Database["public"]["Tables"]["user_permissions"]["Row"]
 export type UserPermissionInsert = Database["public"]["Tables"]["user_permissions"]["Insert"]
 export type UserPermissionUpdate = Database["public"]["Tables"]["user_permissions"]["Update"]
+
+// Approval workflow types
+export type Approval = Database["public"]["Tables"]["approvals"]["Row"]
+export type ApprovalInsert = Database["public"]["Tables"]["approvals"]["Insert"]
+export type ApprovalUpdate = Database["public"]["Tables"]["approvals"]["Update"]
+
+// Challenge submission types
+export type ChallengeSubmission = Database["public"]["Tables"]["challenge_submissions"]["Row"]
+export type ChallengeSubmissionInsert = Database["public"]["Tables"]["challenge_submissions"]["Insert"]
+export type ChallengeSubmissionUpdate = Database["public"]["Tables"]["challenge_submissions"]["Update"]
+
+// Submission status type
+export type SubmissionStatus = ChallengeSubmission['status']
