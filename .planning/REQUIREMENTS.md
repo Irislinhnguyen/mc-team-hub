@@ -69,8 +69,8 @@ Implement the complete grading workflow with Leader → Manager approval stages.
 ### API Endpoints
 
 - [x] **APPR-04**: API endpoint for Leader to submit grades for approval
-- [ ] **APPR-05**: API endpoint for Manager to approve grades
-- [ ] **APPR-06**: API endpoint for Manager to reject grades with notes
+- [x] **APPR-05**: API endpoint for Manager to approve grades
+- [x] **APPR-06**: API endpoint for Manager to reject grades with notes
 - [x] **APPR-07**: API endpoint to list pending approvals
 
 ### User Interface
