@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart3, Trophy, MessageSquare, Users, Home, Settings, BookOpen } from 'lucide-react'
+import { BarChart3, Trophy, MessageSquare, Users, Home, Settings, BookOpen, CheckCircle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 interface AdminSidebarProps {
@@ -32,6 +32,12 @@ export default function AdminSidebar({ userRole }: AdminSidebarProps) {
       name: 'Bible',
       href: '/admin/bible',
       icon: <BookOpen size={18} />,
+    },
+    {
+      name: 'Approvals',
+      href: '/admin/approvals',
+      icon: <CheckCircle size={18} />,
+      requiredRoles: ['admin', 'manager'], // Only Admin/Manager can see Approvals
     },
     {
       name: 'Users',
@@ -97,6 +103,10 @@ export default function AdminSidebar({ userRole }: AdminSidebarProps) {
         <ul className="space-y-1">
           {navItems.map((item) => {
             const isActive = pathname.startsWith(item.href)
+            // Hide items with requiredRoles if user doesn't have the required role
+            if ('requiredRoles' in item && item.requiredRoles && !item.requiredRoles.includes(userRole)) {
+              return null
+            }
             return (
               <li key={item.href}>
                 <Link
