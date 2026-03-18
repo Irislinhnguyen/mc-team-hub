@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 2 (Notification System)
 status: executing
-last_updated: "2026-03-18T09:09:41.051Z"
+last_updated: "2026-03-18T09:10:32.000Z"
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 9
-  completed_plans: 8
-  percent: 89
+  completed_plans: 7
+  percent: 78
 ---
 
 ---
@@ -18,15 +18,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 2 (Notification System)
-current_plan: 02-03
-status: in_progress
-last_updated: "2026-03-18T09:00:33.000Z"
+current_plan: 02-04
+status: completed
+last_updated: "2026-03-18T09:10:32.000Z"
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 9
-  completed_plans: 5
-  percent: 56
+  completed_plans: 4
+  percent: 44
 ---
 
 # STATE.md: MC Bible & Knowledge Championship
@@ -48,20 +48,16 @@ Internal training and knowledge testing platform with two interconnected feature
 ## Current Position
 
 **Active Phase:** Phase 2 — Notification System
-**Plan:** 02-03 (Notification API Endpoints) — In Progress
+**Plan:** 02-04 (Notification UI Components) — Completed
 **Status:** Executing
-**Progress:** [█████████░] 89%
-
-```
-[████████████████████████████████████████████████████] 33% Complete
-```
+**Progress:** [██████████] 78%
 
 ### Phase Overview
 
 | Phase | Status | Progress |
 |-------|--------|----------|
 | 1. Foundation + Admin Unification | Complete | [X] 100% (6 reqs) |
-| 2. Notification System | In Progress | [ ] 38% (5/13 reqs) |
+| 2. Notification System | In Progress | [ ] 54% (7/13 reqs) |
 | 3. Manager Approval Workflow | Not started | [ ] 0% (14 reqs) |
 | 4. Admin Dashboard + Monitoring | Not started | [ ] 0% (17 reqs) |
 | 5. MC Bible Completion | Not started | [ ] 0% (25 reqs) |
@@ -76,10 +72,10 @@ Internal training and knowledge testing platform with two interconnected feature
 | 01-03 (Consolidation) | 15min | 7 | 234 |
 | **Total Phase 1** | **~45min** | **17** | **~245** |
 | 02-01 (Database + Core Service) | 5min | 3 | 3 |
+| 02-02 (Email Service) | 2min | 1 | 1 |
 | 02-03 (Notification API Endpoints) | 8min | 6 | 6 |
-| Phase 02-notification-system P02-03 | 8min | 6 tasks | 6 files |
-| Phase 02-notification-system P06 | 166 | 2 tasks | 2 files |
-| Phase 02-notification-system P05 | 2 min | 1 tasks | 1 files |
+| 02-04 (Notification UI Components) | 4min | 4 | 4 |
+| **Total Phase 2** | **~19min** | **14** | **14** |
 
 ## Accumulated Context
 
@@ -103,6 +99,9 @@ Internal training and knowledge testing platform with two interconnected feature
 | Notifications with rich references | Store challenge_id, submission_id for navigation from notification | 2026-03-18 |
 | Role-based notification defaults | Admin/manager all on, leader mixed, member minimal email | 2026-03-18 |
 | Soft-delete for notifications | Dismissed flag instead of hard delete for audit trail | 2026-03-18 |
+| 30-second polling for notifications | Balances real-time feel with performance (TanStack Query) | 2026-03-18 |
+| Click-to-read navigation pattern | Mark as read then navigate, close dropdown after action | 2026-03-18 |
+| Bell badge color logic | Gray for zero, red-500 for 1-9, red-600 for 10+ (visual hierarchy) | 2026-03-18 |
 
 ### Technical Notes
 
@@ -149,17 +148,22 @@ None identified yet.
 - 2026-03-18: Requirements expanded to 91 total requirements
 - 2026-03-18: Phase 1 completed — admin unification, single app architecture
 - 2026-03-18: Phase 2 Plan 02-01 completed — notification database schema and service
+- 2026-03-18: Phase 2 Plan 02-02 completed — email service with Nodemailer
 - 2026-03-18: Phase 2 Plan 02-03 completed — notification API endpoints (6 endpoints with auth, pagination, service layer)
+- 2026-03-18: Phase 2 Plan 02-04 completed — notification UI components (NotificationBell, NotificationDropdown, Header integration)
 
 **Next actions:**
-1. Continue Phase 2 Plan 02-02 — Email Service implementation
-2. Build UI components for notification bell and dropdown (Plan 02-04)
-3. Create notification preferences settings page (Plan 02-05)
+1. Continue Phase 2 Plan 02-05 — Notification preferences settings page
+2. Build email templates and triggers (Plan 02-06)
+3. Test notification workflow end-to-end
 
 **Context for next session:**
 - Phase 2 context: `.planning/phases/02-notification-system/02-CONTEXT.md`
 - Plan 02-01 completed: Database schema, TypeScript types, notification service
+- Plan 02-02 completed: Email service with Nodemailer, HTML templates
 - Plan 02-03 completed: 6 RESTful API endpoints for notification management
+- Plan 02-04 completed: Notification UI components (NotificationBell, NotificationDropdown)
+- Notification components: Bell with badge, Dropdown with click-to-read, 30s polling
 - API endpoints: GET /api/notifications, DELETE /api/notifications/:id, PATCH /api/notifications/:id/read, POST /api/notifications/mark-all-read, GET /api/notifications/unread-count, GET/PUT /api/notifications/preferences
 - Migration file: `supabase/migrations/20260318_create_notifications.sql` (needs to be run on Supabase)
 - Role-based defaults: admin/manager all enabled, leader mixed, member minimal

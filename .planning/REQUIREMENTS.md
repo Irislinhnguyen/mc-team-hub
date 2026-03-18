@@ -267,10 +267,10 @@ Which phases cover which requirements.
 ### Phase 2: Notification System (13 requirements)
 | Requirement | Status |
 |-------------|--------|
-| NOTIF-01 | Pending |
-| NOTIF-02 | Pending |
+| NOTIF-01 | Complete (02-01) |
+| NOTIF-02 | Complete (02-04) |
 | NOTIF-03 | Pending |
-| NOTIF-04 | Pending |
+| NOTIF-04 | Complete (02-04) |
 | NOTIF-05 | Pending |
 | NOTIF-06 | Pending |
 | NOTIF-07 | Pending |
