@@ -1,45 +1,141 @@
 # Roadmap: MC Bible & Knowledge Championship
 
 **Created:** 2026-03-18
+**Updated:** 2026-03-18 (Phase 1 plans created)
 **Granularity:** Coarse (aggressive compression)
-**Phases:** 4
-**Coverage:** 35/35 requirements mapped
+**Phases:** 6
+**Coverage:** 91 requirements
 
 ## Phases
 
-- [ ] **Phase 1: Admin Unification** - Unified admin interface and shared components
-- [ ] **Phase 2: Bible Core** - Content management, learning experience, progress tracking
-- [ ] **Phase 3: Challenge Enhancement** - Auto-grading and question management
-- [ ] **Phase 4: Recognition & Analytics** - Certificates, quiz integration, and performance analytics
+- [ ] **Phase 1: Foundation + Admin Unification** - Consolidate duplicate admin apps, unified admin structure
+- [ ] **Phase 2: Notification System** - In-app and email notifications for grading workflow
+- [ ] **Phase 3: Manager Approval Workflow** - Leader grades → Manager approves → Publish enabled
+- [ ] **Phase 4: Admin Dashboard + Monitoring** - Overview dashboard, training completion, AI cost monitoring
+- [ ] **Phase 5: MC Bible Completion** - Slides support, quiz integration, search, certificates
+- [ ] **Phase 6: Advanced Features** - Question pools, analytics, historical tracking
 
 ## Phase Details
 
-### Phase 1: Admin Unification
+### Phase 1: Foundation + Admin Unification
 
-**Goal:** Consolidate duplicate admin interfaces into a unified system with shared patterns and components.
+**Goal:** Stop multiplying tech debt by consolidating duplicate admin apps into a unified system.
 
-**Depends on:** Nothing (first phase)
+**Depends on:** Nothing (foundation phase)
 
 **Requirements:**
 - ADM-01: Unified admin interface for both Bible and Challenges management
 - ADM-02: Consistent admin navigation and patterns across all admin panels
 - ADM-03: Shared admin components (forms, tables, dialogs) for reuse
+- ADM-04: Consolidate `apps/admin` into `apps/web` (eliminate duplicate app)
+- ADM-05: Delete duplicate UI components and services
+- ADM-06: Create shared admin layout/sidebar component
 
-**Success Criteria** (what must be TRUE):
-1. Admin can access both Bible and Challenges management from a single unified interface
-2. All admin panels use consistent navigation patterns and component styling
-3. Shared components can be imported and reused across admin features
-4. Duplicate admin code has been consolidated (no redundant implementations)
+**Success Criteria:**
+1. Single admin interface exists (no more apps/admin)
+2. Shared components can be imported across admin features
+3. Duplicate code eliminated
+4. Admin navigation is consistent
+
+**Plans:** 3 plans in 3 waves
+
+- [ ] 01-01-PLAN.md — Create shared admin components (Wave 1)
+  - ADM-03: AdminTable, AdminForm, AdminDialog, AdminHeader components
+  - 4 tasks: Create AdminTable, AdminForm, AdminDialog, AdminHeader with barrel export
+  - All components use @/components/ui/* imports (not @query-stream-ai/ui/*)
+
+- [ ] 01-02-PLAN.md — Unify admin layout and sidebar (Wave 2)
+  - ADM-01, ADM-02, ADM-06: AdminSidebar with 7 navigation items, unified layout
+  - 3 tasks: Update AdminSidebar, verify admin layout auth, create overview placeholder
+  - Includes navigation for Phase 4 (Overview) and Phase 5 (Bible admin)
+
+- [ ] 01-03-PLAN.md — Delete duplicate apps/admin directory (Wave 3)
+  - ADM-04, ADM-05: Delete apps/admin, merge env configs, update build configs
+  - 7 tasks: Merge env vars, remove from workspaces, update turbo.json/vercel.json, verify imports, delete directory, verify build
+  - Result: Single Vercel project, 50% cost reduction
+
+---
+
+### Phase 2: Notification System
+
+**Goal:** Enable communication for the grading workflow.
+
+**Depends on:** Phase 1 (uses unified admin structure)
+
+**Requirements:**
+- NOTIF-01: In-app notification system with persistent notifications
+- NOTIF-02: Email notification service (Nodemailer implementation)
+- NOTIF-03: Notification preferences per user
+- NOTIF-04: Notification when challenge status changes to "grading" (Leaders)
+- NOTIF-05: Notification when grading complete (Managers)
+- NOTIF-06: Notification when scores published (Users)
+- NOTIF-07: Notification API endpoints (list, mark read, preferences)
+- NOTIF-08: Notification templates for different event types
+
+**Success Criteria:**
+1. Leaders receive notifications when submissions need grading
+2. Managers receive notifications when approval is needed
+3. Users receive notifications when scores are published
+4. Users can manage notification preferences (email vs in-app)
 
 **Plans:** TBD
 
 ---
 
-### Phase 2: Bible Core
+### Phase 3: Manager Approval Workflow
 
-**Goal:** Deliver complete MC Bible learning experience with content management, learning features, and progress tracking.
+**Goal:** Implement the complete grading workflow with approval stages.
 
-**Depends on:** Phase 1 (Admin Unification)
+**Depends on:** Phase 1 (admin structure), Phase 2 (notifications)
+
+**Requirements:**
+- APPR-01: Database: Approval status tracking for submissions
+- APPR-02: API: Leader submits grades to Manager
+- APPR-03: API: Manager approves/rejects grades with notes
+- APPR-04: UI: Manager review interface for grading
+- APPR-05: UI: Approval queue showing pending submissions
+- APPR-06: Workflow: Leader grades → Manager approves → Publish enabled
+- APPR-07: Audit trail for all approval actions
+
+**Success Criteria:**
+1. Leaders can submit grades to Manager for approval
+2. Managers can review, adjust, and approve grades
+3. Leaderboard publishing is blocked until Manager approval
+4. Full audit trail of who did what when
+
+**Plans:** TBD
+
+---
+
+### Phase 4: Admin Dashboard + Monitoring
+
+**Goal:** Provide visibility and control for admins.
+
+**Depends on:** Phase 1 (admin structure), Phase 2 (notifications), Phase 3 (approval workflow data)
+
+**Requirements:**
+- DASH-01: Overview dashboard showing all admin areas
+- DASH-02: Training completion monitoring (Bible progress by team)
+- DASH-03: Grading status view (pending approvals, completed grading)
+- DASH-04: AI cost monitoring dashboard
+- DASH-05: User and role management interface
+- DASH-06: Quick actions from dashboard (publish scores, send reminders)
+
+**Success Criteria:**
+1. Admin sees overview of all system areas at login
+2. Admin can drill down into specific areas (training, grading, users)
+3. Admin can monitor AI spending
+4. Admin can take quick actions from dashboard
+
+**Plans:** TBD
+
+---
+
+### Phase 5: MC Bible Completion
+
+**Goal:** Complete the learning platform with missing content types and integration.
+
+**Depends on:** Phase 1 (admin structure), Phase 4 (monitoring data)
 
 **Requirements:**
 - BIBL-01: Dedicated admin panel for Bible content management
@@ -52,23 +148,33 @@
 - BIBL-08: User can view articles within a learning path
 - BIBL-09: User can mark articles as complete (progress tracking)
 - BIBL-10: User sees progress bar showing path completion percentage
-- BIBL-13: Required vs optional article tracking (completion calculation)
+- BIBL-11: Search within articles
+- BIBL-12: Table of contents navigation
+- BIBL-13: Required vs optional article tracking
+- BIBL-14: Sections/categories within paths
+- BIBL-15: Completion certificates (jsPDF)
+- BIBL-16: Slides/presentations support
+- BIBL-17: Quiz-article integration
+- INTG-01: Articles can have embedded quiz questions
+- INTG-02: Quiz completion contributes to article completion
+- INTG-03: Challenge questions can reference Bible articles
 
-**Success Criteria** (what must be TRUE):
-1. Admin can create and manage learning paths with articles, including rich text content and file attachments
-2. Users can browse learning paths, view articles, and track their progress
-3. Progress bars accurately reflect completion percentage based on required articles
-4. Role-based permissions control who can create and edit Bible content
+**Success Criteria:**
+1. Admin can create slide decks in Bible
+2. Quizzes can be embedded in articles
+3. Users receive certificates upon path completion
+4. Users can search Bible content
+5. Articles have table of contents navigation
 
 **Plans:** TBD
 
 ---
 
-### Phase 3: Challenge Enhancement
+### Phase 6: Advanced Features
 
-**Goal:** Enable automated grading for objective questions and implement a reusable question management system.
+**Goal:** Add scalability, analytics, and polish.
 
-**Depends on:** Phase 1 (Admin Unification)
+**Depends on:** Phase 3 (grading data), Phase 4 (monitoring), Phase 5 (Bible content)
 
 **Requirements:**
 - CHAL-01: Automated grading for cloze (fill-in-blank) questions
@@ -77,50 +183,21 @@
 - CHAL-04: Auto-graded questions display score immediately
 - CHAL-05: Support for partial credit in cloze questions
 - CHAL-06: Question bank/pool system with tagging
-- CHAL-07: Random selection from question pools for challenges
+- CHAL-07: Random selection from question pools
 - CHAL-08: Question reuse across multiple challenges
 - CHAL-09: Question difficulty rating system
 - CHAL-10: Question filtering by difficulty and tags
+- CHAL-11: Individual results page (detailed performance)
+- CHAL-12: Performance analytics over time
+- CHAL-13: Team performance analytics
+- CHAL-14: Comparative rankings
+- CHAL-15: Historical submission tracking
 
-**Success Criteria** (what must be TRUE):
-1. Objective questions (cloze, drag-drop) are graded automatically with immediate feedback
-2. Questions can be organized into tagged pools with difficulty ratings
-3. Challenges can randomly select questions from pools for varied assessments
-4. Questions can be reused across multiple challenges without duplication
-
-**Plans:** TBD
-
----
-
-### Phase 4: Recognition & Analytics
-
-**Goal:** Provide completion certificates, integrate quizzes with learning content, and deliver performance analytics.
-
-**Depends on:** Phase 2 (Bible Core), Phase 3 (Challenge Enhancement)
-
-**Requirements:**
-- BIBL-11: Search within articles to find specific content
-- BIBL-12: Table of contents navigation for long articles
-- BIBL-14: Sections/categories within learning paths for organization
-- BIBL-15: Completion certificates generated upon path completion
-- BIBL-16: Certificates include user name, path name, completion date
-- BIBL-17: User can download certificate as PDF
-- CHAL-11: Individual results page showing detailed performance
-- CHAL-12: Results page shows score per question and overall score
-- CHAL-13: Performance analytics over time (per user)
-- CHAL-14: Team performance analytics and comparison
-- CHAL-15: Comparative rankings and improvement tracking
-- CHAL-16: Historical submission history per user
-- INTG-01: Articles can have embedded quiz questions
-- INTG-02: Quiz completion contributes to article completion status
-- INTG-03: Challenge questions can reference Bible articles
-
-**Success Criteria** (what must be TRUE):
-1. Users receive downloadable PDF certificates upon completing learning paths
-2. Articles support search, table of contents, and section organization
-3. Quiz questions can be embedded in articles and linked to challenges
-4. Users can view detailed performance analytics, rankings, and submission history
-5. Managers can view team-level analytics and performance comparisons
+**Success Criteria:**
+1. Questions can be organized into pools and reused
+2. Challenges randomly select from pools
+3. Users see detailed performance analytics
+4. Managers see team comparisons and trends
 
 **Plans:** TBD
 
@@ -130,82 +207,162 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Admin Unification | 0/3 | Not started | - |
-| 2. Bible Core | 0/2 | Not started | - |
-| 3. Challenge Enhancement | 0/2 | Not started | - |
-| 4. Recognition & Analytics | 0/3 | Not started | - |
+| 1. Foundation + Admin Unification | 0/3 | Ready to execute | - |
+| 2. Notification System | 0/13 | Not started | - |
+| 3. Manager Approval Workflow | 0/14 | Not started | - |
+| 4. Admin Dashboard + Monitoring | 0/17 | Not started | - |
+| 5. MC Bible Completion | 0/25 | Not started | - |
+| 6. Advanced Features | 0/16 | Not started | - |
 
 ---
 
 ## Dependencies
 
 ```
-Phase 1: Admin Unification
+Phase 1: Foundation + Admin Unification (NO DEPENDENCIES)
     ↓
-    ├─→ Phase 2: Bible Core ────┐
-    │                          │
-    └─→ Phase 3: Challenge Enhancement
-                               │
-                               ↓
-                    Phase 4: Recognition & Analytics
+Phase 2: Notification System (needs unified admin)
+    ↓
+Phase 3: Manager Approval (needs notifications + unified admin)
+    ↓
+Phase 4: Admin Dashboard (needs approval workflow data + notifications)
+    ↓
+Phase 5: MC Bible Completion (needs admin structure + monitoring)
+    ↓
+Phase 6: Advanced Features (needs data from all previous phases)
 ```
 
 **Key dependency notes:**
-- Phase 2 and 3 can run in parallel after Phase 1 completes
-- Phase 4 requires content from Phase 2 (Bible data) and Phase 3 (graded questions)
-- Quiz integration (INTG-01 to INTG-03) bridges Bible and Challenge features
+- Phase 1 is the foundation - all other phases depend on it
+- Phase 2 (notifications) enables Phase 3 (approval workflow)
+- Phase 3 (approval data) feeds Phase 4 (dashboard monitoring)
+- Phase 5 (Bible) and Phase 6 (Advanced features) build on all previous foundations
+- Each phase delivers user-facing value immediately
 
 ---
 
 ## Coverage Summary
 
+### Admin Unification (Phase 1)
+| Requirement | Plan | Status |
+|-------------|------|--------|
+| ADM-01 | 01-02 | Pending |
+| ADM-02 | 01-02 | Pending |
+| ADM-03 | 01-01 | Pending |
+| ADM-04 | 01-03 | Pending |
+| ADM-05 | 01-03 | Pending |
+| ADM-06 | 01-02 | Pending |
+
+### Notification System (Phase 2)
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ADM-01 | Phase 1 | Pending |
-| ADM-02 | Phase 1 | Pending |
-| ADM-03 | Phase 1 | Pending |
-| BIBL-01 | Phase 2 | Pending |
-| BIBL-02 | Phase 2 | Pending |
-| BIBL-03 | Phase 2 | Pending |
-| BIBL-04 | Phase 2 | Pending |
-| BIBL-05 | Phase 2 | Pending |
-| BIBL-06 | Phase 2 | Pending |
-| BIBL-07 | Phase 2 | Pending |
-| BIBL-08 | Phase 2 | Pending |
-| BIBL-09 | Phase 2 | Pending |
-| BIBL-10 | Phase 2 | Pending |
-| BIBL-11 | Phase 4 | Pending |
-| BIBL-12 | Phase 4 | Pending |
-| BIBL-13 | Phase 2 | Pending |
-| BIBL-14 | Phase 4 | Pending |
-| BIBL-15 | Phase 4 | Pending |
-| BIBL-16 | Phase 4 | Pending |
-| BIBL-17 | Phase 4 | Pending |
-| CHAL-01 | Phase 3 | Pending |
-| CHAL-02 | Phase 3 | Pending |
-| CHAL-03 | Phase 3 | Pending |
-| CHAL-04 | Phase 3 | Pending |
-| CHAL-05 | Phase 3 | Pending |
-| CHAL-06 | Phase 3 | Pending |
-| CHAL-07 | Phase 3 | Pending |
-| CHAL-08 | Phase 3 | Pending |
-| CHAL-09 | Phase 3 | Pending |
-| CHAL-10 | Phase 3 | Pending |
-| CHAL-11 | Phase 4 | Pending |
-| CHAL-12 | Phase 4 | Pending |
-| CHAL-13 | Phase 4 | Pending |
-| CHAL-14 | Phase 4 | Pending |
-| CHAL-15 | Phase 4 | Pending |
-| CHAL-16 | Phase 4 | Pending |
-| INTG-01 | Phase 4 | Pending |
-| INTG-02 | Phase 4 | Pending |
-| INTG-03 | Phase 4 | Pending |
+| NOTIF-01 | Phase 2 | Pending |
+| NOTIF-02 | Phase 2 | Pending |
+| NOTIF-03 | Phase 2 | Pending |
+| NOTIF-04 | Phase 2 | Pending |
+| NOTIF-05 | Phase 2 | Pending |
+| NOTIF-06 | Phase 2 | Pending |
+| NOTIF-07 | Phase 2 | Pending |
+| NOTIF-08 | Phase 2 | Pending |
+| NOTIF-09 | Phase 2 | Pending |
+| NOTIF-10 | Phase 2 | Pending |
+| NOTIF-11 | Phase 2 | Pending |
+| NOTIF-12 | Phase 2 | Pending |
+| NOTIF-13 | Phase 2 | Pending |
 
-**Total v1 requirements:** 35
-**Mapped to phases:** 35
+### Manager Approval Workflow (Phase 3)
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| APPR-01 | Phase 3 | Pending |
+| APPR-02 | Phase 3 | Pending |
+| APPR-03 | Phase 3 | Pending |
+| APPR-04 | Phase 3 | Pending |
+| APPR-05 | Phase 3 | Pending |
+| APPR-06 | Phase 3 | Pending |
+| APPR-07 | Phase 3 | Pending |
+| APPR-08 | Phase 3 | Pending |
+| APPR-09 | Phase 3 | Pending |
+| APPR-10 | Phase 3 | Pending |
+| APPR-11 | Phase 3 | Pending |
+| APPR-12 | Phase 3 | Pending |
+| APPR-13 | Phase 3 | Pending |
+| APPR-14 | Phase 3 | Pending |
+
+### Admin Dashboard (Phase 4)
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| DASH-01 | Phase 4 | Pending |
+| DASH-02 | Phase 4 | Pending |
+| DASH-03 | Phase 4 | Pending |
+| DASH-04 | Phase 4 | Pending |
+| DASH-05 | Phase 4 | Pending |
+| DASH-06 | Phase 4 | Pending |
+| DASH-07 | Phase 4 | Pending |
+| DASH-08 | Phase 4 | Pending |
+| DASH-09 | Phase 4 | Pending |
+| DASH-10 | Phase 4 | Pending |
+| DASH-11 | Phase 4 | Pending |
+| DASH-12 | Phase 4 | Pending |
+| DASH-13 | Phase 4 | Pending |
+| DASH-14 | Phase 4 | Pending |
+| DASH-15 | Phase 4 | Pending |
+| DASH-16 | Phase 4 | Pending |
+| DASH-17 | Phase 4 | Pending |
+
+### MC Bible Completion (Phase 5)
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| BIBL-01 | Phase 5 | Pending |
+| BIBL-02 | Phase 5 | Pending |
+| BIBL-03 | Phase 5 | Pending |
+| BIBL-04 | Phase 5 | Pending |
+| BIBL-05 | Phase 5 | Pending |
+| BIBL-06 | Phase 5 | Pending |
+| BIBL-07 | Phase 5 | Pending |
+| BIBL-08 | Phase 5 | Pending |
+| BIBL-09 | Phase 5 | Pending |
+| BIBL-10 | Phase 5 | Pending |
+| BIBL-11 | Phase 5 | Pending |
+| BIBL-12 | Phase 5 | Pending |
+| BIBL-13 | Phase 5 | Pending |
+| BIBL-14 | Phase 5 | Pending |
+| BIBL-15 | Phase 5 | Pending |
+| BIBL-16 | Phase 5 | Pending |
+| BIBL-17 | Phase 5 | Pending |
+| BIBL-18 | Phase 5 | Pending |
+| BIBL-19 | Phase 5 | Pending |
+| BIBL-20 | Phase 5 | Pending |
+| BIBL-21 | Phase 5 | Pending |
+| INTG-01 | Phase 5 | Pending |
+| INTG-02 | Phase 5 | Pending |
+| INTG-03 | Phase 5 | Pending |
+| INTG-04 | Phase 5 | Pending |
+
+### Advanced Features (Phase 6)
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| CHAL-01 | Phase 6 | Pending |
+| CHAL-02 | Phase 6 | Pending |
+| CHAL-03 | Phase 6 | Pending |
+| CHAL-04 | Phase 6 | Pending |
+| CHAL-05 | Phase 6 | Pending |
+| CHAL-06 | Phase 6 | Pending |
+| CHAL-07 | Phase 6 | Pending |
+| CHAL-08 | Phase 6 | Pending |
+| CHAL-09 | Phase 6 | Pending |
+| CHAL-10 | Phase 6 | Pending |
+| CHAL-11 | Phase 6 | Pending |
+| CHAL-12 | Phase 6 | Pending |
+| CHAL-13 | Phase 6 | Pending |
+| CHAL-14 | Phase 6 | Pending |
+| CHAL-15 | Phase 6 | Pending |
+| CHAL-16 | Phase 6 | Pending |
+
+**Total v1 requirements:** 91
+**Mapped to phases:** 91
 **Unmapped:** 0 ✓
 
 ---
 
 *Roadmap created: 2026-03-18*
-*Last updated: 2026-03-18*
+*Last updated: 2026-03-18 (Phase 1 plans created)*
