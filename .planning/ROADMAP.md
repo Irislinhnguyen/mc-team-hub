@@ -1,7 +1,7 @@
 # Roadmap: MC Bible & Knowledge Championship
 
 **Created:** 2026-03-18
-**Updated:** 2026-03-18 (Phase 1 plans created)
+**Updated:** 2026-03-18 (Phase 2 plans created)
 **Granularity:** Coarse (aggressive compression)
 **Phases:** 6
 **Coverage:** 91 requirements
@@ -78,7 +78,37 @@
 3. Users receive notifications when scores are published
 4. Users can manage notification preferences (email vs in-app)
 
-**Plans:** TBD
+**Plans:** 6 plans in 3 waves
+
+- [ ] 02-01-PLAN.md — Database + Core Service (Wave 1)
+  - NOTIF-01, NOTIF-08: Database tables (notifications, notification_preferences, notification_delivery_errors), TypeScript types, notification service
+  - 3 tasks: Create migration, update database types, create notification service
+  - Role-based default preferences (admin/manager all on, leader mixed, member minimal)
+
+- [ ] 02-02-PLAN.md — Email Service (Wave 1)
+  - NOTIF-05, NOTIF-06, NOTIF-07: Nodemailer service with SMTP, HTML email templates, env configuration
+  - 3 tasks: Create email templates, create email service with retry logic, update .env.example
+  - SMTP env vars: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, SMTP_FROM_NAME
+
+- [ ] 02-03-PLAN.md — API Endpoints (Wave 2)
+  - NOTIF-02, NOTIF-03, NOTIF-04: RESTful API for notification operations
+  - 6 tasks: GET /api/notifications, DELETE /api/notifications/:id, PATCH /api/notifications/:id/read, POST /api/notifications/mark-all-read, GET /api/notifications/unread-count, GET/PUT /api/notifications/preferences
+  - All endpoints require authentication via getServerUser()
+
+- [ ] 02-04-PLAN.md — UI Components (Wave 2)
+  - NOTIF-01, NOTIF-02: Notification bell with badge, dropdown panel
+  - 4 tasks: Create NotificationBell, create NotificationDropdown, create barrel export, update Header
+  - Bell placed between logo and UserDropdown, 30s polling for unread count
+
+- [ ] 02-05-PLAN.md — Preferences UI (Wave 3)
+  - NOTIF-08, NOTIF-09: Settings page for notification preferences
+  - 1 task: Create /settings/notifications page with category toggles
+  - 4 categories (Challenges, Bible, System, Team) with email/in-app switches
+
+- [ ] 02-06-PLAN.md — Workflow Integration (Wave 3)
+  - NOTIF-10, NOTIF-11, NOTIF-12, NOTIF-13: Trigger notifications on grading events
+  - 2 tasks: Create workflow notification service, integrate into grading API
+  - Functions: notifyLeadersGradingStarted, notifyManagersGradesSubmitted, notifyLeadersGradeApproved, notifyUsersScoresPublished
 
 ---
 
@@ -207,8 +237,8 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation + Admin Unification | 0/3 | Ready to execute | - |
-| 2. Notification System | 0/13 | Not started | - |
+| 1. Foundation + Admin Unification | 3/3 | Complete | 2026-03-18 |
+| 2. Notification System | 0/6 | Ready to execute | - |
 | 3. Manager Approval Workflow | 0/14 | Not started | - |
 | 4. Admin Dashboard + Monitoring | 0/17 | Not started | - |
 | 5. MC Bible Completion | 0/25 | Not started | - |
@@ -246,29 +276,29 @@ Phase 6: Advanced Features (needs data from all previous phases)
 ### Admin Unification (Phase 1)
 | Requirement | Plan | Status |
 |-------------|------|--------|
-| ADM-01 | 01-02 | Pending |
-| ADM-02 | 01-02 | Pending |
-| ADM-03 | 01-01 | Pending |
-| ADM-04 | 01-03 | Pending |
-| ADM-05 | 01-03 | Pending |
-| ADM-06 | 01-02 | Pending |
+| ADM-01 | 01-02 | Complete ✅ |
+| ADM-02 | 01-02 | Complete ✅ |
+| ADM-03 | 01-01 | Complete ✅ |
+| ADM-04 | 01-03 | Complete ✅ |
+| ADM-05 | 01-03 | Complete ✅ |
+| ADM-06 | 01-02 | Complete ✅ |
 
 ### Notification System (Phase 2)
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| NOTIF-01 | Phase 2 | Pending |
-| NOTIF-02 | Phase 2 | Pending |
-| NOTIF-03 | Phase 2 | Pending |
-| NOTIF-04 | Phase 2 | Pending |
-| NOTIF-05 | Phase 2 | Pending |
-| NOTIF-06 | Phase 2 | Pending |
-| NOTIF-07 | Phase 2 | Pending |
-| NOTIF-08 | Phase 2 | Pending |
-| NOTIF-09 | Phase 2 | Pending |
-| NOTIF-10 | Phase 2 | Pending |
-| NOTIF-11 | Phase 2 | Pending |
-| NOTIF-12 | Phase 2 | Pending |
-| NOTIF-13 | Phase 2 | Pending |
+| Requirement | Plan | Status |
+|-------------|------|--------|
+| NOTIF-01 | 02-01, 02-04 | Pending |
+| NOTIF-02 | 02-03 | Pending |
+| NOTIF-03 | 02-03 | Pending |
+| NOTIF-04 | 02-03 | Pending |
+| NOTIF-05 | 02-02 | Pending |
+| NOTIF-06 | 02-02 | Pending |
+| NOTIF-07 | 02-02 | Pending |
+| NOTIF-08 | 02-01, 02-05 | Pending |
+| NOTIF-09 | 02-05 | Pending |
+| NOTIF-10 | 02-06 | Pending |
+| NOTIF-11 | 02-06 | Pending |
+| NOTIF-12 | 02-06 | Pending |
+| NOTIF-13 | 02-06 | Pending |
 
 ### Manager Approval Workflow (Phase 3)
 | Requirement | Phase | Status |
@@ -365,4 +395,4 @@ Phase 6: Advanced Features (needs data from all previous phases)
 ---
 
 *Roadmap created: 2026-03-18*
-*Last updated: 2026-03-18 (Phase 1 plans created)*
+*Last updated: 2026-03-18 (Phase 2 plans created)*
