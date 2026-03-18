@@ -68,10 +68,10 @@ Implement the complete grading workflow with Leader → Manager approval stages.
 
 ### API Endpoints
 
-- [ ] **APPR-04**: API endpoint for Leader to submit grades for approval
+- [x] **APPR-04**: API endpoint for Leader to submit grades for approval
 - [ ] **APPR-05**: API endpoint for Manager to approve grades
 - [ ] **APPR-06**: API endpoint for Manager to reject grades with notes
-- [ ] **APPR-07**: API endpoint to list pending approvals
+- [x] **APPR-07**: API endpoint to list pending approvals
 
 ### User Interface
 
@@ -84,7 +84,7 @@ Implement the complete grading workflow with Leader → Manager approval stages.
 
 - [ ] **APPR-12**: Leaderboard publishing blocked until Manager approval
 - [x] **APPR-13**: Audit trail for all approval actions (timestamp, user, action)
-- [ ] **APPR-14**: Notification sent to Leader on Manager approval/rejection
+- [x] **APPR-14**: Notification sent to Leader on Manager approval/rejection
 
 ---
 

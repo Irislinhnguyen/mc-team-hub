@@ -4,13 +4,29 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 3 (Manager Approval Workflow)
 status: Ready for next plan
-last_updated: "2026-03-18T14:57:24.674Z"
+last_updated: "2026-03-18T15:02:10.130Z"
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 17
-  completed_plans: 11
-  percent: 82
+  completed_plans: 13
+  percent: 76
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 3 (Manager Approval Workflow)
+current_plan: 03-03
+status: completed
+last_updated: "2026-03-18T15:01:00.000Z"
+progress:
+  total_phases: 6
+  completed_phases: 2
+  total_plans: 17
+  completed_plans: 13
+  percent: 76
 ---
 
 ---
@@ -95,9 +111,9 @@ Internal training and knowledge testing platform with two interconnected feature
 ## Current Position
 
 **Active Phase:** Phase 3 — Manager Approval Workflow
-**Plan:** 03-01 (Database Schema for Approval Workflow) — Completed
+**Plan:** 03-03 (Manager Review API Endpoints) — Completed
 **Status:** Ready for next plan
-**Progress:** [██████████] 82%
+**Progress:** [████████░░] 76%
 
 ### Phase Overview
 
@@ -105,7 +121,7 @@ Internal training and knowledge testing platform with two interconnected feature
 |-------|--------|----------|
 | 1. Foundation + Admin Unification | Complete | [X] 100% (6 reqs) |
 | 2. Notification System | Complete | [X] 100% (13 reqs) |
-| 3. Manager Approval Workflow | In Progress | [ ] 25% (2/8 plans) |
+| 3. Manager Approval Workflow | In Progress | [ ] 50% (4/8 plans) |
 | 4. Admin Dashboard + Monitoring | Not started | [ ] 0% (17 reqs) |
 | 5. MC Bible Completion | Not started | [ ] 0% (25 reqs) |
 | 6. Advanced Features | Not started | [ ] 0% (16 reqs) |
@@ -125,9 +141,10 @@ Internal training and knowledge testing platform with two interconnected feature
 | **Total Phase 2** | **~19min** | **14** | **14** |
 | 03-00 (Test Infrastructure) | 6min | 2 | 2 |
 | 03-01 (Database Schema for Approval Workflow) | 5min | 3 | 2 |
-| **Total Phase 3** | **~11min** | **5** | **4** |
-| Phase 03 P00 | 419 | 2 tasks | 2 files |
-| Phase 03 P01 | 5min | 3 tasks | 2 files |
+| 03-02 (Leader Submit for Review API) | 2min | 3 | 3 |
+| **Total Phase 3** | **~13min** | **8** | **7** |
+| **Total Phase 3** | **~18min** | **8** | **8** |
+| Phase 03 P03-02 | 119 | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -202,18 +219,21 @@ None identified yet.
 - 2026-03-18: Phase 2 completed — notification system with email service, API endpoints, UI components
 - 2026-03-18: Phase 3 Plan 03-00 completed — test infrastructure for approval workflow (auth fixtures, E2E tests)
 - 2026-03-18: Phase 3 Plan 03-01 completed — database schema for approval workflow (approvals table, extended submission status)
+- 2026-03-18: Phase 3 Plan 03-02 completed — Leader submit for review API (POST submit-for-review, GET pending, GET history)
+- 2026-03-18: Phase 3 Plan 03-03 completed — Manager approve and edit grades API endpoints with audit trail and Leader notifications
 
 **Next actions:**
-1. Continue Phase 3 Plan 03-02 — Leader submit for review API
-2. Build Manager review UI (Plan 03-03)
-3. Implement Manager edit grades (Plan 03-04)
-4. Implement Manager approve workflow (Plan 03-05a)
-5. Implement publish workflow (Plan 03-05b)
-6. Integration and testing (Plan 03-06)
+1. Continue Phase 3 Plan 03-04 — Manager Review UI
+2. Implement Manager edit grades UI (Plan 03-04)
+3. Implement Manager approve workflow UI (Plan 03-05a)
+4. Implement publish workflow (Plan 03-05b)
+5. Integration and testing (Plan 03-06)
 
 **Context for next session:**
 - Phase 3 context: `.planning/phases/03-manager-approval-workflow/03-CONTEXT.md`
 - Phase 3 research: `.planning/phases/03-manager-approval-workflow/03-RESEARCH.md`
 - Plan 03-00 completed: Auth fixtures for Manager/Leader/Admin roles, E2E test suite for approval workflow
 - Plan 03-01 completed: Database schema with approvals table, extended submission status (pending_review, approved)
+- Plan 03-02 completed: Leader submit-for-review API at /api/challenges/submissions/[id]/submit-for-review
+- Plan 03-03 completed: Manager approve API at /api/challenges/submissions/[id]/approve and edit grades API at /api/challenges/submissions/[id]/grades
 - Approval workflow: Leader submits grades → Manager reviews/edits → Manager approves → Manager/Admin publishes
