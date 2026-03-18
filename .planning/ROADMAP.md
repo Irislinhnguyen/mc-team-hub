@@ -133,34 +133,34 @@
 3. Leaderboard publishing is blocked until Manager approval
 4. Full audit trail of who did what when
 
-**Plans:** 5/8 plans executed
+**Plans:** 6/8 plans executed
 
-- [ ] 03-00-PLAN.md — Test Infrastructure (Wave 0) ⏳
+- [X] 03-00-PLAN.md — Test Infrastructure (Wave 0) ✅
   - E2E tests and auth fixtures for approval workflow
   - 2 tasks: Create auth fixtures (setupManagerTest, setupLeaderTest), generate E2E test file (approvals.spec.ts with 8+ test cases)
   - Tests will run after implementation is complete
 
-- [ ] 03-01-PLAN.md — Database + Types (Wave 1) ⏳
+- [X] 03-01-PLAN.md — Database + Types (Wave 1) ✅
   - APPR-01, APPR-02, APPR-13: Extend submission status enum with pending_review and approved, create approvals audit table
   - 3 tasks: Create migration with new statuses and approvals table, regenerate TypeScript types, apply migration to Supabase (human checkpoint)
   - RLS policies for approvals: everyone can read, Leader/Manager/Admin can create, no deletes
 
-- [ ] 03-02-PLAN.md — Leader Submit API + Pending Approvals API (Wave 2) ⏳
+- [X] 03-02-PLAN.md — Leader Submit API + Pending Approvals API (Wave 2) ✅
   - APPR-04, APPR-07, APPR-14: POST endpoint for Leader to submit grades, GET endpoint for Manager to list pending approvals, GET endpoint for approval history
   - 3 tasks: Create submit-for-review API, create pending approvals list API, create approval history API
   - Notification integration: notifyManagersGradesSubmitted on submit
 
-- [ ] 03-03-PLAN.md — Manager Approve/Edit API (Wave 2) ⏳
+- [X] 03-03-PLAN.md — Manager Approve/Edit API (Wave 2) ✅
   - APPR-05, APPR-06, APPR-14: POST endpoint for Manager to approve submission, PATCH endpoint for Manager to edit grades
   - 2 tasks: Create approve API with Leader notification, create edit grades API with tracking
   - Grade edits track Manager via grading_modified_by and grading_modified_at
 
-- [ ] 03-04-PLAN.md — Leader Submit UI (Wave 3) ⏳
+- [X] 03-04-PLAN.md — Leader Submit UI (Wave 3) ✅
   - APPR-08: SubmitForReviewButton component, bulk submit in grading interface
   - 3 tasks: Create SubmitForReviewButton component, create barrel export, integrate into grading page
   - Button shows Submitted state after submission, status badges display current state
 
-- [ ] 03-05a-PLAN.md — Approval Queue Components (Wave 4) ⏳
+- [X] 03-05a-PLAN.md — Approval Queue Components (Wave 4) ✅
   - APPR-09, APPR-10: ApprovalQueueTable and ApproveButton components
   - 3 tasks: Create ApprovalQueueTable component, create ApproveButton component, update barrel export
   - Components are building blocks for the approvals page
