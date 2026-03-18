@@ -4,13 +4,29 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 3 (Manager Approval Workflow)
 status: Ready for next plan
-last_updated: "2026-03-18T14:22:16.276Z"
+last_updated: "2026-03-18T14:57:24.674Z"
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 17
-  completed_plans: 10
-  percent: 81
+  completed_plans: 11
+  percent: 82
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 3 (Manager Approval Workflow)
+current_plan: 03-01
+status: completed
+last_updated: "2026-03-18T14:55:00.000Z"
+progress:
+  total_phases: 6
+  completed_phases: 2
+  total_plans: 17
+  completed_plans: 11
+  percent: 82
 ---
 
 ---
@@ -79,9 +95,9 @@ Internal training and knowledge testing platform with two interconnected feature
 ## Current Position
 
 **Active Phase:** Phase 3 — Manager Approval Workflow
-**Plan:** 03-00 (Test Infrastructure) — Completed
+**Plan:** 03-01 (Database Schema for Approval Workflow) — Completed
 **Status:** Ready for next plan
-**Progress:** [██████████] 81%
+**Progress:** [██████████] 82%
 
 ### Phase Overview
 
@@ -89,7 +105,7 @@ Internal training and knowledge testing platform with two interconnected feature
 |-------|--------|----------|
 | 1. Foundation + Admin Unification | Complete | [X] 100% (6 reqs) |
 | 2. Notification System | Complete | [X] 100% (13 reqs) |
-| 3. Manager Approval Workflow | In Progress | [ ] 13% (1/8 plans) |
+| 3. Manager Approval Workflow | In Progress | [ ] 25% (2/8 plans) |
 | 4. Admin Dashboard + Monitoring | Not started | [ ] 0% (17 reqs) |
 | 5. MC Bible Completion | Not started | [ ] 0% (25 reqs) |
 | 6. Advanced Features | Not started | [ ] 0% (16 reqs) |
@@ -108,8 +124,10 @@ Internal training and knowledge testing platform with two interconnected feature
 | 02-04 (Notification UI Components) | 4min | 4 | 4 |
 | **Total Phase 2** | **~19min** | **14** | **14** |
 | 03-00 (Test Infrastructure) | 6min | 2 | 2 |
-| **Total Phase 3** | **~6min** | **2** | **2** |
+| 03-01 (Database Schema for Approval Workflow) | 5min | 3 | 2 |
+| **Total Phase 3** | **~11min** | **5** | **4** |
 | Phase 03 P00 | 419 | 2 tasks | 2 files |
+| Phase 03 P01 | 5min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -183,19 +201,19 @@ None identified yet.
 - 2026-03-18: Phase 1 completed — admin unification, single app architecture
 - 2026-03-18: Phase 2 completed — notification system with email service, API endpoints, UI components
 - 2026-03-18: Phase 3 Plan 03-00 completed — test infrastructure for approval workflow (auth fixtures, E2E tests)
+- 2026-03-18: Phase 3 Plan 03-01 completed — database schema for approval workflow (approvals table, extended submission status)
 
 **Next actions:**
-1. Continue Phase 3 Plan 03-01 — Database schema for approval workflow
-2. Build Leader submit for review flow (Plan 03-02)
-3. Build Manager review UI (Plan 03-03)
-4. Implement Manager edit grades (Plan 03-04)
-5. Implement Manager approve workflow (Plan 03-05a)
-6. Implement publish workflow (Plan 03-05b)
-7. Integration and testing (Plan 03-06)
+1. Continue Phase 3 Plan 03-02 — Leader submit for review API
+2. Build Manager review UI (Plan 03-03)
+3. Implement Manager edit grades (Plan 03-04)
+4. Implement Manager approve workflow (Plan 03-05a)
+5. Implement publish workflow (Plan 03-05b)
+6. Integration and testing (Plan 03-06)
 
 **Context for next session:**
 - Phase 3 context: `.planning/phases/03-manager-approval-workflow/03-CONTEXT.md`
 - Phase 3 research: `.planning/phases/03-manager-approval-workflow/03-RESEARCH.md`
 - Plan 03-00 completed: Auth fixtures for Manager/Leader/Admin roles, E2E test suite for approval workflow
-- Test files: `tests/e2e/fixtures/auth.setup-admin-approver.ts` (297 lines), `tests/e2e/approvals.spec.ts` (550 lines)
+- Plan 03-01 completed: Database schema with approvals table, extended submission status (pending_review, approved)
 - Approval workflow: Leader submits grades → Manager reviews/edits → Manager approves → Manager/Admin publishes

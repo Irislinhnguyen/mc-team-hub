@@ -62,8 +62,8 @@ Implement the complete grading workflow with Leader → Manager approval stages.
 
 ### Database Schema
 
-- [ ] **APPR-01**: `approval_status` field on challenge_submissions (pending_approval, approved, rejected)
-- [ ] **APPR-02**: `approvals` table for audit trail (who approved what when)
+- [x] **APPR-01**: `approval_status` field on challenge_submissions (pending_approval, approved, rejected)
+- [x] **APPR-02**: `approvals` table for audit trail (who approved what when)
 - [ ] **APPR-03**: `approval_notes` field for manager feedback
 
 ### API Endpoints
@@ -83,7 +83,7 @@ Implement the complete grading workflow with Leader → Manager approval stages.
 ### Workflow Rules
 
 - [ ] **APPR-12**: Leaderboard publishing blocked until Manager approval
-- [ ] **APPR-13**: Audit trail for all approval actions (timestamp, user, action)
+- [x] **APPR-13**: Audit trail for all approval actions (timestamp, user, action)
 - [ ] **APPR-14**: Notification sent to Leader on Manager approval/rejection
 
 ---
