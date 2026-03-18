@@ -1,62 +1,58 @@
 ---
 phase: 03-manager-approval-workflow
-plan: 05
+plan: 05b
 type: execute
-wave: 4
-depends_on: [03-02, 03-03]
+wave: 5
+depends_on: [03-02, 03-03, 03-05a]
 files_modified:
-  - apps/web/app/(protected)/admin/approvals/page.tsx
-  - apps/web/app/components/admin/approvals/ApprovalQueueTable.tsx
   - apps/web/app/components/admin/approvals/ApprovalDetailView.tsx
-  - apps/web/app/components/admin/approvals/ApproveButton.tsx
+  - apps/web/app/(protected)/admin/approvals/page.tsx
   - apps/web/app/(protected)/admin/AdminSidebar.tsx
 autonomous: false
 requirements:
-  - APPR-09
-  - APPR-10
   - APPR-11
 
 must_haves:
   truths:
-    - "Manager can see list of pending approvals"
     - "Manager can click approval to view detail"
     - "Manager can edit grades in detail view"
     - "Manager can approve from detail view"
     - "Manager can navigate next/previous in queue"
-    - "Approval triggers notification to Leader"
+    - "AdminSidebar has Approvals navigation link"
   artifacts:
-    - path: apps/web/app/(protected)/admin/approvals/page.tsx
-      provides: Approval queue page
-      contains: "ApprovalQueueTable", "ApprovalDetailView"
-    - path: apps/web/app/components/admin/approvals/ApprovalQueueTable.tsx
-      provides: Table component for pending approvals list
-      exports: ["ApprovalQueueTable"]
     - path: apps/web/app/components/admin/approvals/ApprovalDetailView.tsx
       provides: Detail view for reviewing single submission
       exports: ["ApprovalDetailView"]
-    - path: apps/web/app/components/admin/approvals/ApproveButton.tsx
-      provides: Approve action button component
-      exports: ["ApproveButton"]
+    - path: apps/web/app/(protected)/admin/approvals/page.tsx
+      provides: Approval queue page
+      contains: "ApprovalQueueTable", "ApprovalDetailView"
+    - path: apps/web/app/(protected)/admin/AdminSidebar.tsx
+      provides: Navigation sidebar with Approvals link
+      contains: "Approvals"
   key_links:
-    - from: approvals page
-      to: /api/approvals/pending
-      via: fetch GET call for pending submissions
-      pattern: "fetch.*approvals/pending"
     - from: ApprovalDetailView
       to: /api/challenges/submissions/[id]/grades
       via: fetch PATCH call for grade edits
       pattern: "fetch.*grades"
-    - from: ApproveButton
-      to: /api/challenges/submissions/[id]/approve
-      via: fetch POST call for approve
-      pattern: "fetch.*approve"
+    - from: ApprovalDetailView
+      to: ApproveButton
+      via: Component import
+      pattern: "import.*ApproveButton"
+    - from: approvals page
+      to: ApprovalQueueTable
+      via: Component import
+      pattern: "import.*ApprovalQueueTable"
+    - from: AdminSidebar
+      to: approvals page
+      via: Navigation link
+      pattern: "href.*approvals"
 ---
 
 <objective>
-Create Manager approval queue UI: ApprovalQueueTable for list view, ApprovalDetailView for reviewing submissions with grade editing, ApproveButton for approval action, and navigation from AdminSidebar.
+Create Manager approval queue page and detail view: ApprovalDetailView for reviewing submissions with grade editing, approvals page integrating list and detail views, and AdminSidebar navigation.
 
 Purpose: Enable Managers to review pending submissions, edit grades, approve submissions, and navigate through approval queue with next/previous navigation.
-Output: Complete approval queue UI with list and detail views, grade editing, approval action, and Manager notifications.
+Output: Complete approval queue UI with list and detail views, grade editing, approval action, and navigation integration.
 </objective>
 
 <execution_context>
@@ -73,9 +69,12 @@ Output: Complete approval queue UI with list and detail views, grade editing, ap
 @.planning/phases/03-manager-approval-workflow/03-UI-SPEC.md
 @.planning/phases/03-manager-approval-workflow/03-02-SUMMARY.md
 @.planning/phases/03-manager-approval-workflow/03-03-SUMMARY.md
+@.planning/phases/03-manager-approval-workflow/03-05a-SUMMARY.md
 
 @apps/web/app/(protected)/admin/AdminSidebar.tsx
-@apps/web/app/components/admin/AdminTable.tsx
+@apps/web/app/components/admin/AdminForm.tsx
+@apps/web/app/components/admin/approvals/ApprovalQueueTable.tsx
+@apps/web/app/components/admin/approvals/ApproveButton.tsx
 </context>
 
 <interfaces>
@@ -98,127 +97,45 @@ interface Approval {
 }
 ```
 
-From UI-SPEC.md layout:
+From /api/approvals/pending (Plan 03-02):
+```typescript
+interface PendingSubmission {
+  id: string
+  challenge_id: string
+  challenge_name: string
+  user_id: string
+  user_name: string
+  user_email: string
+  team_id: string
+  status: SubmissionStatus
+  created_at: string
+  updated_at: string
+  submitted_by?: string
+}
 ```
-Approval Queue Page:
-┌─────────────────────────────────────────────────────┐
-│ AdminHeader: "Approvals"                            │
-├─────────────────────────────────────────────────────┤
-│ Filters: [Challenge ▼] [Team ▼] [Leader ▼]         │
-├─────────────────────────────────────────────────────┤
-│ AdminTable (ApprovalQueueTable)                     │
-│ ┌───────┬──────────┬──────┬──────────┬──────────┐   │
-│ │Challenge│ Student  │ Team │ Submitted │ Status   │   │
-│ ├───────┼──────────┼──────┼──────────┼──────────┤   │
-│ │ Mar Quiz│ John Doe │ Alpha│ 2h ago   │ Pending  │ ← Click to open detail
-│ └───────┴──────────┴──────┴──────────┴──────────┘   │
-└─────────────────────────────────────────────────────┘
+
+From 03-05a plan components:
+```typescript
+interface ApprovalQueueTableProps {
+  submissions: PendingSubmission[]
+  loading?: boolean
+  onRowClick: (submissionId: string) => void
+  filters?: { challengeId?: string; teamId?: string; leaderId?: string }
+}
+
+interface ApproveButtonProps {
+  submissionId: string
+  currentStatus: SubmissionStatus
+  onApproved?: () => void
+  disabled?: boolean
+}
 ```
 </interfaces>
 
 <tasks>
 
 <task type="auto" tdd="false">
-  <name>Task 1: Create ApprovalQueueTable component</name>
-  <files>apps/web/app/components/admin/approvals/ApprovalQueueTable.tsx</files>
-  <read_first>
-    apps/web/app/components/admin/AdminTable.tsx
-    apps/web/app/components/ui/table.tsx
-  </read_first>
-  <action>
-    Create ApprovalQueueTable component at apps/web/app/components/admin/approvals/ApprovalQueueTable.tsx:
-
-    1. **Component interface:**
-       - interface ApprovalQueueTableProps { submissions: PendingSubmission[]; loading?: boolean; onRowClick: (submissionId: string) => void; filters?: { challengeId?: string; teamId?: string; leaderId?: string } }
-
-    2. **Type definitions:**
-       - interface PendingSubmission { id: string; challenge_id: string; challenge_name: string; user_id: string; user_name: string; user_email: string; team_id: string; status: SubmissionStatus; created_at: string; updated_at: string; submitted_by?: string }
-
-    3. **Table columns:**
-       - Challenge: challenge_name
-       - Student: user_name (with email as subtitle)
-       - Team: team_id (or team name if join available)
-       - Submitted: formatted date (e.g., "2h ago", "Mar 18, 3PM")
-       - Status: Badge component with color coding (amber-500 for pending_review)
-       - Graded by: submitted_by (Leader name from approvals)
-
-    4. **Render with AdminTable or custom Table:**
-       - Use existing AdminTable component from @/app/components/admin/AdminTable if it fits
-       - OR build custom table using Table components from @/components/ui/table
-       - Row click handler: calls onRowClick(submissionId)
-
-    5. **Empty state:**
-       - If submissions.length === 0: show "No submissions pending review" message
-       - Use UI-SPEC copy: "All submissions have been reviewed. Check back later when Leaders submit new grades."
-
-    6. **Styling:**
-       - Use Tailwind classes matching existing admin tables
-       - Hover state on rows (bg-gray-50)
-       - Cursor pointer on clickable rows
-       - Status badges with proper colors per UI-SPEC
-
-    Follow existing AdminTable patterns for consistency.
-  </action>
-  <verify>
-    <automated>grep -q "ApprovalQueueTable" apps/web/app/components/admin/approvals/ApprovalQueueTable.tsx && grep -q "onRowClick" apps/web/app/components/admin/approvals/ApprovalQueueTable.tsx</automated>
-  </verify>
-  <done>
-    ApprovalQueueTable component displays pending submissions in table format with columns for Challenge, Student, Team, Submitted time, Status, and Graded by; handles row clicks for detail view; shows empty state when no pending submissions; uses consistent styling with existing admin tables.
-  </done>
-</task>
-
-<task type="auto" tdd="false">
-  <name>Task 2: Create ApproveButton component</name>
-  <files>apps/web/app/components/admin/approvals/ApproveButton.tsx</files>
-  <read_first>
-    apps/web/app/components/ui/button.tsx
-  </read_first>
-  <action>
-    Create ApproveButton component at apps/web/app/components/admin/approvals/ApproveButton.tsx:
-
-    1. **Component interface:**
-       - interface ApproveButtonProps { submissionId: string; currentStatus: SubmissionStatus; onApproved?: () => void; disabled?: boolean }
-
-    2. **State management:**
-       - const [isApproving, setIsApproving] = useState(false)
-
-    3. **Determine button state:**
-       - if currentStatus !== 'pending_review': disabled (shouldn't happen in normal flow)
-       - if disabled prop: disabled
-       - Otherwise: enabled
-
-    4. **Handle approve:**
-       - async function handleApprove()
-       - setIsApproving(true)
-       - fetch POST /api/challenges/submissions/${submissionId}/approve
-       - On success: call onApproved?.(), show toast "Grades approved and ready to publish"
-       - On error: show error toast
-       - setIsApproving(false)
-
-    5. **Render button:**
-       - Use Button component from @/components/ui/button
-       - Variant: "default" with bg-[#10B981] (emerald-500) for approve action per UI-SPEC
-       - Label: "Approve" (or "Approving..." when loading)
-       - Show loading spinner when isApproving
-       - Disabled when not pending_review
-
-    6. **Use toast for notifications:**
-       - Import toast from existing toast system
-       - Show success toast: "Grades approved and ready to publish"
-       - Show error toast on failure
-
-    Follow SubmitForReviewButton patterns for consistency.
-  </action>
-  <verify>
-    <automated>grep -q "ApproveButton" apps/web/app/components/admin/approvals/ApproveButton.tsx && grep -q "approve" apps/web/app/components/admin/approvals/ApproveButton.tsx</automated>
-  </verify>
-  <done>
-    ApproveButton component exists with props for submissionId, currentStatus, onApproved callback; handles approve API call with loading state; shows toast notifications; enabled only for pending_review status.
-  </done>
-</task>
-
-<task type="auto" tdd="false">
-  <name>Task 3: Create ApprovalDetailView component</name>
+  <name>Task 1: Create ApprovalDetailView component</name>
   <files>apps/web/app/components/admin/approvals/ApprovalDetailView.tsx</files>
   <read_first>
     apps/web/app/components/admin/approvals/ApproveButton.tsx
@@ -283,7 +200,30 @@ Approval Queue Page:
 </task>
 
 <task type="auto" tdd="false">
-  <name>Task 4: Create approvals queue page</name>
+  <name>Task 2: Update barrel export for ApprovalDetailView</name>
+  <files>apps/web/app/components/admin/approvals/index.ts</files>
+  <read_first>
+    apps/web/app/components/admin/approvals/index.ts
+  </read_first>
+  <action>
+    Update barrel export at apps/web/app/components/admin/approvals/index.ts:
+
+    1. **Export ApprovalDetailView:**
+       - export { ApprovalDetailView } from './ApprovalDetailView'
+       - export type { ApprovalDetailViewProps } from './ApprovalDetailView'
+
+    Keep existing exports for SubmitForReviewButton, ApprovalQueueTable, ApproveButton.
+  </action>
+  <verify>
+    <automated>grep -q "ApprovalDetailView" apps/web/app/components/admin/approvals/index.ts</automated>
+  </verify>
+  <done>
+    Barrel export file updated to export ApprovalDetailView component and its type.
+  </done>
+</task>
+
+<task type="auto" tdd="false">
+  <name>Task 3: Create approvals queue page</name>
   <files>apps/web/app/(protected)/admin/approvals/page.tsx</files>
   <read_first>
     apps/web/app/(protected)/admin/approvals/page.tsx
@@ -345,6 +285,41 @@ Approval Queue Page:
   </done>
 </task>
 
+<task type="auto" tdd="false">
+  <name>Task 4: Add Approvals link to AdminSidebar</name>
+  <files>apps/web/app/(protected)/admin/AdminSidebar.tsx</files>
+  <read_first>
+    apps/web/app/(protected)/admin/AdminSidebar.tsx
+  </read_first>
+  <action>
+    Update AdminSidebar at apps/web/app/(protected)/admin/AdminSidebar.tsx:
+
+    1. **Add Approvals navigation item:**
+       - Add new navigation item after "Grading" or similar appropriate location
+       - Label: "Approvals"
+       - Icon: CheckmarkIcon or ClipboardDocumentCheckIcon from Heroicons
+       - Route: /admin/approvals
+       - Badge: Optional count of pending approvals
+
+    2. **Role-based visibility:**
+       - Show Approvals link only for Manager and Admin roles
+       - Hide for Leader role
+
+    3. **Pending count badge (optional):**
+       - Fetch count from /api/approvals/pending?countOnly=true
+       - Show badge with count if > 0
+       - Use existing badge pattern if available
+
+    Follow existing AdminSidebar navigation patterns.
+  </action>
+  <verify>
+    <automated>grep -q "Approvals" apps/web/app/\(protected\)/admin/AdminSidebar.tsx && grep -q "approvals" apps/web/app/\(protected\)/admin/AdminSidebar.tsx</automated>
+  </verify>
+  <done>
+    AdminSidebar includes Approvals navigation link with icon and route; link visible only for Manager/Admin roles; optional pending count badge displayed.
+  </done>
+</task>
+
 <task type="checkpoint:human-verify" gate="blocking">
   <what-built>Complete Manager approval queue UI with list and detail views</what-built>
   <how-to-verify>
@@ -371,13 +346,13 @@ Approval Queue Page:
 
 <verification>
 After all tasks complete:
-1. ApprovalQueueTable displays pending submissions correctly
-2. Filters work for challenge, team, and leader
-3. Row clicks open detail view for correct submission
-4. Detail view shows all submission data and answers
-5. Grade editing saves changes correctly
-6. Approve button updates status to approved
-7. Next/Previous navigation works
+1. ApprovalDetailView displays submission details correctly
+2. Detail view shows all submission data and answers
+3. Grade editing saves changes correctly
+4. Approve button updates status to approved
+5. Next/Previous navigation works
+6. Approvals page integrates list and detail views
+7. AdminSidebar has Approvals link
 8. Notifications are sent to Leader on approve
 9. Page is accessible only to Manager/Admin
 </verification>
@@ -391,13 +366,15 @@ After all tasks complete:
 6. Manager can navigate between submissions with next/prev
 7. Leader receives notification when Manager approves
 8. Page is restricted to Manager/Admin roles
+9. AdminSidebar has Approvals navigation link
 </success_criteria>
 
 <output>
-After completion, create `.planning/phases/03-manager-approval-workflow/03-05-SUMMARY.md` with:
+After completion, create `.planning/phases/03-manager-approval-workflow/03-05b-SUMMARY.md` with:
 - Approval queue page structure and routing
-- Component hierarchy (ApprovalQueueTable, ApprovalDetailView, ApproveButton)
+- ApprovalDetailView component details
 - Filter and navigation implementation
 - Grade editing workflow
 - Integration with approve and edit grades APIs
+- AdminSidebar navigation update
 </output>

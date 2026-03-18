@@ -1,7 +1,7 @@
 # Roadmap: MC Bible & Knowledge Championship
 
 **Created:** 2026-03-18
-**Updated:** 2026-03-18 (Phase 3 planned)
+**Updated:** 2026-03-18 (Phase 3 revised)
 **Granularity:** Coarse (aggressive compression)
 **Phases:** 6
 **Coverage:** 91 requirements
@@ -133,7 +133,12 @@
 3. Leaderboard publishing is blocked until Manager approval
 4. Full audit trail of who did what when
 
-**Plans:** 6 plans in 5 waves
+**Plans:** 8 plans in 7 waves
+
+- [ ] 03-00-PLAN.md — Test Infrastructure (Wave 0) ⏳
+  - E2E tests and auth fixtures for approval workflow
+  - 2 tasks: Create auth fixtures (setupManagerTest, setupLeaderTest), generate E2E test file (approvals.spec.ts with 8+ test cases)
+  - Tests will run after implementation is complete
 
 - [ ] 03-01-PLAN.md — Database + Types (Wave 1) ⏳
   - APPR-01, APPR-02, APPR-13: Extend submission status enum with pending_review and approved, create approvals audit table
@@ -155,12 +160,17 @@
   - 3 tasks: Create SubmitForReviewButton component, create barrel export, integrate into grading page
   - Button shows Submitted state after submission, status badges display current state
 
-- [ ] 03-05-PLAN.md — Manager Approval UI (Wave 4) ⏳
-  - APPR-09, APPR-10, APPR-11: Approval queue page with list and detail views
-  - 5 tasks: Create ApprovalQueueTable, ApproveButton, ApprovalDetailView, approvals page, human verification checkpoint
-  - List view shows pending submissions with filters, detail view enables grade editing and approve action
+- [ ] 03-05a-PLAN.md — Approval Queue Components (Wave 4) ⏳
+  - APPR-09, APPR-10: ApprovalQueueTable and ApproveButton components
+  - 3 tasks: Create ApprovalQueueTable component, create ApproveButton component, update barrel export
+  - Components are building blocks for the approvals page
 
-- [ ] 03-06-PLAN.md — Publish Validation + Notifications (Wave 5) ⏳
+- [ ] 03-05b-PLAN.md — Approval Queue Page + Detail View (Wave 5) ⏳
+  - APPR-11: ApprovalDetailView, approvals page, AdminSidebar navigation
+  - 5 tasks: Create ApprovalDetailView component, update barrel export, create approvals queue page, add Approvals link to AdminSidebar, human verification checkpoint
+  - Page integrates ApprovalQueueTable and ApprovalDetailView, provides filter controls and next/prev navigation
+
+- [ ] 03-06-PLAN.md — Publish Validation + Notifications (Wave 6) ⏳
   - APPR-12, APPR-13, APPR-14: Modify publish API to enforce Manager approval before publishing
   - 2 tasks: Add approval validation to publish API, verify end-to-end workflow (human checkpoint)
   - Publish requires Manager/Admin role and approved status, triggers user notifications
@@ -269,7 +279,7 @@
 |-------|----------------|--------|-----------|
 | 1. Foundation + Admin Unification | 3/3 | Complete | 2026-03-18 |
 | 2. Notification System | 6/6 | Complete   | 2026-03-18 |
-| 3. Manager Approval Workflow | 0/6 | Planned | 2026-03-18 |
+| 3. Manager Approval Workflow | 0/8 | Planned | 2026-03-18 |
 | 4. Admin Dashboard + Monitoring | 0/17 | Not started | - |
 | 5. MC Bible Completion | 0/25 | Not started | - |
 | 6. Advanced Features | 0/16 | Not started | - |
@@ -334,18 +344,18 @@ Phase 6: Advanced Features (needs data from all previous phases)
 | Requirement | Plan | Status |
 |-------------|------|--------|
 | APPR-01 | 03-01 | Pending |
-| APPR-02 | 03-01 | Pending |
+| APPR-02 | 03-01, 03-02 | Pending |
 | APPR-03 | N/A | Out of scope (no rejection workflow) |
 | APPR-04 | 03-02 | Pending |
 | APPR-05 | 03-03 | Pending |
 | APPR-06 | 03-03 | Out of scope (no rejection workflow) |
 | APPR-07 | 03-02 | Pending |
 | APPR-08 | 03-04 | Pending |
-| APPR-09 | 03-05 | Pending |
-| APPR-10 | 03-05 | Pending |
-| APPR-11 | 03-05 | Pending |
+| APPR-09 | 03-05a | Pending |
+| APPR-10 | 03-05a | Pending |
+| APPR-11 | 03-05b | Pending |
 | APPR-12 | 03-06 | Pending |
-| APPR-13 | 03-01 | Pending |
+| APPR-13 | 03-01, 03-06 | Pending |
 | APPR-14 | 03-02, 03-03, 03-06 | Pending |
 
 ### Admin Dashboard (Phase 4)
@@ -425,4 +435,4 @@ Phase 6: Advanced Features (needs data from all previous phases)
 ---
 
 *Roadmap created: 2026-03-18*
-*Last updated: 2026-03-18 (Phase 3 plans created)*
+*Last updated: 2026-03-18 (Phase 3 revised - 8 plans in 7 waves)*
