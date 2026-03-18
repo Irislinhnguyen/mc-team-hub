@@ -2,15 +2,31 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 2 (Notification System)
-status: planning
-last_updated: "2026-03-18T09:22:33.393Z"
+current_phase: Phase 3 (Manager Approval Workflow)
+status: Ready for next plan
+last_updated: "2026-03-18T14:22:16.276Z"
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 9
+  total_plans: 17
+  completed_plans: 10
+  percent: 81
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 3 (Manager Approval Workflow)
+current_plan: 03-00
+status: executing
+last_updated: "2026-03-18T14:21:00.000Z"
+progress:
+  total_phases: 6
+  completed_phases: 2
+  total_plans: 17
   completed_plans: 9
-  percent: 78
+  percent: 81
 ---
 
 ---
@@ -47,7 +63,7 @@ progress:
 # STATE.md: MC Bible & Knowledge Championship
 
 **Last updated:** 2026-03-18
-**Current phase:** Phase 2 (Notification System)
+**Current phase:** Phase 3 (Manager Approval Workflow)
 
 ## Project Reference
 
@@ -62,18 +78,18 @@ Internal training and knowledge testing platform with two interconnected feature
 
 ## Current Position
 
-**Active Phase:** Phase 2 — Notification System
-**Plan:** 02-04 (Notification UI Components) — Completed
-**Status:** Ready to plan
-**Progress:** [██████████] 78%
+**Active Phase:** Phase 3 — Manager Approval Workflow
+**Plan:** 03-00 (Test Infrastructure) — Completed
+**Status:** Ready for next plan
+**Progress:** [██████████] 81%
 
 ### Phase Overview
 
 | Phase | Status | Progress |
 |-------|--------|----------|
 | 1. Foundation + Admin Unification | Complete | [X] 100% (6 reqs) |
-| 2. Notification System | In Progress | [ ] 54% (7/13 reqs) |
-| 3. Manager Approval Workflow | Not started | [ ] 0% (14 reqs) |
+| 2. Notification System | Complete | [X] 100% (13 reqs) |
+| 3. Manager Approval Workflow | In Progress | [ ] 13% (1/8 plans) |
 | 4. Admin Dashboard + Monitoring | Not started | [ ] 0% (17 reqs) |
 | 5. MC Bible Completion | Not started | [ ] 0% (25 reqs) |
 | 6. Advanced Features | Not started | [ ] 0% (16 reqs) |
@@ -91,6 +107,9 @@ Internal training and knowledge testing platform with two interconnected feature
 | 02-03 (Notification API Endpoints) | 8min | 6 | 6 |
 | 02-04 (Notification UI Components) | 4min | 4 | 4 |
 | **Total Phase 2** | **~19min** | **14** | **14** |
+| 03-00 (Test Infrastructure) | 6min | 2 | 2 |
+| **Total Phase 3** | **~6min** | **2** | **2** |
+| Phase 03 P00 | 419 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -162,23 +181,21 @@ None identified yet.
 - 2026-03-18: Roadmap revised to 6-phase structure
 - 2026-03-18: Requirements expanded to 91 total requirements
 - 2026-03-18: Phase 1 completed — admin unification, single app architecture
-- 2026-03-18: Phase 2 Plan 02-01 completed — notification database schema and service
-- 2026-03-18: Phase 2 Plan 02-02 completed — email service with Nodemailer
-- 2026-03-18: Phase 2 Plan 02-03 completed — notification API endpoints (6 endpoints with auth, pagination, service layer)
-- 2026-03-18: Phase 2 Plan 02-04 completed — notification UI components (NotificationBell, NotificationDropdown, Header integration)
+- 2026-03-18: Phase 2 completed — notification system with email service, API endpoints, UI components
+- 2026-03-18: Phase 3 Plan 03-00 completed — test infrastructure for approval workflow (auth fixtures, E2E tests)
 
 **Next actions:**
-1. Continue Phase 2 Plan 02-05 — Notification preferences settings page
-2. Build email templates and triggers (Plan 02-06)
-3. Test notification workflow end-to-end
+1. Continue Phase 3 Plan 03-01 — Database schema for approval workflow
+2. Build Leader submit for review flow (Plan 03-02)
+3. Build Manager review UI (Plan 03-03)
+4. Implement Manager edit grades (Plan 03-04)
+5. Implement Manager approve workflow (Plan 03-05a)
+6. Implement publish workflow (Plan 03-05b)
+7. Integration and testing (Plan 03-06)
 
 **Context for next session:**
-- Phase 2 context: `.planning/phases/02-notification-system/02-CONTEXT.md`
-- Plan 02-01 completed: Database schema, TypeScript types, notification service
-- Plan 02-02 completed: Email service with Nodemailer, HTML templates
-- Plan 02-03 completed: 6 RESTful API endpoints for notification management
-- Plan 02-04 completed: Notification UI components (NotificationBell, NotificationDropdown)
-- Notification components: Bell with badge, Dropdown with click-to-read, 30s polling
-- API endpoints: GET /api/notifications, DELETE /api/notifications/:id, PATCH /api/notifications/:id/read, POST /api/notifications/mark-all-read, GET /api/notifications/unread-count, GET/PUT /api/notifications/preferences
-- Migration file: `supabase/migrations/20260318_create_notifications.sql` (needs to be run on Supabase)
-- Role-based defaults: admin/manager all enabled, leader mixed, member minimal
+- Phase 3 context: `.planning/phases/03-manager-approval-workflow/03-CONTEXT.md`
+- Phase 3 research: `.planning/phases/03-manager-approval-workflow/03-RESEARCH.md`
+- Plan 03-00 completed: Auth fixtures for Manager/Leader/Admin roles, E2E test suite for approval workflow
+- Test files: `tests/e2e/fixtures/auth.setup-admin-approver.ts` (297 lines), `tests/e2e/approvals.spec.ts` (550 lines)
+- Approval workflow: Leader submits grades → Manager reviews/edits → Manager approves → Manager/Admin publishes
