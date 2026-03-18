@@ -132,11 +132,13 @@ None identified yet.
 - 2026-03-18: Phase 2 Plan 02-01 completed — notification database schema and service
 
 **Next actions:**
-1. Verify Phase 1 admin unification (check admin routes work)
-2. Begin Phase 2: Notification System planning
+1. Continue Phase 2 Plan 02-02 — Email Service implementation
+2. Implement API endpoints for notifications (Plan 02-03)
+3. Build UI components for notification bell and dropdown (Plan 02-04)
 
 **Context for next session:**
-- Phase 1 context: `.planning/phases/01-foundation-admin-unification/01-CONTEXT.md`
-- Key decision: Merge apps/admin into apps/web as single Vercel project
-- Route structure: /admin/* with role-based access
-- Phase dependencies are sequential: 1→2→3→4→5→6
+- Phase 2 context: `.planning/phases/02-notification-system/02-CONTEXT.md`
+- Plan 02-01 completed: Database schema, TypeScript types, notification service
+- Key functions: triggerNotification(), getUserPreferences(), createNotification()
+- Migration file: `supabase/migrations/20260318_create_notifications.sql` (needs to be run on Supabase)
+- Role-based defaults: admin/manager all enabled, leader mixed, member minimal
