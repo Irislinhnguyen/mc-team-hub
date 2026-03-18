@@ -78,7 +78,7 @@
 3. Users receive notifications when scores are published
 4. Users can manage notification preferences (email vs in-app)
 
-**Plans:** 6 plans in 3 waves
+**Plans:** 2/6 plans executed
 
 - [ ] 02-01-PLAN.md — Database + Core Service (Wave 1)
   - NOTIF-01, NOTIF-08: Database tables (notifications, notification_preferences, notification_delivery_errors), TypeScript types, notification service
@@ -238,7 +238,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation + Admin Unification | 3/3 | Complete | 2026-03-18 |
-| 2. Notification System | 0/6 | Ready to execute | - |
+| 2. Notification System | 2/6 | In Progress|  |
 | 3. Manager Approval Workflow | 0/14 | Not started | - |
 | 4. Admin Dashboard + Monitoring | 0/17 | Not started | - |
 | 5. MC Bible Completion | 0/25 | Not started | - |

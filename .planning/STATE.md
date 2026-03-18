@@ -2,37 +2,22 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 1 (Foundation + Admin Unification)
-status: planning
-last_updated: "2026-03-18T06:37:13.040Z"
+current_phase: Phase 2 (Notification System)
+current_plan: 02-01
+status: in_progress
+last_updated: "2026-03-18T08:44:41.000Z"
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
-  percent: 100
----
-
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-current_phase: Phase 1 (Foundation + Admin Unification)
-current_plan: 01-03
-status: completed
-last_updated: "2026-03-18T06:32:59.438Z"
-progress:
-  total_phases: 6
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
-  percent: 100
+  total_plans: 9
+  completed_plans: 5
+  percent: 56
 ---
 
 # STATE.md: MC Bible & Knowledge Championship
 
 **Last updated:** 2026-03-18
-**Current phase:** Phase 1 (Foundation + Admin Unification)
+**Current phase:** Phase 2 (Notification System)
 
 ## Project Reference
 
@@ -47,10 +32,10 @@ Internal training and knowledge testing platform with two interconnected feature
 
 ## Current Position
 
-**Active Phase:** Phase 1 — Foundation + Admin Unification
-**Plan:** 01-02 (Admin Layout and Sidebar Unification) — Completed
-**Status:** Ready to plan
-**Progress:** [██████████] 100%
+**Active Phase:** Phase 2 — Notification System
+**Plan:** 02-01 (Database + Core Service) — In Progress
+**Status:** Executing
+**Progress:** [██████░░░░] 56%
 
 ```
 [████████████████████████████████████████████████████] 33% Complete
@@ -61,7 +46,7 @@ Internal training and knowledge testing platform with two interconnected feature
 | Phase | Status | Progress |
 |-------|--------|----------|
 | 1. Foundation + Admin Unification | Complete | [X] 100% (6 reqs) |
-| 2. Notification System | Not started | [ ] 0% (13 reqs) |
+| 2. Notification System | In Progress | [ ] 17% (2/13 reqs) |
 | 3. Manager Approval Workflow | Not started | [ ] 0% (14 reqs) |
 | 4. Admin Dashboard + Monitoring | Not started | [ ] 0% (17 reqs) |
 | 5. MC Bible Completion | Not started | [ ] 0% (25 reqs) |
@@ -75,6 +60,7 @@ Internal training and knowledge testing platform with two interconnected feature
 | 01-02 (Admin Layout & Sidebar) | 12min | 4 | 3 |
 | 01-03 (Consolidation) | 15min | 7 | 234 |
 | **Total Phase 1** | **~45min** | **17** | **~245** |
+| 02-01 (Database + Core Service) | 5min | 3 | 3 |
 
 ## Accumulated Context
 
@@ -95,6 +81,9 @@ Internal training and knowledge testing platform with two interconnected feature
 | Single app deployment configuration | Eliminates duplicate Vercel project, reduces 50% cost | 2026-03-18 |
 | Environment consolidation at root | .env.example as source of truth for all env vars | 2026-03-18 |
 | Explicit workspace entries | apps/web preferred over apps/* wildcard for clarity | 2026-03-18 |
+| Notifications with rich references | Store challenge_id, submission_id for navigation from notification | 2026-03-18 |
+| Role-based notification defaults | Admin/manager all on, leader mixed, member minimal email | 2026-03-18 |
+| Soft-delete for notifications | Dismissed flag instead of hard delete for audit trail | 2026-03-18 |
 
 ### Technical Notes
 
@@ -114,6 +103,7 @@ Internal training and knowledge testing platform with two interconnected feature
 **Database Tables (Existing):**
 - `challenges`, `challenge_questions`, `challenge_submissions`, `challenge_answers`, `challenge_grades`
 - `bible_paths`, `bible_articles`, `bible_path_articles`, `bible_user_progress`
+- `notifications`, `notification_preferences`, `notification_delivery_errors` (NEW - Phase 2)
 - User roles: `admin`, `manager`, `leader`, `member`
 - Team assignments: `user_team_assignments`
 
@@ -138,8 +128,8 @@ None identified yet.
 - 2026-03-18: Scope analysis identified critical gaps (notifications, approval workflow, dashboard)
 - 2026-03-18: Roadmap revised to 6-phase structure
 - 2026-03-18: Requirements expanded to 91 total requirements
-- 2026-03-18: Phase 1 context captured — single app architecture decided
-- 2026-03-18: Phase 1 Plan 01-03 completed — deleted apps/admin (230 files, 46,947 lines), consolidated deployment config
+- 2026-03-18: Phase 1 completed — admin unification, single app architecture
+- 2026-03-18: Phase 2 Plan 02-01 completed — notification database schema and service
 
 **Next actions:**
 1. Verify Phase 1 admin unification (check admin routes work)

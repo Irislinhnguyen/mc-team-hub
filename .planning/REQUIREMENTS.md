@@ -31,20 +31,20 @@ Enable communication for the grading workflow with in-app and email notification
 
 ### In-App Notifications
 
-- [ ] **NOTIF-01**: In-app notification system with persistent notifications in database
+- [x] **NOTIF-01**: In-app notification system with persistent notifications in database
 - [ ] **NOTIF-02**: Notification list endpoint showing all user notifications
 - [ ] **NOTIF-03**: Mark notification as read functionality
 - [ ] **NOTIF-04**: Unread notification count indicator
 
 ### Email Notifications
 
-- [ ] **NOTIF-05**: Email notification service using Nodemailer
-- [ ] **NOTIF-06**: Email templates for notification types
-- [ ] **NOTIF-07**: SMTP configuration for email delivery
+- [x] **NOTIF-05**: Email notification service using Nodemailer
+- [x] **NOTIF-06**: Email templates for notification types
+- [x] **NOTIF-07**: SMTP configuration for email delivery
 
 ### Notification Preferences
 
-- [ ] **NOTIF-08**: User notification preferences (email vs in-app per notification type)
+- [x] **NOTIF-08**: User notification preferences (email vs in-app per notification type)
 - [ ] **NOTIF-09**: Notification preferences management UI
 
 ### Workflow Triggers
