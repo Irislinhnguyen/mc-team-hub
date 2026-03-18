@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { getServerUser, isLeaderOrAbove } from '@query-stream-ai/auth/server'
 import AdminSidebar from './AdminSidebar'
 
+export const dynamic = 'force-dynamic'
+
 interface AdminLayoutProps {
   children: React.ReactNode
 }
