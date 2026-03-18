@@ -49,10 +49,10 @@ Enable communication for the grading workflow with in-app and email notification
 
 ### Workflow Triggers
 
-- [ ] **NOTIF-10**: Notification when challenge status changes to "grading" (to Leaders)
-- [ ] **NOTIF-11**: Notification when Leader submits grades for approval (to Managers)
-- [ ] **NOTIF-12**: Notification when Manager approves grades (to Leaders)
-- [ ] **NOTIF-13**: Notification when scores are published (to Users)
+- [x] **NOTIF-10**: Notification when challenge status changes to "grading" (to Leaders)
+- [x] **NOTIF-11**: Notification when Leader submits grades for approval (to Managers)
+- [x] **NOTIF-12**: Notification when Manager approves grades (to Leaders)
+- [x] **NOTIF-13**: Notification when scores are published (to Users)
 
 ---
 
