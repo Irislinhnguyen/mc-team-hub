@@ -162,17 +162,62 @@ export async function POST(request: NextRequest) {
     console.log('[New Sales API] Sample raw revenue data:', JSON.stringify(summaryRevenueRaw.slice(0, 5), null, 2))
 
     // Map PIC to team and aggregate for summary queries
-    const [summaryTimeSeries, summaryRevenue, summaryProfit, salesCsSiteCountsMapped, salesCsBreakdownMapped, salesCsBreakdownGroupedMapped, salesCsSiteDetailsMapped] = await Promise.all([
+    const [summaryTimeSeries, summaryRevenue, summaryProfit, salesCsBreakdownMapped, salesCsBreakdownGroupedMapped, salesCsSiteDetailsMapped] = await Promise.all([
       mapPicToTeamAndAggregate(summaryTimeSeriesRaw)(),
       mapPicToTeamAndAggregate(summaryRevenueRaw)(),
       mapPicToTeamAndAggregate(summaryProfitRaw)(),
-      mapPicToTeamForSiteCounts(salesCsSiteCounts)(),
       mapPicToTeamForSiteCounts(salesCsBreakdown)(),
       mapPicToTeamForSiteCounts(salesCsBreakdownGrouped)(),
       mapPicToTeamForSiteCounts(salesCsSiteDetails)(),
     ])
 
     console.log('[New Sales API] salesCsBreakdown RAW sample (before mapping):', salesCsBreakdown.slice(0, 3).map(r => ({ pic: r.pic, pid: r.pid })))
+
+    // Helper function to format month as "Mon YYYY"
+    const formatMonthYear = (year: number, month: number) => {
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      return `${monthNames[month - 1]} ${year}`
+    }
+
+    // Transform salesCsBreakdown to salesCsSiteCountsByPic format
+    // Each row becomes a site with sales_month/cs_month based on revenue distribution
+    const salesCsSiteCountsByPic = salesCsBreakdownMapped.map(row => {
+      // Determine sales_month and cs_month based on whether the site has sales_rev or cs_rev
+      // If sales_rev > 0, this month is a sales_month
+      // If cs_rev > 0 (and sales_rev = 0), this month is a cs_month
+      const hasSales = parseFloat(row.sales_rev || 0) > 0
+      const hasCs = parseFloat(row.cs_rev || 0) > 0
+      const monthStr = formatMonthYear(row.year, row.month)
+
+      return {
+        team: row.team,
+        pic: row.pic,
+        pid: row.pid,
+        pubname: row.pubname,
+        start_date: row.start_date,
+        end_date: row.end_date,
+        sales_month: hasSales ? monthStr : null,
+        cs_month: hasCs && !hasSales ? monthStr : null,
+        year: row.year,
+        month: row.month,
+      }
+    })
+
+    // Also compute salesCsSiteCountsByTeam by aggregating salesCsSiteCountsByPic
+    const salesCsSiteCountsByTeam = new Map<string, { team: string; total_sales_sites: number; total_cs_sites: number }>()
+    salesCsSiteCountsByPic.forEach(row => {
+      const monthKey = `${row.year}-${row.month}`
+      if (!salesCsSiteCountsByTeam.has(monthKey)) {
+        salesCsSiteCountsByTeam.set(monthKey, {
+          team: row.team,
+          total_sales_sites: 0,
+          total_cs_sites: 0,
+        })
+      }
+      const counts = salesCsSiteCountsByTeam.get(monthKey)!
+      if (row.sales_month) counts.total_sales_sites += 1
+      if (row.cs_month) counts.total_cs_sites += 1
+    })
 
     console.log('[New Sales API] Mapping complete')
     return NextResponse.json({
@@ -190,7 +235,8 @@ export async function POST(request: NextRequest) {
           total_cs_rev: 0,
           total_cs_profit: 0,
         },
-        salesCsSiteCountsByPic: salesCsSiteCountsMapped,
+        salesCsSiteCountsByPic: salesCsSiteCountsByPic,
+        salesCsSiteCountsByTeam: Array.from(salesCsSiteCountsByTeam.values()),
         salesCsSiteDetails: salesCsSiteDetailsMapped,
       },
     })
