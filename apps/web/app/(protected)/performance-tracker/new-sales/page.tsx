@@ -115,11 +115,12 @@ export default function NewSalesPage() {
   }, [])
 
   // Date range state for summary tab (applies to all summary data)
-  const [summaryDatePreset, setSummaryDatePreset] = useState<DatePreset>('last-3-months')
-  const [summaryDateRange, setSummaryDateRange] = useState<Record<string, any>>(calculateDateRange('last-3-months'))
+  const [summaryDatePreset, setSummaryDatePreset] = useState<DatePreset>('all-time')
+  const [summaryDateRange, setSummaryDateRange] = useState<Record<string, any>>(calculateDateRange('all-time'))
 
   // Date range state for details tab
   const [detailsPreset, setDetailsPreset] = useState<DatePreset>('all-time')
+  const [detailsDateRange, setDetailsDateRange] = useState<Record<string, any>>(calculateDateRange('all-time'))
 
   const { crossFilters, clearAllCrossFilters } = useCrossFilter()
 
@@ -135,9 +136,21 @@ export default function NewSalesPage() {
     return filters
   }, [summaryFilters, summaryDateRange, summaryDatePreset])
 
+  // Combine team/PIC filters with date range for Details tab
+  // For custom preset, only apply date filter when both dates are filled
+  const detailsFiltersWithDate = useMemo(() => {
+    const filters = { ...detailsFilters }
+    // Only apply date range if it's not custom preset, or if custom and both dates are filled
+    if (detailsPreset !== 'custom' || (detailsDateRange.startDate && detailsDateRange.endDate)) {
+      filters.startDate = detailsDateRange.startDate
+      filters.endDate = detailsDateRange.endDate
+    }
+    return filters
+  }, [detailsFilters, detailsDateRange, detailsPreset])
+
   // Use React Query hook for data fetching and caching
   const { data: rawData, isLoading: loading, error } = useNewSales(
-    activeTab === 'summary' ? summaryFiltersWithDate : detailsFilters
+    activeTab === 'summary' ? summaryFiltersWithDate : detailsFiltersWithDate
   )
 
   // Apply client-side filtering for cross-filters (instant, no API call)
@@ -218,11 +231,7 @@ export default function NewSalesPage() {
     setDetailsPreset(preset)
     // For custom preset, don't apply the filter yet - wait for user to fill in dates
     if (preset !== 'custom') {
-      const dateRange = calculateDateRange(preset)
-      setDetailsFilters(prev => ({
-        ...prev,
-        ...dateRange
-      }))
+      setDetailsDateRange(calculateDateRange(preset))
     }
   }
 
