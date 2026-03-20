@@ -1,6 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 import { existsSync } from 'fs';
 import { join } from 'path';
+import { fileURLToPath } from 'url';
+
+// ESM equivalent of __dirname
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 // Check if auth state file exists
 const authStatePath = join(__dirname, 'tests', 'auth', 'auth.json');

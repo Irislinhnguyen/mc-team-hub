@@ -55,7 +55,7 @@ export default function AuthPage() {
 
       // Server returns redirect on success (status 307/302)
       // or JSON error on failure (status 401/500)
-      if (response.type === 'opaqueredirect' || response.status === 0) {
+      if (response.type === 'opaqueredirect' || response.status === 0 || response.status === 307 || response.status === 302) {
         // Redirect was returned - login successful
         // The auth cookie has been set by the server
         // Now redirect to the original URL (from query params set by middleware)

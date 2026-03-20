@@ -40,14 +40,20 @@ async function handler(request: NextRequest) {
     // Create redirect response instead of JSON
     const response = NextResponse.redirect(new URL(returnUrl, request.url))
 
-    // Set auth token cookie with __Host- prefix for enhanced security
-    response.cookies.set('__Host-auth_token', token, {
+    // Set auth token cookie - use __Host- prefix only for HTTPS (production)
+    // For local development (HTTP), use regular cookie name
+    const isProduction = process.env.NODE_ENV === 'production'
+    const cookieName = isProduction ? '__Host-auth_token' : 'auth_token'
+    const cookieOptions = {
       httpOnly: true,
-      secure: true, // Always enforce HTTPS
-      sameSite: 'strict', // Upgraded from 'lax' to 'strict'
+      secure: isProduction, // Only require HTTPS in production
+      sameSite: 'strict' as const,
       path: '/',
       maxAge: 8 * 60 * 60, // 8 hours
-    })
+    }
+
+    // For __Host- prefix, don't set domain attribute
+    response.cookies.set(cookieName, token, cookieOptions)
 
     // Clean up return URL cookie
     response.cookies.delete('return_url')

@@ -102,11 +102,14 @@ export async function GET(request: NextRequest) {
     // Set token in cookie and redirect to original URL
     const response = NextResponse.redirect(new URL(returnUrl, request.url))
 
-    // Use __Host- prefix for enhanced security
-    // __Host- prefix requires: secure=true, path='/', no domain attribute
-    response.cookies.set('__Host-auth_token', token, {
+    // Use appropriate cookie based on environment
+    // __Host- prefix requires HTTPS, so use regular cookie for local development
+    const isProduction = process.env.NODE_ENV === 'production'
+    const cookieName = isProduction ? '__Host-auth_token' : 'auth_token'
+
+    response.cookies.set(cookieName, token, {
       httpOnly: true,
-      secure: true, // Always enforce HTTPS
+      secure: isProduction,
       sameSite: 'lax', // Changed from 'strict' to 'lax' for better OAuth compatibility
       path: '/',
       maxAge: 8 * 60 * 60, // 8 hours

@@ -60,16 +60,10 @@ export default function NewSalesPage() {
   const prevCrossFilterFieldsRef = useRef<string[]>([])
   const [activeTab, setActiveTab] = useState('summary')
   const [summaryFilters, setSummaryFilters] = useState<Record<string, any>>({})
-
-  // Set initial date range for Details tab (last 30 days)
-  const initialDetailsFilters = {
-    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0]
-  }
-  const [detailsFilters, setDetailsFilters] = useState<Record<string, any>>(initialDetailsFilters)
+  const [detailsFilters, setDetailsFilters] = useState<Record<string, any>>({})
 
   const [summaryPreset, setSummaryPreset] = useState<DatePreset>('all-time')
-  const [detailsPreset, setDetailsPreset] = useState<DatePreset>('last-30-days')
+  const [detailsPreset, setDetailsPreset] = useState<DatePreset>('all-time')
   const { crossFilters, clearAllCrossFilters } = useCrossFilter()
 
   // Compute current filters based on active tab (memoized)
@@ -138,14 +132,9 @@ export default function NewSalesPage() {
       setSummaryFilters({})
       setSummaryPreset('all-time')
     } else if (activeTab === 'details') {
-      // Reset Details tab with 30-day date range
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-      const today = new Date().toISOString().split('T')[0]
-      setDetailsFilters({
-        startDate: thirtyDaysAgo,
-        endDate: today
-      })
-      setDetailsPreset('last-30-days')
+      // Reset Details tab to all-time (no date filter)
+      setDetailsFilters({})
+      setDetailsPreset('all-time')
     }
   }, [activeTab, clearAllCrossFilters])
 

@@ -28,75 +28,86 @@ class BigQueryService {
         throw new Error('BigQuery is not enabled. Check your environment configuration.')
       }
 
+      // Check for credentials in multiple formats
+      const credentialsFile = process.env.GOOGLE_APPLICATION_CREDENTIALS
       const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
       const credentialsBase64 = process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64
 
-      if (!credentialsJson && !credentialsBase64) {
-        throw new Error('Either GOOGLE_APPLICATION_CREDENTIALS_JSON or GOOGLE_APPLICATION_CREDENTIALS_BASE64 must be set')
+      if (!credentialsFile && !credentialsJson && !credentialsBase64) {
+        throw new Error('Either GOOGLE_APPLICATION_CREDENTIALS, GOOGLE_APPLICATION_CREDENTIALS_JSON, or GOOGLE_APPLICATION_CREDENTIALS_BASE64 must be set')
       }
 
       try {
-        // Parse credentials from either JSON or base64
-        let credentials
-        if (credentialsBase64) {
-          // Decode from base64 (preferred for Vercel to avoid newline issues)
-          const decoded = Buffer.from(credentialsBase64, 'base64').toString('utf-8')
-          credentials = JSON.parse(decoded)
-        } else {
-          // Parse from JSON string (fallback)
-          credentials = JSON.parse(credentialsJson!)
-        }
-
-        // 🔥 FIX: Handle multiple private key encoding scenarios
-        if (credentials.private_key) {
-          let privateKey = credentials.private_key
-
-          // Case 1: Double-escaped newlines (\\n -> \n)
-          if (privateKey.includes('\\n')) {
-            privateKey = privateKey.replace(/\\n/g, '\n')
-          }
-
-          // Case 2: Missing newlines in key blocks
-          // Ensure proper PEM format with newlines after header/footer
-          if (!privateKey.includes('\n')) {
-            // If there are no newlines at all, the key is likely malformed
-            console.warn('[BigQuery] ⚠️ Private key appears to be on a single line - attempting to fix...')
-
-            // Add newlines after BEGIN/END markers
-            privateKey = privateKey
-              .replace(/-----BEGIN PRIVATE KEY-----/, '-----BEGIN PRIVATE KEY-----\n')
-              .replace(/-----END PRIVATE KEY-----/, '\n-----END PRIVATE KEY-----')
-
-            // Add newlines every 64 characters in the key body (standard PEM line length)
-            const beginMarker = '-----BEGIN PRIVATE KEY-----\n'
-            const endMarker = '\n-----END PRIVATE KEY-----'
-            const beginIndex = privateKey.indexOf(beginMarker)
-            const endIndex = privateKey.indexOf(endMarker)
-
-            if (beginIndex !== -1 && endIndex !== -1) {
-              const keyBody = privateKey.substring(beginIndex + beginMarker.length, endIndex)
-              const formattedBody = keyBody.match(/.{1,64}/g)?.join('\n') || keyBody
-              privateKey = beginMarker + formattedBody + endMarker
-            }
-          }
-
-          // Case 3: URL-encoded newlines (%0A -> \n)
-          if (privateKey.includes('%0A')) {
-            privateKey = decodeURIComponent(privateKey)
-          }
-
-          credentials.private_key = privateKey
-
-          // Debug: Log first/last 50 chars to verify format without exposing full key
-          console.log('[BigQuery] Private key format check:')
-          console.log('  Start:', privateKey.substring(0, 50))
-          console.log('  End:', privateKey.substring(privateKey.length - 50))
-        }
-
-        this.instance = new BigQuery({
+        // If using file path, let Google Cloud library handle it natively
+        const config: any = {
           projectId: settings.googleCloudProject,
-          credentials,
-        })
+        }
+
+        if (credentialsFile) {
+          // Use file path - Google Cloud library will read it
+          config.keyFilename = credentialsFile
+        } else {
+          // Parse credentials from either JSON or base64
+          let credentials
+          if (credentialsBase64) {
+            // Decode from base64 (preferred for Vercel to avoid newline issues)
+            const decoded = Buffer.from(credentialsBase64, 'base64').toString('utf-8')
+            credentials = JSON.parse(decoded)
+          } else {
+            // Parse from JSON string (fallback)
+            credentials = JSON.parse(credentialsJson!)
+          }
+
+          // 🔥 FIX: Handle multiple private key encoding scenarios
+          if (credentials.private_key) {
+            let privateKey = credentials.private_key
+
+            // Case 1: Double-escaped newlines (\\n -> \n)
+            if (privateKey.includes('\\n')) {
+              privateKey = privateKey.replace(/\\n/g, '\n')
+            }
+
+            // Case 2: Missing newlines in key blocks
+            // Ensure proper PEM format with newlines after header/footer
+            if (!privateKey.includes('\n')) {
+              // If there are no newlines at all, the key is likely malformed
+              console.warn('[BigQuery] ⚠️ Private key appears to be on a single line - attempting to fix...')
+
+              // Add newlines after BEGIN/END markers
+              privateKey = privateKey
+                .replace(/-----BEGIN PRIVATE KEY-----/, '-----BEGIN PRIVATE KEY-----\n')
+                .replace(/-----END PRIVATE KEY-----/, '\n-----END PRIVATE KEY-----')
+
+              // Add newlines every 64 characters in the key body (standard PEM line length)
+              const beginMarker = '-----BEGIN PRIVATE KEY-----\n'
+              const endMarker = '\n-----END PRIVATE KEY-----'
+              const beginIndex = privateKey.indexOf(beginMarker)
+              const endIndex = privateKey.indexOf(endMarker)
+
+              if (beginIndex !== -1 && endIndex !== -1) {
+                const keyBody = privateKey.substring(beginIndex + beginMarker.length, endIndex)
+                const formattedBody = keyBody.match(/.{1,64}/g)?.join('\n') || keyBody
+                privateKey = beginMarker + formattedBody + endMarker
+              }
+            }
+
+            // Case 3: URL-encoded newlines (%0A -> \n)
+            if (privateKey.includes('%0A')) {
+              privateKey = decodeURIComponent(privateKey)
+            }
+
+            credentials.private_key = privateKey
+
+            // Debug: Log first/last 50 chars to verify format without exposing full key
+            console.log('[BigQuery] Private key format check:')
+            console.log('  Start:', privateKey.substring(0, 50))
+            console.log('  End:', privateKey.substring(privateKey.length - 50))
+          }
+
+          config.credentials = credentials
+        }
+
+        this.instance = new BigQuery(config)
 
         console.log(`[BigQuery] Client initialized for project: ${settings.googleCloudProject}`)
       } catch (error) {
@@ -106,11 +117,20 @@ class BigQueryService {
         if (error instanceof Error) {
           if (error.message.includes('DECODER routines')) {
             console.error('[BigQuery] 💥 OpenSSL decoder error - private key format is invalid')
-            console.error('[BigQuery] 🔍 Troubleshooting steps:')
-            console.error('   1. Verify GOOGLE_APPLICATION_CREDENTIALS_JSON has valid JSON format')
-            console.error('   2. Check that private_key field starts with "-----BEGIN PRIVATE KEY-----"')
-            console.error('   3. Ensure newlines in private key are properly escaped as \\n in .env file')
-            console.error('   4. Try regenerating service account key from Google Cloud Console')
+            console.error('[BigQuery] 🔧 Recommended Fix: Use base64 encoding')
+            console.error('[BigQuery] Run: node apps/web/scripts/convert-credentials-to-base64.cjs')
+            console.error('[BigQuery] Then update .env.local to use GOOGLE_APPLICATION_CREDENTIALS_BASE64')
+          }
+
+          if (error.message.includes('invalid_grant') || error.message.includes('Invalid JWT')) {
+            console.error('[BigQuery] 💥 JWT authentication failed!')
+            console.error('[BigQuery] 🔧 Possible causes:')
+            console.error('[BigQuery] 1. Service account key is invalid or expired')
+            console.error('[BigQuery] 2. Service account does not have BigQuery permissions')
+            console.error('[BigQuery] 3. Project ID is incorrect')
+            console.error('[BigQuery] ')
+            console.error('[BigQuery] Check your service account at:')
+            console.error('[BigQuery] https://console.cloud.google.com/iam-admin/serviceaccounts')
           }
         }
 
@@ -146,6 +166,17 @@ class BigQueryService {
       return unwrappedRows
     } catch (error) {
       console.error('[BigQuery] Query execution failed:', error)
+
+      // Detect clock skew errors
+      if (error instanceof Error) {
+        if (error.message.includes('invalid_grant') || error.message.includes('Invalid JWT')) {
+          console.error('[BigQuery] 💥 JWT authentication failed - likely clock skew issue!')
+          console.error('[BigQuery] 🔧 Your system clock may be ahead of real time')
+          console.error('[BigQuery] Fix: sudo sntp -sS time.apple.com')
+          console.error('[BigQuery] Or check: date')
+        }
+      }
+
       throw new Error(`BigQuery execution failed: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
@@ -191,6 +222,15 @@ class BigQueryService {
       return true
     } catch (error) {
       console.error('[BigQuery] Connection test failed:', error)
+
+      // Detect clock skew errors
+      if (error instanceof Error) {
+        if (error.message.includes('invalid_grant') || error.message.includes('Invalid JWT')) {
+          console.error('[BigQuery] 💥 JWT authentication failed - likely clock skew issue!')
+          console.error('[BigQuery] 🔧 Fix system time: sudo sntp -sS time.apple.com')
+        }
+      }
+
       return false
     }
   }

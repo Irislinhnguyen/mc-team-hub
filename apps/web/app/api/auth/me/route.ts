@@ -9,7 +9,9 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(request: NextRequest) {
   try {
-    const authToken = request.cookies.get('__Host-auth_token')?.value
+    // Check both cookie names for backwards compatibility and local development
+    const authToken = request.cookies.get('auth_token')?.value ||
+                     request.cookies.get('__Host-auth_token')?.value
 
     if (!authToken) {
       return NextResponse.json(
