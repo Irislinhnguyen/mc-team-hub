@@ -70,3 +70,4 @@ models/
 *.sw?
 .mcp-config/gcp-oauth.keys.json
 .vercel
+.claude/skills/*
