@@ -9,6 +9,21 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { colors } from '../../lib/colors'
 import { normalizeFilterValue } from '../../lib/utils/filterHelpers'
 
+/**
+ * Safe date parser that returns null for invalid dates
+ * Prevents "Invalid Date" objects from causing runtime errors
+ */
+const safeParseDate = (dateValue: any): Date | null => {
+  if (!dateValue) return null
+  if (dateValue instanceof Date) return dateValue
+
+  const date = new Date(dateValue)
+  // Check if date is valid
+  if (isNaN(date.getTime())) return null
+
+  return date
+}
+
 interface FilterConfig {
   name: string
   label: string
@@ -71,12 +86,22 @@ export function FilterPanel({
         console.log('[FilterPanel] Applying initial filters from preset:', initialFilters)
         previousInitialFiltersRef.current = currentFiltersStr
 
-        // Extract date filters
+        // Extract date filters with safe parsing
         if (initialFilters.startDate) {
-          setStartDate(new Date(initialFilters.startDate))
+          const parsedDate = safeParseDate(initialFilters.startDate)
+          if (parsedDate) {
+            setStartDate(parsedDate)
+          } else {
+            console.warn('[FilterPanel] Invalid startDate:', initialFilters.startDate)
+          }
         }
         if (initialFilters.endDate) {
-          setEndDate(new Date(initialFilters.endDate))
+          const parsedDate = safeParseDate(initialFilters.endDate)
+          if (parsedDate) {
+            setEndDate(parsedDate)
+          } else {
+            console.warn('[FilterPanel] Invalid endDate:', initialFilters.endDate)
+          }
         }
 
         // Extract non-date filters
@@ -110,10 +135,27 @@ export function FilterPanel({
       // Only include dates if flag is set and dates are available
       if (includeDateInFilters && startDate && endDate) {
         // Use timezone-safe date formatting to avoid date shift issues
-        const formatDateToYYYYMMDD = (date: Date) => {
-          const year = date.getFullYear()
-          const month = String(date.getMonth() + 1).padStart(2, '0')
-          const day = String(date.getDate()).padStart(2, '0')
+        const formatDateToYYYYMMDD = (date: Date | string) => {
+          // Convert string to Date if needed
+          let dateObj: Date
+          if (typeof date === 'string') {
+            dateObj = new Date(date)
+          } else if (date instanceof Date) {
+            dateObj = date
+          } else {
+            console.warn('[FilterPanel] Invalid date in formatDateToYYYYMMDD:', date)
+            return '' // Return empty string for invalid dates
+          }
+
+          // Validate date before using it
+          if (isNaN(dateObj.getTime())) {
+            console.warn('[FilterPanel] Invalid date in formatDateToYYYYMMDD:', date)
+            return '' // Return empty string for invalid dates
+          }
+
+          const year = dateObj.getFullYear()
+          const month = String(dateObj.getMonth() + 1).padStart(2, '0')
+          const day = String(dateObj.getDate()).padStart(2, '0')
           return `${year}-${month}-${day}`
         }
         allFilters.startDate = formatDateToYYYYMMDD(startDate)
@@ -208,8 +250,8 @@ export function FilterPanel({
         // Fallback: calculate last 30 days if no default provided
         const today = new Date()
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-        setStartDate(() => thirtyDaysAgo.toISOString().split('T')[0])
-        setEndDate(() => today.toISOString().split('T')[0])
+        setStartDate(() => thirtyDaysAgo)
+        setEndDate(() => today)
       }
     }
 

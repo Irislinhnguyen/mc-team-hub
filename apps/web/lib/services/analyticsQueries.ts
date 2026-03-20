@@ -2000,6 +2000,13 @@ export async function getNewSalesQueries(filters: Record<string, any>) {
 
   const detailsWhereClause = detailsConditions.length > 0 ? `WHERE ${detailsConditions.join(' AND ')}` : ''
 
+  // Build JOIN date condition for salesCsSiteCounts and salesCsSiteDetails queries
+  // Only include date filter if startDate is provided
+  const monthlyJoinDateCondition = filters.startDate
+    ? `AND fs.year = EXTRACT(YEAR FROM DATE('${filters.startDate}'))
+          AND fs.month = EXTRACT(MONTH FROM DATE('${filters.startDate}'))`
+    : ''
+
   return {
     // Query 1: All new sales over time
     allNewSales: `
@@ -2131,8 +2138,7 @@ export async function getNewSalesQueries(filters: Record<string, any>) {
         FROM ${newSalesMasterTable} nsm
         LEFT JOIN ${finalSalesMonthlyTable} fs
           ON nsm.pic = fs.pic
-          AND fs.year = EXTRACT(YEAR FROM DATE('${filters.startDate}'))
-          AND fs.month = EXTRACT(MONTH FROM DATE('${filters.startDate}'))
+          ${monthlyJoinDateCondition}
         ${detailsWhereClause}
       )
       SELECT
@@ -2160,8 +2166,7 @@ export async function getNewSalesQueries(filters: Record<string, any>) {
       FROM ${newSalesMasterTable} nsm
       LEFT JOIN ${finalSalesMonthlyTable} fs
         ON nsm.pic = fs.pic
-        AND fs.year = EXTRACT(YEAR FROM DATE('${filters.startDate}'))
-        AND fs.month = EXTRACT(MONTH FROM DATE('${filters.startDate}'))
+        ${monthlyJoinDateCondition}
       ${detailsWhereClause}
       ORDER BY nsm.start_date DESC, nsm.pid
     `

@@ -19,8 +19,9 @@ import type { Database } from '../../../lib/supabase/database.types';
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get auth token from cookie (same as what middleware checks)
-    const authToken = request.cookies.get('__Host-auth_token')?.value;
+    // Get auth token from cookie (check both dev and production cookie names)
+    const authToken = request.cookies.get('auth_token')?.value ||
+                     request.cookies.get('__Host-auth_token')?.value;
 
     console.log('[GET filter-presets] Auth token present:', !!authToken);
 
@@ -111,8 +112,9 @@ export async function GET(request: NextRequest) {
  */
 async function postHandler(request: NextRequest) {
   try {
-    // Get auth token from cookie (same as what middleware checks)
-    const authToken = request.cookies.get('__Host-auth_token')?.value;
+    // Get auth token from cookie (check both dev and production cookie names)
+    const authToken = request.cookies.get('auth_token')?.value ||
+                     request.cookies.get('__Host-auth_token')?.value;
 
     console.log('[POST filter-presets] Auth token present:', !!authToken);
 
