@@ -2001,18 +2001,10 @@ export async function getNewSalesQueries(filters: Record<string, any>) {
   const detailsWhereClause = detailsConditions.length > 0 ? `WHERE ${detailsConditions.join(' AND ')}` : ''
 
   // Build JOIN date condition for salesCsSiteCounts and salesCsSiteDetails queries
-  // When startDate is provided, use that specific month
-  // When no startDate (all-time), use the most recent month available for each PIC
-  const monthlyJoinDateCondition = filters.startDate
-    ? `AND fs.year = EXTRACT(YEAR FROM DATE('${filters.startDate}'))
-          AND fs.month = EXTRACT(MONTH FROM DATE('${filters.startDate}'))`
-    : `AND (fs.year, fs.month) = (
-        SELECT year, month
-        FROM ${finalSalesMonthlyTable} fs2
-        WHERE fs2.pic = fs.pic
-        ORDER BY STRCAT(CAST(year AS STRING), '-', LPAD(CAST(month AS STRING), 2, '0')) DESC
-        LIMIT 1
-      )`
+  // When no date is provided (all-time), use current month for team lookup
+  const targetDate = filters.startDate ? new Date(filters.startDate) : new Date()
+  const monthlyJoinDateCondition = `AND fs.year = ${targetDate.getFullYear()}
+          AND fs.month = ${targetDate.getMonth() + 1}`
 
   return {
     // Query 1: All new sales over time
