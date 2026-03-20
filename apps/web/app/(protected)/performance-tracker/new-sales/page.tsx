@@ -300,12 +300,13 @@ export default function NewSalesPage() {
     const teamMap = new Map<string, { total_sales_sites: number; total_cs_sites: number }>()
 
     data.forEach(row => {
-      // Count as Sales if sales_month is in target months
-      // Count as CS if cs_month (but not sales_month) is in target months
-      const isSales = targetMonths?.has(row.sales_month)
-      const isCs = targetMonths?.has(row.cs_month)
+      // When targetMonths is undefined (all-time), include all sites
+      // Otherwise, filter by sales_month/cs_month matching target months
+      const isSales = targetMonths ? targetMonths.has(row.sales_month) : true
+      const isCs = targetMonths ? targetMonths.has(row.cs_month) : true
 
-      if (!isSales && !isCs) return  // Skip if neither month matches
+      // Skip if neither matches (when filtering by specific months)
+      if (targetMonths && !isSales && !isCs) return
 
       if (!teamMap.has(row.team)) {
         teamMap.set(row.team, { total_sales_sites: 0, total_cs_sites: 0 })
@@ -336,12 +337,13 @@ export default function NewSalesPage() {
     const picMap = new Map<string, { team: string; pic: string; total_sales_sites: number; total_cs_sites: number }>()
 
     data.forEach(row => {
-      // Count as Sales if sales_month is in target months
-      // Count as CS if cs_month (but not sales_month) is in target months
-      const isSales = targetMonths?.has(row.sales_month)
-      const isCs = targetMonths?.has(row.cs_month)
+      // When targetMonths is undefined (all-time), include all sites
+      // Otherwise, filter by sales_month/cs_month matching target months
+      const isSales = targetMonths ? targetMonths.has(row.sales_month) : true
+      const isCs = targetMonths ? targetMonths.has(row.cs_month) : true
 
-      if (!isSales && !isCs) return  // Skip if neither month matches
+      // Skip if neither matches (when filtering by specific months)
+      if (targetMonths && !isSales && !isCs) return
 
       const key = `${row.team}_${row.pic}`
       if (!picMap.has(key)) {
@@ -456,7 +458,7 @@ export default function NewSalesPage() {
   // Aggregate counts from filtered Details table (source of truth)
   // Generate target months from date range for counting logic
   const siteCountByTeamDataFromDetails = useMemo(() => {
-    // Generate target months from date range
+    // Generate target months from date range for counting logic
     const targetMonths = new Set<string>()
     if (summaryDateRange.startDate && summaryDateRange.endDate) {
       const current = new Date(summaryDateRange.startDate)
@@ -467,11 +469,12 @@ export default function NewSalesPage() {
       }
     }
 
-    return transformSiteCountByTeam(siteCountDetailsData, targetMonths)
+    // When no date range (all-time), include all sites (no month filtering)
+    return transformSiteCountByTeam(siteCountDetailsData, targetMonths.size > 0 ? targetMonths : undefined)
   }, [siteCountDetailsData, summaryDateRange.startDate, summaryDateRange.endDate])
 
   const siteCountByPicDataFromDetails = useMemo(() => {
-    // Generate target months from date range
+    // Generate target months from date range for counting logic
     const targetMonths = new Set<string>()
     if (summaryDateRange.startDate && summaryDateRange.endDate) {
       const current = new Date(summaryDateRange.startDate)
@@ -482,7 +485,8 @@ export default function NewSalesPage() {
       }
     }
 
-    return transformSiteCountByPic(siteCountDetailsData, targetMonths)
+    // When no date range (all-time), include all sites (no month filtering)
+    return transformSiteCountByPic(siteCountDetailsData, targetMonths.size > 0 ? targetMonths : undefined)
   }, [siteCountDetailsData, summaryDateRange.startDate, summaryDateRange.endDate])
 
   // Add Grand Total row to Sales-CS Breakdown Grouped data
