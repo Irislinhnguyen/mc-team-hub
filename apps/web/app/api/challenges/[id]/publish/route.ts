@@ -34,6 +34,15 @@ export async function POST(
     const challengeId = params.id
     const supabase = createAdminClient()
 
+    // Get user's UUID from database (JWT uses email as sub, but DB needs UUID)
+    const { data: userData } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', user.sub)
+      .single()
+
+    const userUuid = userData?.id
+
     // Get challenge
     const { data: challenge } = await supabase
       .from('challenges')
@@ -84,8 +93,8 @@ export async function POST(
         .update({
           status: 'completed',
           leaderboard_published_at: now,
-          leaderboard_published_by: user.sub,
-          updated_by: user.sub,
+          leaderboard_published_by: userUuid,
+          updated_by: userUuid,
           updated_at: now,
         })
         .eq('id', challengeId)
@@ -133,7 +142,7 @@ export async function POST(
           status: 'grading',
           leaderboard_published_at: null,
           leaderboard_published_by: null,
-          updated_by: user.sub,
+          updated_by: userUuid,
           updated_at: now,
         })
         .eq('id', challengeId)
