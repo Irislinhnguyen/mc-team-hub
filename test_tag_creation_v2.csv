@@ -1,0 +1,6 @@
+zoneId,zoneName,mediaId,mediaName,publisherId,floorType,softFloorCoefficient*,hardFloorCoefficient*,availableDomainCheck*,availableDomainList*,updateFlag*
+1612625,reward_0.40_6752558926_app_pack1,225144,"Example App",35873,1,0.0000,1.0000,0,-,0
+1612626,reward_0.12_6752558926_app_pack1,225144,"Example App",35873,1,0.0000,1.0000,0,-,0
+1612627,reward_0.67_6752558926_app_pack1,225144,"Example App",35873,1,0.0000,1.0000,0,-,0
+1612628,interstitial_0.85_6752558926_app_pack2,225144,"Example App",35873,1,0.0000,1.0000,0,-,0
+1612629,interstitial_0.90_6752558926_app_pack2,225144,"Example App",35873,1,0.0000,1.0000,0,-,0
