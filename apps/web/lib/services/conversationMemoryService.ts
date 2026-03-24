@@ -262,7 +262,7 @@ class ConversationMemoryService {
 
     try {
       // Import the full system prompt for comprehensive context
-      const { SYSTEM_PROMPT } = await import('../../../../lib/services/aiSqlGenerator')
+      const { SYSTEM_PROMPT } = await import('./aiSqlGenerator')
 
       // Extract schema and rules (everything before YOUR TASK section)
       const promptParts = SYSTEM_PROMPT?.split('YOUR TASK:') || []
