@@ -66,10 +66,17 @@ export default function AdminChallengesPage() {
   });
 
   useEffect(() => {
-    if (!['admin', 'manager'].includes(user?.role || '')) {
+    // Don't fetch if user isn't loaded yet
+    if (!user) {
+      return;
+    }
+
+    // Check role and redirect if needed
+    if (!['admin', 'manager'].includes(user.role)) {
       router.push('/challenges');
       return;
     }
+
     fetchChallenges();
   }, [user]);
 
@@ -78,9 +85,17 @@ export default function AdminChallengesPage() {
       const res = await fetch('/api/challenges?status=draft,scheduled,open,closed,grading,completed');
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
-      setChallenges(data.challenges || []);
+
+      // Only update if we got valid data
+      if (data.challenges) {
+        setChallenges(data.challenges);
+      } else {
+        console.error('[Admin Challenges] No challenges data in response');
+        setChallenges([]);
+      }
     } catch (err) {
-      console.error(err);
+      console.error('[Admin Challenges] Fetch error:', err);
+      // Don't set empty array on error - keep previous state or show error
       setChallenges([]);
     } finally {
       setLoading(false);
