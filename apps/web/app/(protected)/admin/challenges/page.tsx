@@ -188,8 +188,24 @@ export default function AdminChallengesPage() {
     return <Badge className={colors[status] || 'bg-gray-100 text-gray-700'}>{status}</Badge>;
   };
 
+  const isEditable = (status: string) => {
+    return ['draft', 'scheduled'].includes(status);
+  };
+
+  // Format date properly for local timezone display
+  // HTML5 datetime-local returns ISO format without timezone (e.g., "2025-01-15T14:30")
+  // We treat this as local time and display it as such
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
+    // Parse the ISO string and preserve local time
+    // The input format is "YYYY-MM-DDTHH:mm:ss" which we treat as local time
+    const [datePart, timePart] = dateStr.split('T')
+    const [year, month, day] = datePart.split('-').map(Number)
+    const [hour, minute] = timePart ? timePart.split(':').map(Number) : [0, 0]
+
+    // Create date using local time components
+    const date = new Date(year, month - 1, day, hour, minute)
+
+    return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -212,73 +228,93 @@ export default function AdminChallengesPage() {
 
       <Card className="border-gray-200">
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-gray-50">
-                <TableHead>Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Open Date</TableHead>
-                <TableHead>Close Date</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Questions</TableHead>
-                <TableHead>Submissions</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {challenges.map((challenge) => (
-                <TableRow key={challenge.id}>
-                  <TableCell className="font-medium">{challenge.name}</TableCell>
-                  <TableCell>{getStatusBadge(challenge.status)}</TableCell>
-                  <TableCell>{formatDate(challenge.open_date)}</TableCell>
-                  <TableCell>{formatDate(challenge.close_date)}</TableCell>
-                  <TableCell>{challenge.duration_minutes} min</TableCell>
-                  <TableCell>{challenge.question_count || 0}</TableCell>
-                  <TableCell>{challenge.submission_count || 0}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => router.push(`/admin/challenges/${challenge.id}`)}
-                      >
-                        <Settings className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => router.push(`/challenges/${challenge.id}/leaderboard`)}
-                      >
-                        <Trophy className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEditDialog(challenge)}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(challenge.id)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-pulse text-gray-500">Loading challenges...</div>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead>Name</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Open Date</TableHead>
+                  <TableHead>Close Date</TableHead>
+                  <TableHead>Duration</TableHead>
+                  <TableHead>Questions</TableHead>
+                  <TableHead>Submissions</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-              {challenges.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                    No challenges yet. Create your first challenge!
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {challenges.map((challenge) => (
+                  <TableRow key={challenge.id}>
+                    <TableCell className="font-medium">{challenge.name}</TableCell>
+                    <TableCell>{getStatusBadge(challenge.status)}</TableCell>
+                    <TableCell>{formatDate(challenge.open_date)}</TableCell>
+                    <TableCell>{formatDate(challenge.close_date)}</TableCell>
+                    <TableCell>{challenge.duration_minutes} min</TableCell>
+                    <TableCell>{challenge.question_count || 0}</TableCell>
+                    <TableCell>{challenge.submission_count || 0}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => router.push(`/admin/challenges/${challenge.id}`)}
+                        >
+                          <Settings className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => router.push(`/challenges/${challenge.id}/leaderboard`)}
+                        >
+                          <Trophy className="w-4 h-4" />
+                        </Button>
+                        {isEditable(challenge.status) ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEditDialog(challenge)}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled
+                            title="Cannot edit - challenge is already open"
+                            className="opacity-50 cursor-not-allowed"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {isEditable(challenge.status) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(challenge.id)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {challenges.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                      No challenges yet. Create your first challenge!
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 

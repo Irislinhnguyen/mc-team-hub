@@ -176,6 +176,15 @@ export async function PUT(
 
     const data = validationResult.data
 
+    // Status transition protection: cannot edit challenges that are open or later
+    // Only draft and scheduled challenges can be modified
+    if (existingChallenge.status && ['open', 'closed', 'grading', 'completed'].includes(existingChallenge.status)) {
+      return NextResponse.json({
+        error: 'Cannot edit challenge',
+        details: { status: [`Challenge with status "${existingChallenge.status}" cannot be modified. Only draft and scheduled challenges can be edited.`] },
+      }, { status: 400 })
+    }
+
     // Validate dates if both provided
     if (data.open_date && data.close_date) {
       const openDate = new Date(data.open_date)
