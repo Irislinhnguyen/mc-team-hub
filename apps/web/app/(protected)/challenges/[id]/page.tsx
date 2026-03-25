@@ -24,15 +24,7 @@ import { DragDropQuestion } from '@/components/challenges/DragDropQuestion';
 
 const AUTO_SAVE_INTERVAL = 15000; // Auto-save every 15 seconds
 
-// Parse date string from database in local timezone
-// HTML5 datetime-local returns ISO format without timezone (e.g., "2025-01-15T14:30:00")
-const parseLocalDate = (dateStr: string) => {
-  const [datePart, timePart] = dateStr.split('T')
-  const [year, month, day] = datePart.split('-').map(Number)
-  const [hour, minute, second = 0] = timePart ? timePart.split(':').map(Number) : [0, 0, 0]
-  return new Date(year, month - 1, day, hour, minute, second)
-};
-
+// Dates are stored in UTC, JavaScript Date automatically converts to local time
 export default function TakeChallengePage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -133,8 +125,8 @@ export default function TakeChallengePage() {
       }
 
       const now = new Date();
-      const openDate = parseLocalDate(challenge.open_date);
-      const closeDate = parseLocalDate(challenge.close_date);
+      const openDate = new Date(challenge.open_date);
+      const closeDate = new Date(challenge.close_date);
 
       if (now < openDate) {
         setError(`This challenge opens on ${openDate.toLocaleString()}`);

@@ -14,6 +14,31 @@ import type {
 import { z } from 'zod'
 
 // =====================================================
+// Timezone Helpers
+// =====================================================
+
+/**
+ * Convert datetime-local input (user's local time) to UTC ISO string for storage
+ * HTML5 datetime-local returns "2025-03-25T14:30" which is in user's local timezone
+ * We convert to UTC for consistent database storage
+ *
+ * Input: "2025-03-25T14:30" (user's local time, e.g., Vietnam GMT+7)
+ * Output: "2025-03-25T07:30:00.000Z" (UTC equivalent)
+ */
+function toUTCISO(localDatetime: string): string {
+  // datetime-local format: "YYYY-MM-DDTHH:mm" or "YYYY-MM-DDTHH:mm:ss"
+  const [datePart, timePart = '00:00'] = localDatetime.split('T')
+  const [year, month, day] = datePart.split('-').map(Number)
+  const [hour, minute, second = 0] = timePart.split(':').map(Number)
+
+  // Create date object treating the input as local time
+  const localDate = new Date(year, month - 1, day, hour, minute, second)
+
+  // Return UTC ISO string
+  return localDate.toISOString()
+}
+
+// =====================================================
 // Validation Schema
 // =====================================================
 
@@ -158,9 +183,13 @@ export async function POST(request: NextRequest) {
 
     const data = validationResult.data
 
-    // Validate dates
-    const openDate = new Date(data.open_date)
-    const closeDate = new Date(data.close_date)
+    // Convert datetime-local input to UTC for storage
+    const openDateUTC = toUTCISO(data.open_date)
+    const closeDateUTC = toUTCISO(data.close_date)
+
+    // Validate dates (using UTC for comparison)
+    const openDate = new Date(openDateUTC)
+    const closeDate = new Date(closeDateUTC)
     if (closeDate <= openDate) {
       return NextResponse.json({
         error: 'Validation failed',
@@ -170,14 +199,14 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient()
 
-    // Create challenge
+    // Create challenge (store dates in UTC)
     const { data: challenge, error } = await supabase
       .from('challenges')
       .insert({
         name: data.name,
         description: data.description || null,
-        open_date: data.open_date,
-        close_date: data.close_date,
+        open_date: openDateUTC,
+        close_date: closeDateUTC,
         duration_minutes: data.duration_minutes,
         max_attempts: data.max_attempts,
         status: 'draft',

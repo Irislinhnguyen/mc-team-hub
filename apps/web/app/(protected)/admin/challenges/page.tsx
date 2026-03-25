@@ -168,8 +168,8 @@ export default function AdminChallengesPage() {
     setFormData({
       name: challenge.name,
       description: challenge.description || '',
-      open_date: challenge.open_date.slice(0, 16),
-      close_date: challenge.close_date.slice(0, 16),
+      open_date: toDatetimeLocal(challenge.open_date),
+      close_date: toDatetimeLocal(challenge.close_date),
       duration_minutes: challenge.duration_minutes,
       max_attempts: challenge.max_attempts,
       status: challenge.status,
@@ -192,25 +192,29 @@ export default function AdminChallengesPage() {
     return ['draft', 'scheduled'].includes(status);
   };
 
-  // Format date properly for local timezone display
-  // HTML5 datetime-local returns ISO format without timezone (e.g., "2025-01-15T14:30")
-  // We treat this as local time and display it as such
+  // Format UTC date for local timezone display
+  // Dates are stored in UTC (e.g., "2025-01-15T14:30:00.000Z")
+  // JavaScript Date automatically converts UTC to local time for display
   const formatDate = (dateStr: string) => {
-    // Parse the ISO string and preserve local time
-    // The input format is "YYYY-MM-DDTHH:mm:ss" which we treat as local time
-    const [datePart, timePart] = dateStr.split('T')
-    const [year, month, day] = datePart.split('-').map(Number)
-    const [hour, minute] = timePart ? timePart.split(':').map(Number) : [0, 0]
-
-    // Create date using local time components
-    const date = new Date(year, month - 1, day, hour, minute)
-
+    const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  // Convert UTC date string to datetime-local input format (local time)
+  const toDatetimeLocal = (dateStr: string) => {
+    const date = new Date(dateStr);
+    // Get local date components and format as "YYYY-MM-DDTHH:mm"
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
   return (

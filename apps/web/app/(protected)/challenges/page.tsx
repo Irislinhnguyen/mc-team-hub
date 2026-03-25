@@ -98,26 +98,18 @@ export default function ChallengesPage() {
     }
   };
 
-  // Parse date string from database in local timezone
-  // HTML5 datetime-local returns ISO format without timezone (e.g., "2025-01-15T14:30:00")
-  const parseLocalDate = (dateStr: string) => {
-    const [datePart, timePart] = dateStr.split('T')
-    const [year, month, day] = datePart.split('-').map(Number)
-    const [hour, minute, second = 0] = timePart ? timePart.split(':').map(Number) : [0, 0, 0]
-    return new Date(year, month - 1, day, hour, minute, second)
-  };
-
+  // Dates are stored in UTC, JavaScript Date automatically converts to local time
   const canTakeChallenge = (challenge: Challenge): boolean => {
     const now = new Date();
-    const openDate = parseLocalDate(challenge.open_date);
-    const closeDate = parseLocalDate(challenge.close_date);
+    const openDate = new Date(challenge.open_date);
+    const closeDate = new Date(challenge.close_date);
     const attempts = myAttempts.get(challenge.id) || 0;
 
     return now >= openDate && now <= closeDate && attempts < challenge.max_attempts;
   };
 
   const formatDate = (dateStr: string) => {
-    const date = parseLocalDate(dateStr);
+    const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',

@@ -14,6 +14,21 @@ import type {
 import { z } from 'zod'
 
 // =====================================================
+// Timezone Helpers
+// =====================================================
+
+/**
+ * Convert datetime-local input (user's local time) to UTC ISO string for storage
+ */
+function toUTCISO(localDatetime: string): string {
+  const [datePart, timePart = '00:00'] = localDatetime.split('T')
+  const [year, month, day] = datePart.split('-').map(Number)
+  const [hour, minute, second = 0] = timePart.split(':').map(Number)
+  const localDate = new Date(year, month - 1, day, hour, minute, second)
+  return localDate.toISOString()
+}
+
+// =====================================================
 // Validation Schema
 // =====================================================
 
@@ -183,6 +198,34 @@ export async function PUT(
         error: 'Cannot edit challenge',
         details: { status: [`Challenge with status "${existingChallenge.status}" cannot be modified. Only draft and scheduled challenges can be edited.`] },
       }, { status: 400 })
+    }
+
+    // Additional status transition protection: prevent reverting to earlier statuses
+    if (data.status && existingChallenge.status) {
+      const allowedTransitions: Record<string, string[]> = {
+        'draft': ['scheduled', 'open'],
+        'scheduled': ['open', 'draft'],
+        'open': ['closed'],
+        'closed': ['grading'],
+        'grading': ['completed'],
+        'completed': [] // Terminal state
+      }
+
+      const allowed = allowedTransitions[existingChallenge.status] || []
+      if (!allowed.includes(data.status)) {
+        return NextResponse.json({
+          error: 'Invalid status transition',
+          details: { status: [`Cannot change status from "${existingChallenge.status}" to "${data.status}". Allowed: ${allowed.join(', ') || 'none'}`] },
+        }, { status: 400 })
+      }
+    }
+
+    // Validate and convert dates if provided
+    if (data.open_date) {
+      data.open_date = toUTCISO(data.open_date)
+    }
+    if (data.close_date) {
+      data.close_date = toUTCISO(data.close_date)
     }
 
     // Validate dates if both provided
