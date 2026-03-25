@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@query-stream-ai/auth/server'
-import { dismissNotification } from '@/lib/services/notificationService'
+import { createAdminClient } from '@query-stream-ai/db/admin'
 
 export async function DELETE(
   request: NextRequest,
@@ -26,9 +26,29 @@ export async function DELETE(
       )
     }
 
-    const success = await dismissNotification(notificationId, user.sub)
+    const supabase = createAdminClient()
 
-    if (!success) {
+    // Get user's UUID from database (JWT uses email as sub, but DB needs UUID)
+    const { data: userData } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', user.sub)
+      .single()
+
+    const userUuid = userData?.id
+    if (!userUuid) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    // Dismiss and ensure it belongs to the user
+    const { error } = await supabase
+      .from('notifications')
+      .update({ dismissed_at: new Date().toISOString() })
+      .eq('id', notificationId)
+      .eq('user_id', userUuid)
+
+    if (error) {
+      console.error('[Notification API] Error dismissing notification:', error)
       return NextResponse.json(
         { error: 'Failed to dismiss notification' },
         { status: 500 }

@@ -15,19 +15,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const supabase = createAdminClient()
+
+    // Get user's UUID from database (JWT uses email as sub, but DB needs UUID)
+    const { data: userData } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', user.sub)
+      .single()
+
+    const userUuid = userData?.id
+    if (!userUuid) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
     // Parse query parameters
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1', 10)
     const limit = parseInt(searchParams.get('limit') || '20', 10)
     const offset = (page - 1) * limit
 
-    const supabase = createAdminClient()
-
     // Fetch notifications (not dismissed, ordered by created_at DESC)
     const { data: notifications, error, count } = await supabase
       .from('notifications')
       .select('*', { count: 'exact' })
-      .eq('user_id', user.sub)
+      .eq('user_id', userUuid)
       .is('dismissed_at', null)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)

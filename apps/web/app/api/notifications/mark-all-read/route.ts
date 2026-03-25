@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@query-stream-ai/auth/server'
-import { markAllAsRead } from '@/lib/services/notificationService'
+import { createAdminClient } from '@query-stream-ai/db/admin'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +14,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const count = await markAllAsRead(user.sub)
+    const supabase = createAdminClient()
+
+    // Get user's UUID from database (JWT uses email as sub, but DB needs UUID)
+    const { data: userData } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', user.sub)
+      .single()
+
+    const userUuid = userData?.id
+    if (!userUuid) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    // Mark all as read
+    const { data, error } = await supabase
+      .from('notifications')
+      .update({ read_at: new Date().toISOString() })
+      .eq('user_id', userUuid)
+      .is('read_at', null)
+      .select('id')
+
+    if (error) {
+      console.error('[Notifications API] Error marking all as read:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    const count = data?.length || 0
 
     return NextResponse.json({
       status: 'ok',

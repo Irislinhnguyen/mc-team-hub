@@ -15,7 +15,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const count = await getUnreadCount(user.sub)
+    const supabase = createAdminClient()
+
+    // Get user's UUID from database (JWT uses email as sub, but DB needs UUID)
+    const { data: userData } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', user.sub)
+      .single()
+
+    const userUuid = userData?.id
+    if (!userUuid) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    const count = await getUnreadCount(userUuid)
 
     return NextResponse.json({
       status: 'ok',
