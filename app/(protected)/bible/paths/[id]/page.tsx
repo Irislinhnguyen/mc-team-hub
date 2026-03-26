@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import type { Path, PathArticle } from '@/lib/types/bible'
+import { useAuth } from '@/app/contexts/AuthContext'
 import {
   ArrowLeft,
   BookOpen,
@@ -24,10 +25,17 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import { SlideViewer } from '@/components/bible/SlideViewer'
+import { ArticleSearch } from '@/components/bible/ArticleSearch'
+import { ArticleTOC } from '@/components/bible/ArticleTOC'
+import { Certificate } from '@/components/bible/Certificate'
+import { Quiz } from '@/components/bible/Quiz'
+import { bible } from '@/lib/design-tokens'
 
 export default function PathDetailPage() {
   const router = useRouter()
   const params = useParams()
+  const { user } = useAuth()
   const pathId = params.id as string
 
   const [path, setPath] = useState<Path | null>(null)
@@ -66,9 +74,9 @@ export default function PathDetailPage() {
           setCurrentArticleIndex(firstIncompleteIndex >= 0 ? firstIncompleteIndex : 0)
         }
 
-        // For now, set canManage to true
-        // In production, check user permissions
-        setCanManage(true)
+        // Check if user has permission to manage this path (admin/manager/leader)
+        const canManagePath = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'leader'
+        setCanManage(canManagePath)
       } catch (err: any) {
         console.error('Error loading path:', err)
         setError(err.message || 'Failed to load path')
@@ -78,7 +86,7 @@ export default function PathDetailPage() {
     }
 
     loadData()
-  }, [pathId])
+  }, [pathId, user])
 
   const handleToggleComplete = async (articleId: string, isCompleted: boolean) => {
     try {
@@ -120,11 +128,21 @@ export default function PathDetailPage() {
 
   const currentArticle = path?.articles?.[currentArticleIndex ?? -1]
 
+  // Group articles by section
+  const groupedArticles = path?.articles?.reduce((acc, pa) => {
+    const section = pa.section || null
+    if (!acc[section]) {
+      acc[section] = []
+    }
+    acc[section].push(pa)
+    return acc
+  }, {} as Record<string | null, typeof path.articles>) || {}
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
+      <div className={`flex items-center justify-center ${bible.sizes.loadingMinHeight}`}>
         <div className="text-center">
-          <BookOpen className="h-12 w-12 mx-auto mb-4 animate-pulse text-muted-foreground" />
+          <BookOpen className={`${bible.iconSizes.xl} mx-auto mb-4 animate-pulse text-muted-foreground`} />
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
@@ -133,13 +151,13 @@ export default function PathDetailPage() {
 
   if (error || !path) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
+      <div className={`flex items-center justify-center ${bible.sizes.loadingMinHeight}`}>
         <div className="text-center">
-          <BookOpen className="h-12 w-12 mx-auto mb-4 text-destructive" />
-          <h3 className="text-lg font-semibold mb-2">Error</h3>
+          <BookOpen className={`${bible.iconSizes.xl} mx-auto mb-4 text-destructive`} />
+          <h3 className={`${bible.typography.quizTitle} font-semibold mb-2`}>Error</h3>
           <p className="text-muted-foreground mb-4">{error || 'Path not found'}</p>
           <Button variant="outline" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className={`${bible.iconSizes.sm} mr-2`} />
             Go Back
           </Button>
         </div>
@@ -152,23 +170,23 @@ export default function PathDetailPage() {
   return (
     <div className="flex flex-col lg:flex-row min-h-[calc(100vh-4rem)]">
       {/* Sidebar - Article List */}
-      <div className="w-full lg:w-80 border-r bg-muted/30 lg:min-h-[calc(100vh-4rem)]">
+      <div className={`w-full lg:w-80 border-r bg-muted/30 ${bible.sizes.scrollAreaShort}`}>
         {/* Path Header */}
-        <div className="p-6 border-b">
+        <div className={`${bible.spacing.cardPaddingLoose} border-b`}>
           <Button
             variant="ghost"
             size="sm"
             className="mb-4 -ml-2"
             onClick={() => router.push('/bible')}
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className={`${bible.iconSizes.sm} mr-2`} />
             Back to Paths
           </Button>
 
           {path.icon && <div className="text-4xl mb-2">{path.icon}</div>}
           <h1 className="text-2xl font-bold line-clamp-1">{path.title}</h1>
           {path.description && (
-            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+            <p className={`${bible.typography.buttonText} text-muted-foreground mt-1 line-clamp-2`}>
               {path.description}
             </p>
           )}
@@ -176,64 +194,81 @@ export default function PathDetailPage() {
           {/* Progress */}
           {hasArticles && (
             <div className="mt-4">
-              <div className="flex items-center justify-between text-sm mb-2">
+              <div className={`flex items-center justify-between ${bible.typography.buttonText} mb-2`}>
                 <span className="text-muted-foreground">Your Progress</span>
                 <span className="font-medium">
                   {path.completed_count || 0} / {path.article_count}
                 </span>
               </div>
               <Progress value={path.progress_percentage || 0} />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className={`${bible.typography.badgeText} text-muted-foreground mt-1`}>
                 {path.progress_percentage}% complete
               </p>
             </div>
           )}
+
+          {/* Certificate */}
+          <Certificate
+            pathId={pathId}
+            pathTitle={path.title}
+            isCompleted={(path.progress_percentage || 0) === 100}
+          />
         </div>
 
         {/* Article List */}
         {hasArticles ? (
-          <ScrollArea className="flex-1 h-[calc(100vh-20rem)]">
-            <div className="p-4 space-y-1">
-              {path.articles.map((pa, index) => {
-                const isCompleted = (pa.article as any)?.is_completed
-                const isActive = index === currentArticleIndex
-
-                return (
-                  <button
-                    key={pa.id}
-                    onClick={() => setCurrentArticleIndex(index)}
-                    className={`w-full text-left p-3 rounded-lg transition-colors ${
-                      isActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'hover:bg-accent'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 mt-0.5">
-                        {isCompleted ? (
-                          <CheckCircle2 className={`h-5 w-5 ${isActive ? 'text-primary-foreground' : 'text-green-500'}`} />
-                        ) : (
-                          <Circle className={`h-5 w-5 ${isActive ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium line-clamp-2 ${isActive ? 'text-primary-foreground' : ''}`}>
-                          {index + 1}. {pa.article?.title}
-                        </p>
-                        {pa.is_required && (
-                          <Badge variant="secondary" className="mt-1 text-xs">
-                            Required
-                          </Badge>
-                        )}
-                      </div>
+          <ScrollArea className={`flex-1 ${bible.sizes.scrollArea}`}>
+            <div className={`${bible.spacing.cardPadding} ${bible.spacing.sectionGap}`}>
+              {Object.entries(groupedArticles).map(([section, articles]) => (
+                <div key={section || 'default'} className={bible.spacing.itemGap}>
+                  {section && (
+                    <div className={`${bible.typography.badgeText} font-semibold text-muted-foreground uppercase tracking-wide`}>
+                      {section}
                     </div>
-                  </button>
-                )
-              })}
+                  )}
+                  {articles.map((pa) => {
+                    const overallIndex = path.articles!.findIndex(a => a.id === pa.id)
+                    const isCompleted = (pa.article as any)?.is_completed
+                    const isActive = overallIndex === currentArticleIndex
+
+                    return (
+                      <button
+                        key={pa.id}
+                        onClick={() => setCurrentArticleIndex(overallIndex)}
+                        className={`w-full text-left ${bible.spacing.cardPaddingCompact} rounded-lg transition-colors ${
+                          isActive
+                            ? 'bg-primary text-primary-foreground'
+                            : 'hover:bg-accent'
+                        }`}
+                      >
+                        <div className={`flex items-start ${bible.spacing.listGap}`}>
+                          <div className="flex-shrink-0 mt-0.5">
+                            {isCompleted ? (
+                              <CheckCircle2 className={`${bible.iconSizes.md} ${isActive ? 'text-primary-foreground' : 'text-green-500'}`} />
+                            ) : (
+                              <Circle className={`${bible.iconSizes.md} ${isActive ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`${bible.typography.buttonText} font-medium line-clamp-2 ${isActive ? 'text-primary-foreground' : ''}`}>
+                              {overallIndex + 1}. {pa.article?.title}
+                            </p>
+                            {pa.is_required && (
+                              <Badge variant="secondary" className={`mt-1 ${bible.typography.badgeText}`}>
+                                Required
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              ))}
             </div>
           </ScrollArea>
         ) : (
-          <div className="p-6 text-center text-muted-foreground text-sm">
+          <div className={`${bible.spacing.cardPaddingLoose} text-center text-muted-foreground ${bible.typography.buttonText}`}>
             No articles in this path yet
           </div>
         )}
@@ -307,13 +342,64 @@ export default function PathDetailPage() {
 
                 <Separator className="mb-8" />
 
+                {/* Article Search */}
+                <div className="mb-8">
+                  <ArticleSearch
+                    pathId={pathId}
+                    onResultClick={(articleId) => {
+                      // Find the article in the current path and navigate to it
+                      const articleIndex = path.articles?.findIndex(
+                        (pa) => pa.article_id === articleId
+                      )
+                      if (articleIndex !== undefined && articleIndex >= 0) {
+                        setCurrentArticleIndex(articleIndex)
+                      }
+                    }}
+                  />
+                </div>
+
+                {/* Table of Contents - for long articles with headings */}
+                {currentArticle.article?.content && (
+                  <div className="mb-8 hidden lg:block">
+                    <ArticleTOC content={currentArticle.article.content} />
+                  </div>
+                )}
+
+                <Separator className="mb-8" />
+
+                {/* Slide Deck Viewer */}
+                {currentArticle.article?.content_type === 'slides' && currentArticle.article?.slide_deck_url && (
+                  <div className="mb-8">
+                    <SlideViewer
+                      slideUrl={currentArticle.article.slide_deck_url}
+                      title={currentArticle.article.title}
+                    />
+                  </div>
+                )}
+
                 {/* Article Body */}
-                <div
-                  className="prose prose-slate max-w-none"
-                  dangerouslySetInnerHTML={{
-                    __html: currentArticle.article?.content || '',
-                  }}
-                />
+                {currentArticle.article?.content_type !== 'slides' && (
+                  <div
+                    className="prose prose-slate max-w-none"
+                    dangerouslySetInnerHTML={{
+                      __html: currentArticle.article?.content || '',
+                    }}
+                  />
+                )}
+
+                {/* Quiz */}
+                {currentArticle.article?.quiz_data && currentArticle.article.quiz_data.length > 0 && (
+                  <div className="mt-8">
+                    <Quiz
+                      articleId={currentArticle.article_id}
+                      questions={currentArticle.article.quiz_data}
+                      onComplete={(score, total) => {
+                        console.log(`Quiz completed: ${score}/${total}`)
+                        // Optional: Track quiz completion
+                      }}
+                    />
+                  </div>
+                )}
 
                 {/* Video/File Attachments */}
                 {currentArticle.article?.video_url && (
