@@ -8,6 +8,7 @@
 import { useState, useCallback } from 'react'
 import { Play, Volume2, VolumeX, Maximize, Minimize } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { bible } from '@/lib/design-tokens'
 
 interface VideoEmbedProps {
   url: string
@@ -110,8 +111,8 @@ export function VideoEmbed({
 
   if (!embedUrl) {
     return (
-      <div className={`flex items-center justify-center bg-muted rounded-lg p-8 ${className}`}>
-        <p className="text-muted-foreground text-sm">
+      <div className={`flex items-center justify-center bg-muted rounded-lg ${bible.spacing.cardPaddingLoose} ${className}`}>
+        <p className={`${bible.typography.buttonText} text-muted-foreground`}>
           Unsupported video URL: {url}
         </p>
       </div>
@@ -120,8 +121,8 @@ export function VideoEmbed({
 
   if (error) {
     return (
-      <div className={`flex items-center justify-center bg-muted rounded-lg p-8 ${className}`}>
-        <p className="text-destructive text-sm">{error}</p>
+      <div className={`flex items-center justify-center bg-muted rounded-lg ${bible.spacing.cardPaddingLoose} ${className}`}>
+        <p className={`${bible.typography.buttonText} text-destructive`}>{error}</p>
       </div>
     )
   }
@@ -149,7 +150,7 @@ export function VideoEmbed({
   // YouTube embed
   if (getYouTubeId(url)) {
     return (
-      <div className={`relative ${isFullscreen ? 'fixed inset-0 z-50 bg-black' : 'aspect-video'} ${className}`}>
+      <div className={`relative ${isFullscreen ? 'fixed inset-0 z-50 bg-black' : bible.sizes.videoAspect} ${className}`}>
         <iframe
           src={`${embedUrl}${autoplayParam}${mutedParam}`}
           title={title}
@@ -166,7 +167,7 @@ export function VideoEmbed({
             className="absolute top-4 right-4 z-10 text-white bg-black/50 hover:bg-black/70"
             onClick={toggleFullscreen}
           >
-            <Minimize className="h-5 w-5" />
+            <Minimize className={bible.iconSizes.md} />
           </Button>
         )}
       </div>
@@ -176,7 +177,7 @@ export function VideoEmbed({
   // Vimeo embed
   if (getVimeoId(url)) {
     return (
-      <div className={`relative ${isFullscreen ? 'fixed inset-0 z-50 bg-black' : 'aspect-video'} ${className}`}>
+      <div className={`relative ${isFullscreen ? 'fixed inset-0 z-50 bg-black' : bible.sizes.videoAspect} ${className}`}>
         <iframe
           src={`${embedUrl}?title=0&byline=0&portrait=0${autoplayParam}`}
           title={title}
@@ -193,7 +194,7 @@ export function VideoEmbed({
             className="absolute top-4 right-4 z-10 text-white bg-black/50 hover:bg-black/70"
             onClick={toggleFullscreen}
           >
-            <Minimize className="h-5 w-5" />
+            <Minimize className={bible.iconSizes.md} />
           </Button>
         )}
       </div>
@@ -203,7 +204,7 @@ export function VideoEmbed({
   // Loom embed (iframe)
   if (isLoomUrl(url)) {
     return (
-      <div className={`relative ${isFullscreen ? 'fixed inset-0 z-50 bg-black' : 'aspect-video'} ${className}`}>
+      <div className={`relative ${isFullscreen ? 'fixed inset-0 z-50 bg-black' : bible.sizes.videoAspect} ${className}`}>
         <iframe
           src={`${embedUrl}`}
           title={title}
@@ -219,7 +220,7 @@ export function VideoEmbed({
             className="absolute top-4 right-4 z-10 text-white bg-black/50 hover:bg-black/70"
             onClick={toggleFullscreen}
           >
-            <Minimize className="h-5 w-5" />
+            <Minimize className={bible.iconSizes.md} />
           </Button>
         )}
       </div>
