@@ -27,6 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { bible } from '@/lib/design-tokens'
 
 interface FileAttachmentProps {
   url: string
@@ -175,16 +176,16 @@ export function FileAttachment({
   return (
     <>
       <div
-        className={`flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors ${className}`}
+        className={`flex items-center ${bible.spacing.listGap} ${bible.spacing.cardPaddingCompact} rounded-lg border bg-card ${bible.states.hover} transition-colors ${className}`}
       >
         <div className="flex-shrink-0">
-          <FileIcon className="h-8 w-8 text-muted-foreground" />
+          <FileIcon className={`${bible.iconSizes.lg} text-muted-foreground`} />
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{fileName}</p>
+          <p className={`${bible.typography.buttonText} font-medium truncate`}>{fileName}</p>
           {fileSize && (
-            <p className="text-xs text-muted-foreground">{formatFileSize(fileSize)}</p>
+            <p className={bible.typography.badgeText}>{formatFileSize(fileSize)}</p>
           )}
         </div>
 
@@ -195,7 +196,7 @@ export function FileAttachment({
               size="sm"
               onClick={handlePreview}
             >
-              <ExternalLink className="h-4 w-4 mr-1" />
+              <ExternalLink className={`${bible.iconSizes.sm} mr-1`} />
               Preview
             </Button>
           )}
@@ -204,7 +205,7 @@ export function FileAttachment({
             size="sm"
             onClick={handleDownload}
           >
-            <Download className="h-4 w-4 mr-1" />
+            <Download className={`${bible.iconSizes.sm} mr-1`} />
             Download
           </Button>
         </div>
@@ -213,7 +214,7 @@ export function FileAttachment({
       {/* Preview Dialog */}
       {canPreview && (
         <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+          <DialogContent className="max-w-4xl ${bible.sizes.dialogMax} overflow-hidden">
             <DialogHeader>
               <DialogTitle>{fileName}</DialogTitle>
               <DialogDescription>
@@ -221,10 +222,10 @@ export function FileAttachment({
               </DialogDescription>
             </DialogHeader>
 
-            <div className="flex-1 overflow-auto flex items-center justify-center min-h-[400px]">
+            <div className="flex-1 overflow-auto flex items-center justify-center ${bible.sizes.dialogContent}">
               {previewError ? (
                 <div className="text-center text-muted-foreground">
-                  <FileIcon className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                  <FileIcon className={`${bible.iconSizes.xxl} mx-auto mb-4 opacity-50`} />
                   <p>Preview not available</p>
                   <Button
                     variant="outline"
