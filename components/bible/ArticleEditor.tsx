@@ -10,6 +10,7 @@ import { useCallback, useState, useRef } from 'react'
 import { getTinyMCEConfig, sanitizeHtml } from '@/lib/tinymce/config'
 import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
+import { bible } from '@/lib/design-tokens'
 
 interface ArticleEditorProps {
   value: string
@@ -66,9 +67,9 @@ export function ArticleEditor({
     <div className="relative">
       {isLoading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50">
-          <div className="flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Uploading image...</span>
+          <div className={`flex items-center ${bible.spacing.buttonGap}`}>
+            <Loader2 className={`${bible.iconSizes.sm} animate-spin`} />
+            <span className={bible.typography.buttonText}>Uploading image...</span>
           </div>
         </div>
       )}
