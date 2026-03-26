@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Path } from '@/lib/types/bible'
 import { getBiblePermissions } from '@/lib/types/bible'
+import { useAuth } from '@/app/contexts/AuthContext'
 import {
   BookOpen,
   Search,
@@ -23,14 +24,15 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { bible } from '@/lib/design-tokens'
 
 export default function BiblePage() {
   const router = useRouter()
+  const { user } = useAuth()
   const [paths, setPaths] = useState<Path[]>([])
   const [filteredPaths, setFilteredPaths] = useState<Path[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [userRole, setUserRole] = useState<string | null>(null)
   const [permissions, setPermissions] = useState<any>(null)
 
   useEffect(() => {
@@ -49,9 +51,10 @@ export default function BiblePage() {
         setPaths(data.paths || [])
         setFilteredPaths(data.paths || [])
 
-        // Get user role from a simple API endpoint
-        // For now, we'll set a default permission
-        setPermissions({ canCreatePaths: true })
+        // Set permissions based on user role
+        if (user?.role) {
+          setPermissions(getBiblePermissions(user.role))
+        }
       } catch (error) {
         console.error('Error loading Bible data:', error)
       } finally {
@@ -60,7 +63,7 @@ export default function BiblePage() {
     }
 
     loadData()
-  }, [])
+  }, [user])
 
   // Handle search
   useEffect(() => {
@@ -86,9 +89,9 @@ export default function BiblePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
+      <div className={`flex items-center justify-center ${bible.sizes.loadingMinHeight}`}>
         <div className="text-center">
-          <BookOpen className="h-12 w-12 mx-auto mb-4 animate-pulse text-muted-foreground" />
+          <BookOpen className={`${bible.iconSizes.xl} mx-auto mb-4 animate-pulse text-muted-foreground`} />
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
@@ -96,7 +99,7 @@ export default function BiblePage() {
   }
 
   return (
-    <div className="container max-w-6xl py-8">
+    <div className={`container max-w-6xl ${bible.spacing.pagePadding}`}>
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
@@ -108,7 +111,7 @@ export default function BiblePage() {
           </div>
           {permissions?.canCreatePaths && (
             <Button onClick={handleCreatePath}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className={`${bible.iconSizes.sm} mr-2`} />
               Create Path
             </Button>
           )}
@@ -116,7 +119,7 @@ export default function BiblePage() {
 
         {/* Search */}
         <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 ${bible.iconSizes.sm} text-muted-foreground`} />
           <Input
             placeholder="Search paths..."
             value={searchQuery}
@@ -130,7 +133,7 @@ export default function BiblePage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className={`${bible.typography.buttonText} font-medium text-muted-foreground`}>
               Total Paths
             </CardTitle>
           </CardHeader>
@@ -140,7 +143,7 @@ export default function BiblePage() {
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className={`${bible.typography.buttonText} font-medium text-muted-foreground`}>
               In Progress
             </CardTitle>
           </CardHeader>
@@ -152,7 +155,7 @@ export default function BiblePage() {
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className={`${bible.typography.buttonText} font-medium text-muted-foreground`}>
               Completed
             </CardTitle>
           </CardHeader>
@@ -167,8 +170,8 @@ export default function BiblePage() {
       {/* Paths Grid */}
       {filteredPaths.length === 0 ? (
         <div className="text-center py-16">
-          <BookMarked className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-semibold mb-2">
+          <BookMarked className={`${bible.iconSizes.xxl} mx-auto mb-4 text-muted-foreground`} />
+          <h3 className={`${bible.typography.quizTitle} font-semibold mb-2`}>
             {searchQuery ? 'No paths found' : 'No learning paths yet'}
           </h3>
           <p className="text-muted-foreground mb-6">
@@ -180,7 +183,7 @@ export default function BiblePage() {
           </p>
           {permissions?.canCreatePaths && !searchQuery && (
             <Button onClick={handleCreatePath}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className={`${bible.iconSizes.sm} mr-2`} />
               Create First Path
             </Button>
           )}
@@ -208,17 +211,17 @@ export default function BiblePage() {
                     </CardDescription>
                   </div>
                   {path.progress_percentage === 100 && (
-                    <CheckCircle2 className="h-6 w-6 text-green-500 flex-shrink-0" />
+                    <CheckCircle2 className={`${bible.iconSizes.md} text-green-500 flex-shrink-0`} />
                   )}
                 </div>
               </CardHeader>
 
               <CardContent>
-                <div className="space-y-4">
+                <div className={bible.spacing.sectionGap}>
                   {/* Progress */}
                   {path.article_count! > 0 && (
                     <div>
-                      <div className="flex items-center justify-between text-sm mb-1">
+                      <div className={`flex items-center justify-between ${bible.typography.buttonText} mb-1`}>
                         <span className="text-muted-foreground">Progress</span>
                         <span className="font-medium">
                           {path.completed_count || 0} / {path.article_count}
@@ -229,14 +232,14 @@ export default function BiblePage() {
                   )}
 
                   {/* Article count badge */}
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-xs">
-                      <BookOpen className="h-3 w-3 mr-1" />
+                  <div className={`flex items-center ${bible.spacing.buttonGap}`}>
+                    <Badge variant="secondary" className={bible.typography.badgeText}>
+                      <BookOpen className={`${bible.iconSizes.xs} mr-1`} />
                       {path.article_count || 0} {path.article_count === 1 ? 'article' : 'articles'}
                     </Badge>
                     {path.progress_percentage! > 0 && path.progress_percentage! < 100 && (
-                      <Badge variant="outline" className="text-xs">
-                        <TrendingUp className="h-3 w-3 mr-1" />
+                      <Badge variant="outline" className={bible.typography.badgeText}>
+                        <TrendingUp className={`${bible.iconSizes.xs} mr-1`} />
                         In Progress
                       </Badge>
                     )}
