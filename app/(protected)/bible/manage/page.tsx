@@ -9,6 +9,21 @@ import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { Path, Article } from '@/lib/types/bible'
 import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import {
   ArrowLeft,
   Plus,
   Edit,
@@ -45,11 +60,73 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Label } from '@/components/ui/label'
 import { ArticleEditor } from '@/components/bible/ArticleEditor'
+import { QuizEditor } from '@/components/bible/QuizEditor'
+import { useToast } from '@/hooks/use-toast'
+import type { QuizQuestion } from '@/lib/types/bible'
+import { bible } from '@/lib/design-tokens'
+
+// Sortable Article Component
+interface SortableArticleProps {
+  pa: any
+  onEdit: (article: Article) => void
+  onRemove: (id: string) => void
+}
+
+function SortableArticle({ pa, onEdit, onRemove }: SortableArticleProps) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+    id: pa.id,
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} className={`flex items-center ${bible.spacing.listGap} ${bible.spacing.cardPaddingCompact} rounded-lg border bg-card`}>
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab"
+      >
+        <GripVertical className={`${bible.iconSizes.md} text-muted-foreground`} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-medium truncate">{pa.article?.title}</p>
+        <div className={`flex items-center ${bible.spacing.buttonGap} mt-1`}>
+          <Badge variant="secondary" className={bible.typography.badgeText}>
+            {pa.article?.content_type}
+          </Badge>
+          {pa.is_required && (
+            <Badge variant="outline" className={bible.typography.badgeText}>
+              Required
+            </Badge>
+          )}
+        </div>
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => onEdit(pa.article as Article)}
+      >
+        <Edit className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => onRemove(pa.id)}
+      >
+        <X className="h-4 w-4" />
+      </Button>
+    </div>
+  )
+}
 
 export default function BibleManagePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const initialPathId = searchParams.get('path')
+  const { toast } = useToast()
 
   const [paths, setPaths] = useState<Path[]>([])
   const [articles, setArticles] = useState<Article[]>([])
@@ -64,6 +141,7 @@ export default function BibleManagePage() {
     description: '',
     icon: '',
     color: '#3b82f6',
+    sections: [] as string[],
   })
 
   // Article editing state
@@ -74,6 +152,8 @@ export default function BibleManagePage() {
     content: '',
     content_type: 'article' as const,
     video_url: '',
+    slide_deck_url: '',
+    quiz_data: [] as QuizQuestion[],
     tags: [] as string[],
   })
 
@@ -82,6 +162,56 @@ export default function BibleManagePage() {
 
   // File upload state
   const [uploadingFile, setUploadingFile] = useState(false)
+
+  // Drag-drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+  )
+
+  // Handle drag end
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id || !selectedPath) return
+
+    const oldIndex = selectedPath.articles?.findIndex((pa) => pa.id === active.id)
+    const newIndex = selectedPath.articles?.findIndex((pa) => pa.id === over.id)
+
+    if (oldIndex === undefined || newIndex === undefined) return
+
+    // Reorder locally
+    const newPathArticles = arrayMove(selectedPath.articles, oldIndex, newIndex)
+    setSelectedPath({ ...selectedPath, articles: newPathArticles })
+
+    // Save to server
+    try {
+      const response = await fetch(`/api/bible/paths/${selectedPath.id}/articles`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          articles: newPathArticles.map((pa, index) => ({
+            id: pa.id,
+            article_id: pa.article_id,
+            display_order: index,
+          })),
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to reorder articles')
+      }
+
+      await loadData()
+    } catch (error) {
+      console.error('Error reordering articles:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to reorder articles. Please try again.',
+      })
+      // Revert on error
+      setSelectedPath(selectedPath)
+    }
+  }
 
   useEffect(() => {
     async function init() {
@@ -149,7 +279,11 @@ export default function BibleManagePage() {
       await loadData()
     } catch (error) {
       console.error('Error saving path:', error)
-      alert('Failed to save path')
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to save path. Please try again.',
+      })
     } finally {
       setSaving(false)
     }
@@ -169,7 +303,11 @@ export default function BibleManagePage() {
       await loadData()
     } catch (error) {
       console.error('Error deleting path:', error)
-      alert('Failed to delete path')
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to delete path. Please try again.',
+      })
     } finally {
       setSaving(false)
     }
@@ -198,7 +336,11 @@ export default function BibleManagePage() {
       await loadData()
     } catch (error) {
       console.error('Error saving article:', error)
-      alert('Failed to save article')
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to save article. Please try again.',
+      })
     } finally {
       setSaving(false)
     }
@@ -218,7 +360,11 @@ export default function BibleManagePage() {
       await loadData()
     } catch (error) {
       console.error('Error deleting article:', error)
-      alert('Failed to delete article')
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to delete article. Please try again.',
+      })
     } finally {
       setSaving(false)
     }
@@ -240,7 +386,11 @@ export default function BibleManagePage() {
       await loadData()
     } catch (error) {
       console.error('Error adding article:', error)
-      alert('Failed to add article to path')
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to add article to path. Please try again.',
+      })
     } finally {
       setSaving(false)
     }
@@ -264,7 +414,11 @@ export default function BibleManagePage() {
       await loadData()
     } catch (error) {
       console.error('Error removing article:', error)
-      alert('Failed to remove article from path')
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to remove article from path. Please try again.',
+      })
     } finally {
       setSaving(false)
     }
@@ -301,6 +455,7 @@ export default function BibleManagePage() {
         description: path.description || '',
         icon: path.icon || '',
         color: path.color || '#3b82f6',
+        sections: path.sections || [],
       })
     } else {
       setSelectedPath(null)
@@ -326,6 +481,8 @@ export default function BibleManagePage() {
         content: article.content,
         content_type: article.content_type,
         video_url: article.video_url || '',
+        slide_deck_url: article.slide_deck_url || '',
+        quiz_data: article.quiz_data || [],
         tags: article.tags || [],
       })
     } else {
@@ -341,6 +498,8 @@ export default function BibleManagePage() {
       content: '',
       content_type: 'article',
       video_url: '',
+      slide_deck_url: '',
+      quiz_data: [],
       tags: [],
     })
   }
@@ -473,41 +632,25 @@ export default function BibleManagePage() {
                 {/* Articles in this path */}
                 <TabsContent value="articles" className="space-y-2">
                   {selectedPath.articles && selectedPath.articles.length > 0 ? (
-                    selectedPath.articles.map((pa) => (
-                      <div
-                        key={pa.id}
-                        className="flex items-center gap-3 p-3 rounded-lg border bg-card"
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext
+                        items={selectedPath.articles.map(pa => pa.id)}
+                        strategy={verticalListSortingStrategy}
                       >
-                        <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{pa.article?.title}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="secondary" className="text-xs">
-                              {pa.article?.content_type}
-                            </Badge>
-                            {pa.is_required && (
-                              <Badge variant="outline" className="text-xs">
-                                Required
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openArticleDialog(pa.article as Article)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeArticleFromPath(pa.id)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))
+                        {selectedPath.articles.map((pa) => (
+                          <SortableArticle
+                            key={pa.id}
+                            pa={pa}
+                            onEdit={() => openArticleDialog(pa.article as Article)}
+                            onRemove={() => removeArticleFromPath(pa.id)}
+                          />
+                        ))}
+                      </SortableContext>
+                    </DndContext>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
                       No articles in this path yet
@@ -637,6 +780,21 @@ export default function BibleManagePage() {
                 </div>
               </div>
             </div>
+            <div>
+              <Label htmlFor="path-sections">Sections</Label>
+              <Input
+                id="path-sections"
+                value={pathForm.sections.join(', ')}
+                onChange={(e) => setPathForm({
+                  ...pathForm,
+                  sections: e.target.value.split(',').map(s => s.trim()).filter(s => s)
+                })}
+                placeholder="e.g., Basics, Advanced, Reference"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Comma-separated section names for organizing articles
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowPathDialog(false)}>
@@ -682,7 +840,49 @@ export default function BibleManagePage() {
                 <option value="howto">How-To Guide</option>
                 <option value="video">Video</option>
                 <option value="file">File Attachment</option>
+                <option value="slides">Slide Deck</option>
               </select>
+            </div>
+            <div>
+              <Label htmlFor="article-tags">Tags</Label>
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  {articleForm.tags.map((tag, index) => (
+                    <Badge key={index} variant="secondary" className="pl-2 pr-1 py-1 gap-1">
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newTags = articleForm.tags.filter((_, i) => i !== index)
+                          setArticleForm({ ...articleForm, tags: newTags })
+                        }}
+                        className="ml-1 hover:bg-destructive/20 rounded p-0.5"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+                <Input
+                  id="article-tags"
+                  type="text"
+                  placeholder="Add a tag and press Enter"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      const input = e.target as HTMLInputElement
+                      const newTag = input.value.trim()
+                      if (newTag && !articleForm.tags.includes(newTag)) {
+                        setArticleForm({ ...articleForm, tags: [...articleForm.tags, newTag] })
+                        input.value = ''
+                      }
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Press Enter to add a tag. Click X to remove.
+                </p>
+              </div>
             </div>
             <div>
               <Label>Content *</Label>
@@ -690,6 +890,14 @@ export default function BibleManagePage() {
                 value={articleForm.content}
                 onChange={(content) => setArticleForm({ ...articleForm, content })}
                 onImageUpload={handleImageUpload}
+              />
+            </div>
+
+            {/* Quiz Section */}
+            <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+              <QuizEditor
+                initialQuestions={articleForm.quiz_data}
+                onChange={(quizData) => setArticleForm({ ...articleForm, quiz_data: quizData })}
               />
             </div>
             {articleForm.content_type === 'video' && (
@@ -703,6 +911,20 @@ export default function BibleManagePage() {
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   YouTube, Vimeo, and Loom URLs are supported
+                </p>
+              </div>
+            )}
+            {articleForm.content_type === 'slides' && (
+              <div>
+                <Label htmlFor="article-slides">Slide Deck URL</Label>
+                <Input
+                  id="article-slides"
+                  value={articleForm.slide_deck_url}
+                  onChange={(e) => setArticleForm({ ...articleForm, slide_deck_url: e.target.value })}
+                  placeholder="https://docs.google.com/presentation/d/..."
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Google Slides and PowerPoint Online URLs are supported
                 </p>
               </div>
             )}
