@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Path } from '@query-stream-ai/types/bible'
 import { getBiblePermissions } from '@query-stream-ai/types/bible'
+import { useAuth } from '@/app/contexts/AuthContext'
 import {
   BookOpen,
   Search,
@@ -26,6 +27,7 @@ import { Progress } from '@/components/ui/progress'
 
 export default function BiblePage() {
   const router = useRouter()
+  const { user } = useAuth()
   const [paths, setPaths] = useState<Path[]>([])
   const [filteredPaths, setFilteredPaths] = useState<Path[]>([])
   const [loading, setLoading] = useState(true)
@@ -49,9 +51,10 @@ export default function BiblePage() {
         setPaths(data.paths || [])
         setFilteredPaths(data.paths || [])
 
-        // Get user role from a simple API endpoint
-        // For now, we'll set a default permission
-        setPermissions({ canCreatePaths: true })
+        // Set permissions based on user role
+        if (user?.role) {
+          setPermissions(getBiblePermissions(user.role))
+        }
       } catch (error) {
         console.error('Error loading Bible data:', error)
       } finally {

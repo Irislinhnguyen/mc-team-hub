@@ -21,6 +21,7 @@ const createPathSchema = z.object({
   description: z.string().max(2000).optional().nullable(),
   icon: z.string().max(50).optional().nullable(),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be a valid hex color').optional().nullable(),
+  sections: z.array(z.string()).optional(),
 })
 
 // =====================================================
@@ -122,6 +123,7 @@ export async function GET(request: NextRequest) {
         description: p.description,
         icon: p.icon,
         color: p.color,
+        sections: p.sections || [],
         created_by: p.created_by,
         created_at: p.created_at,
         updated_at: p.updated_at,
@@ -182,6 +184,7 @@ export async function POST(request: NextRequest) {
         description: data.description || null,
         icon: data.icon || null,
         color: data.color || null,
+        sections: data.sections || [],
         created_by: user.sub,
       })
       .select()

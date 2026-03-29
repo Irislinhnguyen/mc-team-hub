@@ -23,6 +23,7 @@ const updatePathSchema = z.object({
   description: z.string().max(2000).optional().nullable(),
   icon: z.string().max(50).optional().nullable(),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().nullable(),
+  sections: z.array(z.string()).optional(),
 })
 
 // =====================================================
@@ -62,6 +63,7 @@ export async function GET(
         article_id,
         display_order,
         is_required,
+        section,
         article:bible_articles(*)
       `)
       .eq('path_id', pathId)
@@ -102,6 +104,7 @@ export async function GET(
       article_id: pa.article_id,
       display_order: pa.display_order,
       is_required: pa.is_required,
+      section: pa.section || null,
       article: {
         ...pa.article,
         is_completed: completedArticleIds.has(pa.article_id),
@@ -190,6 +193,7 @@ export async function PUT(
     if (data.description !== undefined) updateData.description = data.description
     if (data.icon !== undefined) updateData.icon = data.icon
     if (data.color !== undefined) updateData.color = data.color
+    if (data.sections !== undefined) updateData.sections = data.sections
 
     const { data: path, error } = await supabase
       .from('bible_paths')

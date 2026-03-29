@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import type { Path, PathArticle } from '@query-stream-ai/types/bible'
+import { useAuth } from '@/app/contexts/AuthContext'
 import {
   ArrowLeft,
   BookOpen,
@@ -29,6 +30,7 @@ export default function PathDetailPage() {
   const router = useRouter()
   const params = useParams()
   const pathId = params.id as string
+  const { user } = useAuth()
 
   const [path, setPath] = useState<Path | null>(null)
   const [loading, setLoading] = useState(true)
@@ -66,9 +68,9 @@ export default function PathDetailPage() {
           setCurrentArticleIndex(firstIncompleteIndex >= 0 ? firstIncompleteIndex : 0)
         }
 
-        // For now, set canManage to true
-        // In production, check user permissions
-        setCanManage(true)
+        // Check if user has permission to manage this path (admin/manager/leader)
+        const canManagePath = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'leader'
+        setCanManage(canManagePath)
       } catch (err: any) {
         console.error('Error loading path:', err)
         setError(err.message || 'Failed to load path')

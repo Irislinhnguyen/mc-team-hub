@@ -20,14 +20,18 @@ async function setupAuth(config: FullConfig) {
   const page = await context.newPage();
 
   console.log('\n========================================');
-  console.log('🔐 AUTH SETUP');
+  console.log('🔐 AUTH SETUP - One-time setup for E2E tests');
   console.log('========================================\n');
-  console.log('1. Log in to the application');
-  console.log('2. Once logged in, press Ctrl+C or close the browser');
+  console.log('INSTRUCTIONS:');
+  console.log('1. Log in to the application in the browser window');
+  console.log('2. Once logged in and redirected, close the browser');
   console.log('3. Auth state will be saved to tests/auth/auth.json\n');
-  console.log('Test credentials:');
-  console.log('  Email: testuser@geniee.co.jp');
-  console.log('  Password: TestUser@1234!\n');
+  console.log('TEST CREDENTIALS:');
+  console.log('  Email: bible-admin@geniee.co.jp');
+  console.log('  Password: test12345\n');
+  console.log('Note: If these credentials don\'t work, you may need to');
+  console.log('create the admin user first. Check the seed files in');
+  console.log('supabase/seeds/ for more info.\n');
   console.log('========================================\n');
 
   // Navigate to auth page

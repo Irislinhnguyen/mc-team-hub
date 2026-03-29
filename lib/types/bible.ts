@@ -15,6 +15,7 @@ export const ARTICLE_CONTENT_TYPES = [
   'howto',
   'video',
   'file',
+  'slides',
 ] as const;
 
 export type ArticleContentType = (typeof ARTICLE_CONTENT_TYPES)[number];
@@ -32,6 +33,7 @@ export interface Path {
   description: string | null;
   icon: string | null; // emoji or icon name
   color: string | null; // theme color for UI
+  sections: string[]; // Array of section names for organizing articles
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -45,7 +47,7 @@ export interface Path {
 }
 
 /**
- * Article - Individual content page (rich text, video, files)
+ * Article - Individual content page (rich text, video, files, slides)
  */
 export interface Article {
   id: string;
@@ -56,6 +58,8 @@ export interface Article {
   file_url: string | null; // for file attachments
   file_name: string | null; // original file name
   file_size: number | null; // file size in bytes
+  slide_deck_url: string | null; // for slides type (Google Slides, PowerPoint Online)
+  quiz_data: QuizQuestion[] | null; // Quiz questions embedded in article
   tags: string[] | null;
   created_by: string;
   created_at: string;
@@ -68,6 +72,16 @@ export interface Article {
 }
 
 /**
+ * Quiz Question
+ */
+export interface QuizQuestion {
+  question: string;
+  options: string[];
+  correct_answer: number; // Index of correct option (0-based)
+  explanation?: string; // Optional explanation shown after answering
+}
+
+/**
  * PathArticle - Junction table linking articles to paths with order
  */
 export interface PathArticle {
@@ -76,6 +90,7 @@ export interface PathArticle {
   article_id: string;
   display_order: number;
   is_required: boolean;
+  section: string | null; // Section name within the path (e.g., "Basics", "Advanced")
 
   // Joined fields
   article?: Article;
@@ -130,6 +145,8 @@ export interface CreateArticleRequest {
   file_url?: string;
   file_name?: string;
   file_size?: number;
+  slide_deck_url?: string;
+  quiz_data?: QuizQuestion[];
   tags?: string[];
 }
 
@@ -144,6 +161,8 @@ export interface UpdateArticleRequest {
   file_url?: string | null;
   file_name?: string | null;
   file_size?: number | null;
+  slide_deck_url?: string | null;
+  quiz_data?: QuizQuestion[] | null;
   tags?: string[] | null;
 }
 
@@ -154,6 +173,7 @@ export interface AddArticleToPathRequest {
   article_id: string;
   display_order?: number;
   is_required?: boolean;
+  section?: string | null; // Section name within the path
 }
 
 /**

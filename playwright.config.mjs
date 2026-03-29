@@ -23,6 +23,13 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
 
+  // Disable webServer - server is already running
+  // webServer: {
+  //   command: 'npm run dev',
+  //   url: 'http://localhost:3000',
+  //   reuseExistingServer: true,
+  // },
+
   projects: [
     {
       name: 'chromium',
@@ -33,10 +40,4 @@ export default defineConfig({
       },
     },
   ],
-
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-  },
 });
